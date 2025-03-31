@@ -1,3 +1,4 @@
+import time
 import os
 import io
 import re
@@ -246,6 +247,7 @@ def generar_contenido_para_todos():
         df_leads.at[idx, "Your Targets Value Prop"] = result["Your Targets Value Prop"]
         df_leads.at[idx, "Cliffhanger Value Prop"] = result["Cliffhanger Value Prop"]
         df_leads.at[idx, "CTA"] = result["CTA"]
+        time.sleep(1.5) 
 
     # Tras generarlo, hacemos limpieza de "NaN"/"nan" y quitamos corchetes.
     cleanup_leads()
