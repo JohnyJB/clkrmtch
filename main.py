@@ -116,17 +116,17 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
     prompt = f"""No uses corchetes ni placeholders. Usa los datos reales.
 (Con “no uses corchetes” nos referimos a no usar nada como [NOMBRE] o [TEXTO], pero sí debes usar llaves para devolver tu respuesta en formato JSON.)
 
-Harás un correo eléctronico, pero en realidad solo me daras las siguientes partes:
+Harás un correo eléctronico, no vendas, socializa, pero en realidad solo me daras las siguientes partes, cada parte es un renglón del mensaje:
 
 Tenemos un cliente llamado {companyName}.
 Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
 
-1. Personalization (usa el nombre del contacto, no te presentes, una introducción personalizada basada exclusivamente en la información del sitio web del cliente. El objetivo es captar su atención de inmediato.)
+1. Personalization (usa el nombre del contacto, no te presentes, nin a nosotros, una introducción personalizada basada exclusivamente en la información del sitio web del cliente. El objetivo es captar su atención de inmediato.)
 2. Your Value Prop (Propuesta de valor del proveedor, basado en su web.)
-3. Target Niche (El segmento de mercado al que el proveedor llega, definido por industria, subsegmento, tamaño de empresa y ubicación del cliente. No vas a mencionar estos datos, pero si algo ejemplo: "Somos y nos dedicamos a tal cosa, en la ubicación del cliente")
+3. Target Niche (El segmento de mercado al que el proveedor llega, definido por industria, subsegmento, tamaño de empresa y ubicación del cliente. No vas a mencionar estos datos, pero si algo ejemplo: "Somos y nos dedicamos a tal cosa, en (Mencionar la ubicación cliente)")
 4. Your Targets Goal (La meta principal de {lead_name} considerando que es {title}. Qué quiere lograr con su negocio o estrategia.)
 5. Your Targets Value Prop (La propuesta de valor de {companyName}. Cómo se diferencian en su mercado.)
-6. Cliffhanger Value Prop (Propuesta intrigante o gancho para motivar la conversación.)
+6. Cliffhanger Value Prop (Propuesta intrigante o gancho para motivar la conversación. ejemplo "me encantaría mostrarte mi plan para...")
 7. CTA (Acción concreta que queremos que tome el cliente, como agendar una reunión.)
 
 Información del lead:
