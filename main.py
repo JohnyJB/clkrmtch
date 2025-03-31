@@ -121,13 +121,15 @@ Harás un correo eléctronico, no vendas, socializa, pero en realidad solo me da
 Tenemos un cliente llamado {companyName}.
 Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
 
-1. Personalization (usa el nombre del contacto, no te presentes, nin a nosotros, una introducción personalizada basada exclusivamente en la información del sitio web del cliente. El objetivo es captar su atención de inmediato.)
-2. Your Value Prop (Propuesta de valor del proveedor, basado en su web.)
+1. Personalization (usa el nombre del contacto, no te presentes, nin a nosotros, una introducción personalizada basada exclusivamente en la información del sitio web del cliente. El objetivo es captar su atención de inmediato. Escribe un mensaje breve, estilo networking o reconocimiento profesional, basado en su info)
+2. Your Value Prop (Propuesta de valor del proveedor, basado en su web. breve)
 3. Target Niche (El segmento de mercado al que el proveedor llega, definido por industria, subsegmento, tamaño de empresa y ubicación del cliente. No vas a mencionar estos datos, pero si algo ejemplo: "Somos y nos dedicamos a tal cosa, en (Mencionar la ubicación cliente)")
-4. Your Targets Goal (La meta principal de {lead_name} considerando que es {title}. Qué quiere lograr con su negocio o estrategia.)
-5. Your Targets Value Prop (La propuesta de valor de {companyName}. Cómo se diferencian en su mercado.)
+4. Your Targets Goal (La meta principal de {lead_name} considerando que es {title}. Qué quiere lograr con su negocio o estrategia. "Veo que aportas...")
+5. Your Targets Value Prop (La propuesta de valor de {companyName}. Cómo se diferencian en su mercado. "Parece que ustedes buscan...")
 6. Cliffhanger Value Prop (Propuesta intrigante o gancho para motivar la conversación. ejemplo "me encantaría mostrarte mi plan para...")
 7. CTA (Acción concreta que queremos que tome el cliente, como agendar una reunión.)
+
+escribelos de manera que conecten en un solo mensaje
 
 Información del lead:
 - Contacto: {lead_name}
