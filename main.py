@@ -159,7 +159,8 @@ Dentro de cada clave, escribe el texto que corresponda, sin usar corchetes ni pl
             model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=OPENAI_MAX_TOKENS,
-            temperature=0.7
+            temperature=0.7,
+            timeout=30
         )
         content = respuesta.choices[0].message.content
         print("[LOG] Respuesta recibida. Parseamos JSON...")
@@ -173,6 +174,22 @@ Dentro de cada clave, escribe el texto que corresponda, sin usar corchetes ni pl
             targets_value_prop = parsed.get("Your Targets Value Prop", "-")
             cliffhanger = parsed.get("Cliffhanger Value Prop", "-")
             cta = parsed.get("CTA", "-")
+
+        except Exception as ex:
+            print("[ERROR] No se pudo parsear JSON:")
+            print("Contenido recibido:")
+            print(content if 'content' in locals() else "(content no definido)")
+            print("Excepción:", ex)
+
+            # Fallback en caso de fallo
+            personalization = content if 'content' in locals() else "-"
+            value_prop = "-"
+            target_niche = "-"
+            targets_goal = "-"
+            targets_value_prop = "-"
+            cliffhanger = "-"
+            cta = "-"
+
 
         except Exception as ex:
             print("[ERROR] No se pudo parsear JSON:")
