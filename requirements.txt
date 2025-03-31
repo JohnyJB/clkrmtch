@@ -4,3 +4,5 @@ requests
 pandas
 beautifulsoup4
 openpyxl
+openai>=1.0.0
+
