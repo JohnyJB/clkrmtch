@@ -175,7 +175,12 @@ Dentro de cada clave, escribe el texto que corresponda, sin usar corchetes ni pl
             cta = parsed.get("CTA", "-")
 
         except Exception as ex:
-            print("[ERROR] No se pudo parsear JSON:", ex)
+            print("[ERROR] No se pudo parsear JSON:")
+            print("Contenido recibido:")
+            print(content)
+            print("Excepción:", ex)
+
+    
             # Guardamos todo en "Personalization"
             personalization = content
             value_prop = "-"
@@ -238,8 +243,19 @@ def generar_contenido_para_todos():
         return
 
     for idx, row in df_leads.iterrows():
-        print(f"[LOG] Generando ChatGPT para lead idx={idx}...")
-        result = generar_contenido_chatgpt_por_fila(row)
+        try:
+            print(f"[LOG] Generando ChatGPT para lead idx={idx}...")
+            result = generar_contenido_chatgpt_por_fila(row)
+            df_leads.at[idx, "Personalization"] = result["Personalization"]
+            df_leads.at[idx, "Your Value Prop"] = result["Your Value Prop"]
+            df_leads.at[idx, "Target Niche"] = result["Target Niche"]
+            df_leads.at[idx, "Your Targets Goal"] = result["Your Targets Goal"]
+            df_leads.at[idx, "Your Targets Value Prop"] = result["Your Targets Value Prop"]
+            df_leads.at[idx, "Cliffhanger Value Prop"] = result["Cliffhanger Value Prop"]
+            df_leads.at[idx, "CTA"] = result["CTA"]
+        except Exception as e:
+            print(f"[ERROR] Error inesperado en lead idx={idx}: {e}")
+
         df_leads.at[idx, "Personalization"] = result["Personalization"]
         df_leads.at[idx, "Your Value Prop"] = result["Your Value Prop"]
         df_leads.at[idx, "Target Niche"] = result["Target Niche"]
