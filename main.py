@@ -121,12 +121,12 @@ Harás un correo eléctronico, no vendas, socializa, pero en realidad solo me da
 Tenemos un cliente llamado {companyName}.
 Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
 
-1. Personalization (usa el nombre del contacto, no te presentes, nin a nosotros, una introducción personalizada basada exclusivamente en la información del sitio web del cliente. El objetivo es captar su atención de inmediato. Escribe un mensaje breve, estilo networking o reconocimiento profesional, basado en su info)
+1. Personalization (usa el nombre del contacto, no te presentes, nin a nosotros, una introducción personalizada basada exclusivamente en la información del sitio web del cliente. El objetivo es captar su atención de inmediato. Escribe un mensaje breve, estilo networking o reconocimiento de su empresa "Hola {lead_name}," breve)
 2. Your Value Prop (Propuesta de valor del proveedor, basado en su web. breve)
-3. Target Niche (El segmento de mercado al que el proveedor llega, definido por industria, subsegmento, tamaño de empresa y ubicación del cliente. No vas a mencionar estos datos, pero si algo ejemplo: "Somos y nos dedicamos a tal cosa, en (Mencionar la ubicación cliente)")
-4. Your Targets Goal (La meta principal de {lead_name} considerando que es {title}. Qué quiere lograr con su negocio o estrategia. "Veo que aportas...")
-5. Your Targets Value Prop (La propuesta de valor de {companyName}. Cómo se diferencian en su mercado. "Parece que ustedes buscan...")
-6. Cliffhanger Value Prop (Propuesta intrigante o gancho para motivar la conversación. ejemplo "me encantaría mostrarte mi plan para...")
+3. Target Niche (El segmento de mercado al que el proveedor llega, definido por industria, subsegmento y ubicación del cliente. No vas a mencionar estos datos, pero si algo ejemplo: "Somos y nos dedicamos a tal cosa, (del scrapping del proveedor pero orientado a scrapping del cliente) en (Mencionar la ubicación cliente)")
+4. Your Targets Goal (La meta principal de {lead_name} considerando que es {title}. Qué quiere lograr con su negocio o estrategia. "Veo que aportas (hacer observación de a que se dedica el contácto)" breve)
+5. Your Targets Value Prop (La propuesta de valor de {companyName}. Cómo se diferencian en su mercado. "Parece que ustedes buscan... (decir algo en base al scrapping del cliente)" breve)
+6. Cliffhanger Value Prop (Propuesta intrigante o gancho para motivar la conversación. ejemplo "me encantaría mostrarte mi plan para... (crea algo breve en lo que ambos podamos trabajar juntos comparando scrapping proveedor y scrapping cliente)" breve)
 7. CTA (Acción concreta que queremos que tome el cliente, como agendar una reunión.)
 
 escribelos de manera que conecten en un solo mensaje
@@ -136,7 +136,7 @@ Información del lead:
 - Puesto: {title}
 - Industria: {industry}
 - El cliente es: {companyName}
-- Contenido del sitio web (scrapping del lead): {scrapping_lead}
+- Contenido del sitio web del cliente(scrapping del cliente): {scrapping_lead}
 - La ubicación de la empresa es: {location} (si no te doy una ubicación, ignóralo)
 
 Información del proveedor:
