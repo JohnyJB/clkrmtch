@@ -112,16 +112,17 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
     scrapping_proveedor = str(row.get("scrapping_proveedor", "-"))
 
     # Prompt: sin corchetes, con datos reales
-    prompt = f"""
-No uses corchetes ni placeholders. Usa los datos reales.
+    prompt = f"""No uses corchetes ni placeholders. Usa los datos reales.
+(Con “no uses corchetes” nos referimos a no usar nada como [NOMBRE] o [TEXTO], pero sí debes usar llaves para devolver tu respuesta en formato JSON.)
+
 Eres un experto en comercial que se acerca estratégicamente a los clientes.
 
 Tenemos un cliente llamado {companyName}.
 Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
 
-1. Personalization (usa el nombre del contacto, no te presentes, una introducción personalizada basada exclusivamente en información del sitio web del cliente. El objetivo es captar su atención de inmediato.)
+1. Personalization (usa el nombre del contacto, no te presentes, una introducción personalizada basada exclusivamente en la información del sitio web del cliente. El objetivo es captar su atención de inmediato.)
 2. Your Value Prop (Propuesta de valor del proveedor, basado en su web.)
-3. Target Niche (El segmento de mercado al que el proveedor llega, definido por industria, subsegmento, tamaño de empresa, y ubicación del cliente.)
+3. Target Niche (El segmento de mercado al que el proveedor llega, definido por industria, subsegmento, tamaño de empresa y ubicación del cliente.)
 4. Your Targets Goal (La meta principal de {lead_name} considerando que es {title}. Qué quiere lograr con su negocio o estrategia.)
 5. Your Targets Value Prop (La propuesta de valor de {companyName}. Cómo se diferencian en su mercado.)
 6. Cliffhanger Value Prop (Propuesta intrigante o gancho para motivar la conversación.)
@@ -133,14 +134,22 @@ Información del lead:
 - Industria: {industry}
 - El cliente es: {companyName}
 - Contenido del sitio web (scrapping del lead): {scrapping_lead}
-- La ubicación de la empresa es: {location} (si no te doy una ubicación ignoralo)
+- La ubicación de la empresa es: {location} (si no te doy una ubicación, ignóralo)
 
 Información del proveedor:
 - Contenido extraído del sitio web del proveedor: {scrapping_proveedor}
 
-Responde solo en formato JSON con las claves exactas:
-"Personalization", "Your Value Prop", "Target Niche", "Your Targets Goal",
-"Your Targets Value Prop", "Cliffhanger Value Prop", "CTA".
+Responde solo en formato JSON, con las claves exactas (y en español):
+"Personalization", 
+"Your Value Prop", 
+"Target Niche", 
+"Your Targets Goal",
+"Your Targets Value Prop", 
+"Cliffhanger Value Prop", 
+"CTA".
+
+Dentro de cada clave, escribe el texto que corresponda, sin usar corchetes ni placeholders.
+
 """
 
     try:
