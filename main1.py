@@ -46,16 +46,6 @@ MAX_SCRAPING_CHARS = 6000
 OPENAI_MODEL = "gpt-3.5-turbo"
 OPENAI_MAX_TOKENS = 1000
 
-# [NUEVA LÍNEA ADICIONADA] -------------------------------------------------
-def _limpiar_caracteres_raros(texto: str) -> str:
-    """
-    Elimina caracteres extraños (ej. emojis o símbolos no usuales)
-    manteniendo letras, dígitos, ciertos signos de puntuación y acentos básicos.
-    """
-    # Puedes ajustar la expresión regular según tus necesidades:
-    return re.sub(r'[^\w\sáéíóúÁÉÍÓÚñÑüÜ:;,.!?@#%&()"+\-\//$\'\"\n\r\t¿¡]', '', texto)
-# [NUEVA LÍNEA ADICIONADA] -------------------------------------------------
-
 def _asegurar_https(url: str) -> str:
     """Si la URL no empieza con http(s)://, antepone https://."""
     url = url.strip()
@@ -78,8 +68,6 @@ def realizar_scraping(url: str) -> str:
             sopa = BeautifulSoup(resp.text, "html.parser")
             texto = sopa.get_text()
             truncated = texto[:MAX_SCRAPING_CHARS]
-            # [NUEVA LÍNEA ADICIONADA] Limpiar caracteres raros después de truncar
-            truncated = _limpiar_caracteres_raros(truncated)
             print("[LOG] Scraping completado. Chars extraídos:", len(truncated))
             return truncated
         else:
@@ -134,7 +122,7 @@ Harás un correo eléctronico, no vendas, usa "llegar" en vez de "vender", socia
 Tenemos un cliente llamado {companyName}.
 Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
 
-1. Personalization (usa el nombre del contacto, no te presentes, nin a nosotros, una introducción personalizada basada exclusivamente en la información del sitio web del cliente. El objetivo es captar su atención de inmediato. Escribe un mensaje breve, pero emocionante reconocimiento de su empresa "Hola {lead_name} (sigue, aqui no digas nada de nosotros ni que hacemos)" breve)
+1. Personalization (usa el nombre del contacto, no te presentes, ni a nosotros, una introducción personalizada basada exclusivamente en la información del sitio web del cliente. El objetivo es captar su atención de inmediato. Escribe un mensaje breve, pero emocionante reconocimiento de su empresa "Hola {lead_name} (sigue, aqui no digas nada de nosotros ni que hacemos)" breve)
 2. Your Value Prop (Propuesta de valor del proveedor, basado en su web. breve)
 3. Target Niche (El segmento de mercado al que el proveedor llega, definido por industria, subsegmento y ubicación del cliente. No vas a mencionar estos datos, pero si algo ejemplo: "Somos y nos dedicamos a tal cosa, (del scrapping del proveedor pero orientado a scrapping del cliente) en (Mencionar la ubicación cliente)")
 4. Your Targets Goal (La meta principal de {lead_name} considerando que es {title}. Qué quiere lograr con su negocio o estrategia. "Veo que aportas (hacer observación de a que se dedica el contácto)" breve)
@@ -167,8 +155,6 @@ Responde solo en formato JSON, con las claves exactas (y en español):
 Dentro de cada clave, escribe el texto que corresponda, sin usar corchetes ni placeholders.
 
 """
-    # [NUEVA LÍNEA ADICIONADA] Limpiar caracteres raros en el prompt
-    prompt = _limpiar_caracteres_raros(prompt)
 
     try:
         print("[LOG] Llamando ChatGPT con 'client.chat.completions.create(...)'")
@@ -356,32 +342,7 @@ def index():
         leadf = request.files.get("leads_csv")
         if leadf and leadf.filename:
             df_leads = pd.read_csv(leadf)
-            # [NUEVA LÍNEA ADICIONADA] --------------------------------------
-            # Aquí se obtiene el rango de filas y se aplica
-            start_row_str = request.form.get("start_row", "").strip()
-            end_row_str = request.form.get("end_row", "").strip()
-
-            try:
-                start_row = int(start_row_str) if start_row_str else 0
-            except:
-                start_row = 0
-            try:
-                end_row = int(end_row_str) if end_row_str else (len(df_leads) - 1)
-            except:
-                end_row = len(df_leads) - 1
-
-            if start_row < 0: 
-                start_row = 0
-            if end_row >= len(df_leads):
-                end_row = len(df_leads) - 1
-            if start_row > end_row:
-                start_row, end_row = 0, len(df_leads) - 1
-
-            df_leads = df_leads.iloc[start_row:end_row+1].copy()
-            # [NUEVA LÍNEA ADICIONADA] --------------------------------------
-
-            status_msg += f"Leads CSV cargado, filas originales={{len(pd.read_csv(leadf))}}.<br>"
-            status_msg += f"Filas aplicadas en rango [{start_row}, {end_row}]. Total ahora={{len(df_leads)}}<br>"
+            status_msg += f"Leads CSV cargado, filas={len(df_leads)}<br>"
 
         # Parámetros
         new_api = request.form.get("api_key", "").strip()
@@ -528,7 +489,7 @@ Laura"
     # Se eliminó cualquier mención a segment/clicker ni "caso de éxito".
     page_html = f"""
     <html>
-    <link rel="icon" href="{{{{ url_for('static', filename='favicon.ico') }}}}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <head>
         <title>Campaign Maker: Sin corchetes, sin NaN, con Nombre real</title>
         <style>
@@ -653,14 +614,6 @@ Laura"
           <h2>1) Cargar CSV de Leads</h2>
           <label>Base de Datos:</label>
           <input type="file" name="leads_csv"/>
-
-          <!-- [NUEVA SECCIÓN DE RANGO DE FILAS] -->
-          <label>Fila de inicio:</label>
-          <input type="text" name="start_row" placeholder="0" />
-          <label>Fila de fin:</label>
-          <input type="text" name="end_row" placeholder="(ultima)" />
-          <!-- [FIN NUEVA SECCIÓN DE RANGO DE FILAS] -->
-
           <button type="submit">Subir Archivo</button>
         </form>
         <hr>
