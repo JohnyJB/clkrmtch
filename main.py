@@ -1,3 +1,5 @@
+#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
+# -*- coding: utf-8 -*-
 import time
 import os
 import io
@@ -6,21 +8,28 @@ import json
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup
-from flask import Flask, request, render_template_string, redirect, url_for, make_response
+from flask import Flask, request, make_response
 
-#########################################
-# Se supone que tu entorno define:
-# from openai import OpenAI
-# client = OpenAI(api_key="...")
-# Y se usa client.chat.completions.create(...)
-#########################################
+# Si tu wrapper es distinto, adapta la importación:
 try:
     from openai import OpenAI
 except ImportError:
-    print("[ERROR] No se encontró 'from openai import OpenAI'. Asegúrate de usar la librería/wrapper adecuada.")
+    print("[ERROR] No se encontró 'from openai import OpenAI'. Ajusta la librería según corresponda.")
     OpenAI = None
 
-client = None  # Se crea cuando se recibe la API Key
+###############################
+# 1) Hardcodear la API Key
+###############################
+HARDCODED_API_KEY = "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"
+
+###############################
+# Inicializar el cliente
+###############################
+client = None
+if OpenAI:
+    client = OpenAI(api_key=HARDCODED_API_KEY)
+else:
+    print("[ERROR] La clase OpenAI no está disponible. Por favor revisa tu librería o wrapper de OpenAI.")
 
 app = Flask(__name__)
 app.secret_key = "CLAVE_SECRETA_PARA_SESSION"  # si deseas usar session
@@ -28,10 +37,17 @@ app.secret_key = "CLAVE_SECRETA_PARA_SESSION"  # si deseas usar session
 # DataFrame principal
 df_leads = pd.DataFrame()
 
-# Parámetros
+# Datos del proveedor (estructurado desde ChatGPT)
+info_proveedor_global = {
+    "Nombre de la Empresa": "-",
+    "Objetivo": "-",
+    "Productos o Servicios": "-",
+    "Industrias": "-",
+    "Clientes o Casos de Exito": "-"
+}
+
+# Texto crudo del scraping (seguimos usándolo internamente)
 scrap_proveedor_text = ""
-api_key_global = ""
-url_proveedor_global = ""
 
 # Mapeos de columnas para df_leads
 mapeo_nombre_contacto = "Name"
@@ -46,15 +62,16 @@ MAX_SCRAPING_CHARS = 6000
 OPENAI_MODEL = "gpt-3.5-turbo"
 OPENAI_MAX_TOKENS = 1000
 
-# [NUEVA LÍNEA ADICIONADA] -------------------------------------------------
+###############################
+# Funciones auxiliares
+###############################
+
 def _limpiar_caracteres_raros(texto: str) -> str:
     """
     Elimina caracteres extraños (ej. emojis o símbolos no usuales)
     manteniendo letras, dígitos, ciertos signos de puntuación y acentos básicos.
     """
-    # Puedes ajustar la expresión regular según tus necesidades:
     return re.sub(r'[^\w\sáéíóúÁÉÍÓÚñÑüÜ:;,.!?@#%&()"+\-\//$\'\"\n\r\t¿¡]', '', texto)
-# [NUEVA LÍNEA ADICIONADA] -------------------------------------------------
 
 def _asegurar_https(url: str) -> str:
     """Si la URL no empieza con http(s)://, antepone https://."""
@@ -66,7 +83,7 @@ def _asegurar_https(url: str) -> str:
     return url
 
 def realizar_scraping(url: str) -> str:
-    """Scrapea la URL (hasta MAX_SCRAPING_CHARS) y devuelve texto plano."""
+    """Scrapea la URL (hasta MAX_SCRAPING_CHARS) y devuelve texto plano limpio."""
     url = _asegurar_https(url)
     if not url:
         return "-"
@@ -78,7 +95,6 @@ def realizar_scraping(url: str) -> str:
             sopa = BeautifulSoup(resp.text, "html.parser")
             texto = sopa.get_text()
             truncated = texto[:MAX_SCRAPING_CHARS]
-            # [NUEVA LÍNEA ADICIONADA] Limpiar caracteres raros después de truncar
             truncated = _limpiar_caracteres_raros(truncated)
             print("[LOG] Scraping completado. Chars extraídos:", len(truncated))
             return truncated
@@ -89,89 +105,172 @@ def realizar_scraping(url: str) -> str:
         print("[ERROR] Excepción en realizar_scraping:", e)
         return "-"
 
+#####################################
+# 2) Función para analizar con ChatGPT
+#    el texto crudo del proveedor y
+#    extraer la info solicitada
+#####################################
+def analizar_proveedor_scraping_con_chatgpt(texto_scrapeado: str) -> dict:
+    """
+    Envía a ChatGPT el texto scrapeado del proveedor para obtener:
+    (1) Nombre de la Empresa
+    (2) Objetivo
+    (3) Productos o Servicios
+    (4) Industrias
+    (5) Clientes o Casos de Exito
+    Retorna un dict con esas claves.
+    """
+    if client is None:
+        print("[ERROR] Cliente ChatGPT es None. Retorno info vacía.")
+        return {
+            "Nombre de la Empresa": "-",
+            "Objetivo": "-",
+            "Productos o Servicios": "-",
+            "Industrias": "-",
+            "Clientes o Casos de Exito": "-"
+        }
+
+    prompt = f"""
+Eres un asistente que analiza la información de un sitio web de una empresa (texto crudo).
+Devuélveme exactamente en formato JSON los siguientes campos:
+- Nombre de la Empresa
+- Objetivo (o misión o enfoque principal)
+- Productos o Servicios
+- Industrias (a qué industrias sirve o en cuáles se especializa)
+- Clientes o Casos de Exito (si aparecen referencias a clientes o casos)
+
+Si no encuentras algo, simplemente pon "-".
+
+Texto del sitio:
+{texto_scrapeado}
+    """
+
+    # Limpiamos caracteres raros del prompt:
+    prompt = _limpiar_caracteres_raros(prompt)
+
+    try:
+        respuesta = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=400,
+            temperature=0.0,
+            timeout=30
+        )
+        content = respuesta.choices[0].message.content.strip()
+        print("[LOG] Respuesta ChatGPT (Análisis proveedor):", content)
+
+        # Parsear JSON
+        try:
+            parsed = json.loads(content)
+            # Asegurarnos de tener todas las claves (si no existen, ponemos "-")
+            nombre = parsed.get("Nombre de la Empresa", "-")
+            objetivo = parsed.get("Objetivo", "-")
+            prod_serv = parsed.get("Productos o Servicios", "-")
+            industrias = parsed.get("Industrias", "-")
+            clientes = parsed.get("Clientes o Casos de Exito", "-")
+
+            return {
+                "Nombre de la Empresa": nombre,
+                "Objetivo": objetivo,
+                "Productos o Servicios": prod_serv,
+                "Industrias": industrias,
+                "Clientes o Casos de Exito": clientes
+            }
+        except Exception as ex_json:
+            print("[ERROR] No se pudo parsear la respuesta de ChatGPT como JSON:", ex_json)
+            return {
+                "Nombre de la Empresa": "-",
+                "Objetivo": "-",
+                "Productos o Servicios": "-",
+                "Industrias": "-",
+                "Clientes o Casos de Exito": "-"
+            }
+    except Exception as ex:
+        print("[ERROR] Al invocar ChatGPT para analizar proveedor:", ex)
+        return {
+            "Nombre de la Empresa": "-",
+            "Objetivo": "-",
+            "Productos o Servicios": "-",
+            "Industrias": "-",
+            "Clientes o Casos de Exito": "-"
+        }
+
+#####################################
+# Función ChatGPT para leads
+#####################################
 def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
     """
     Genera las columnas definidas: Personalization, Your Value Prop, etc.
-    usando client.chat.completions.create(...).
+    usando la API de ChatGPT.
+    Devuelve un dict con esas claves separadas.
     """
     if client is None:
         print("[ERROR] 'client' es None, no se puede llamar la API.")
         return {
-            "Personalization":"-",
-            "Your Value Prop":"-",
-            "Target Niche":"-",
-            "Your Targets Goal":"-",
-            "Your Targets Value Prop":"-",
-            "Cliffhanger Value Prop":"-",
-            "CTA":"-"
+            "Personalization": "-",
+            "Your Value Prop": "-",
+            "Target Niche": "-",
+            "Your Targets Goal": "-",
+            "Your Targets Value Prop": "-",
+            "Cliffhanger Value Prop": "-",
+            "CTA": "-"
         }
 
-    # Extraer nombre de contacto
+    # Extraer datos
     lead_name = str(row.get(mapeo_nombre_contacto, "-"))
-
-    # Extraer puesto/title
     title = str(row.get(mapeo_puesto, "-"))
-
-    # Extraer industria
     industry = str(row.get(mapeo_industria, "-"))
-
-    # Extraer empresa
     companyName = str(row.get(mapeo_empresa, "-"))
-    
-    # Extraer Ubicación
     location = str(row.get(mapeo_location, "-"))
 
     scrapping_lead = str(row.get("scrapping", "-"))
     scrapping_proveedor = str(row.get("scrapping_proveedor", "-"))
 
-    # Prompt: sin corchetes, con datos reales
-    prompt = f"""No uses corchetes ni placeholders. Usa los datos reales.
-(Con “no uses corchetes” nos referimos a no usar nada como [NOMBRE] o [TEXTO], pero sí debes usar llaves para devolver tu respuesta en formato JSON.)
+    # PROMPT: asegurarse de que ChatGPT devuelva un JSON con llaves
+    prompt = f"""
+INSTRUCCIONES:
+- Devuelve la respuesta SOLO como un objeto JSON (usando llaves).
+- No incluyas texto adicional antes o después del JSON.
+- Utiliza únicamente estas claves: 
+  "Personalization",
+  "Your Value Prop",
+  "Target Niche",
+  "Your Targets Goal",
+  "Your Targets Value Prop",
+  "Cliffhanger Value Prop",
+  "CTA".
 
-somos (En base al scrapping del proveedor pon nos un nombre, allí viene)
-Harás un correo eléctronico, no vendas, usa "llegar" en vez de "vender", socializa, pero en realidad solo me daras las siguientes partes, cada parte es un renglón del mensaje:
+CONTEXTO:
+Somos un proveedor (info en 'Información del proveedor').
+Nuestro potencial cliente es {companyName} (info en 'Información del cliente').
 
-Tenemos un cliente llamado {companyName}.
-Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
-
-1. Personalization (usa el nombre del contacto, no te presentes, nin a nosotros, una introducción personalizada basada exclusivamente en la información del sitio web del cliente. El objetivo es captar su atención de inmediato. Escribe un mensaje breve, pero emocionante reconocimiento de su empresa "Hola {lead_name} (sigue, aqui no digas nada de nosotros ni que hacemos)" breve)
-2. Your Value Prop (Propuesta de valor del proveedor, basado en su web. breve)
-3. Target Niche (El segmento de mercado al que el proveedor llega, definido por industria, subsegmento y ubicación del cliente. No vas a mencionar estos datos, pero si algo ejemplo: "Somos y nos dedicamos a tal cosa, (del scrapping del proveedor pero orientado a scrapping del cliente) en (Mencionar la ubicación cliente)")
-4. Your Targets Goal (La meta principal de {lead_name} considerando que es {title}. Qué quiere lograr con su negocio o estrategia. "Veo que aportas (hacer observación de a que se dedica el contácto)" breve)
-5. Your Targets Value Prop (La propuesta de valor de {companyName}. Cómo se diferencian en su mercado. "Parece que ustedes buscan... (decir algo en base al scrapping del cliente)" breve)
-6. Cliffhanger Value Prop (Propuesta intrigante o gancho para motivar la conversación. ejemplo "me encantaría mostrarte mi plan para... (crea algo breve en lo que ambos podamos trabajar juntos comparando scrapping proveedor y scrapping cliente)" breve)
-7. CTA (Acción concreta que queremos que tome el cliente, como agendar una reunión.)
-
-escribelos de manera que conecten en un solo mensaje
-
-Información del lead:
-- Contacto: {lead_name}
-- Puesto: {title}
-- Industria: {industry}
-- El cliente es: {companyName}
-- Contenido del sitio web del cliente(scrapping del cliente): {scrapping_lead}
-- La ubicación de la empresa es: {location} (si no te doy una ubicación, ignóralo)
+Información del cliente:
+Nombre del contacto: {lead_name}
+Puesto: {title}
+Industria: {industry}
+Sitio del cliente: {scrapping_lead}
+Ubicación: {location}
 
 Información del proveedor:
-- Contenido extraído del sitio web del proveedor: {scrapping_proveedor}
+{scrapping_proveedor}
 
-Responde solo en formato JSON, con las claves exactas (y en español):
-"Personalization", 
-"Your Value Prop", 
-"Target Niche", 
-"Your Targets Goal",
-"Your Targets Value Prop", 
-"Cliffhanger Value Prop", 
-"CTA".
+SOLICITUD:
+Genera cada uno de estos campos en español y de forma breve:
+1) Personalization
+2) Your Value Prop
+3) Target Niche
+4) Your Targets Goal
+5) Your Targets Value Prop
+6) Cliffhanger Value Prop
+7) CTA
 
-Dentro de cada clave, escribe el texto que corresponda, sin usar corchetes ni placeholders.
+Recuerda: la respuesta debe ser válido JSON con llaves y comillas en cada clave-valor, sin texto adicional.
+    """
 
-"""
-    # [NUEVA LÍNEA ADICIONADA] Limpiar caracteres raros en el prompt
     prompt = _limpiar_caracteres_raros(prompt)
 
     try:
-        print("[LOG] Llamando ChatGPT con 'client.chat.completions.create(...)'")
+        print("[LOG] Llamando ChatGPT (leads)...")
         respuesta = client.chat.completions.create(
             model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
@@ -179,9 +278,9 @@ Dentro de cada clave, escribe el texto que corresponda, sin usar corchetes ni pl
             temperature=0.7,
             timeout=30
         )
-        content = respuesta.choices[0].message.content
-        print("[LOG] Respuesta recibida. Parseamos JSON...")
+        content = respuesta.choices[0].message.content.strip()
 
+        # Intentar parsear JSON
         try:
             parsed = json.loads(content)
             personalization = parsed.get("Personalization", "-")
@@ -191,31 +290,11 @@ Dentro de cada clave, escribe el texto que corresponda, sin usar corchetes ni pl
             targets_value_prop = parsed.get("Your Targets Value Prop", "-")
             cliffhanger = parsed.get("Cliffhanger Value Prop", "-")
             cta = parsed.get("CTA", "-")
-
         except Exception as ex:
-            print("[ERROR] No se pudo parsear JSON:")
-            print("Contenido recibido:")
-            print(content if 'content' in locals() else "(content no definido)")
+            print("[ERROR] No se pudo parsear JSON en leads:")
+            print("Contenido recibido:", content)
             print("Excepción:", ex)
-
-            # Fallback en caso de fallo
-            personalization = content if 'content' in locals() else "-"
-            value_prop = "-"
-            target_niche = "-"
-            targets_goal = "-"
-            targets_value_prop = "-"
-            cliffhanger = "-"
-            cta = "-"
-
-
-        except Exception as ex:
-            print("[ERROR] No se pudo parsear JSON:")
-            print("Contenido recibido:")
-            print(content)
-            print("Excepción:", ex)
-
-    
-            # Guardamos todo en "Personalization"
+            # Fallback: poner todo en "Personalization" si falla
             personalization = content
             value_prop = "-"
             target_niche = "-"
@@ -234,7 +313,7 @@ Dentro de cada clave, escribe el texto que corresponda, sin usar corchetes ni pl
             "CTA": cta
         }
     except Exception as e:
-        print("[ERROR] Al invocar ChatGPT:", e)
+        print("[ERROR] Al invocar ChatGPT (leads):", e)
         return {
             "Personalization": "-",
             "Your Value Prop": "-",
@@ -246,7 +325,7 @@ Dentro de cada clave, escribe el texto que corresponda, sin usar corchetes ni pl
         }
 
 def procesar_leads():
-    """Scrapea website y asegura columnas necesarias en df_leads."""
+    """Scrapea website de cada lead y rellena df_leads con el texto."""
     global df_leads
     if df_leads.empty:
         print("[LOG] df_leads vacío. No se hace nada en procesar_leads.")
@@ -270,7 +349,7 @@ def procesar_leads():
             df_leads.at[idx, "scrapping"] = "-"
 
 def generar_contenido_para_todos():
-    """Itera sobre df_leads y llama a ChatGPT para generar las columnas."""
+    """Itera sobre df_leads y llama a ChatGPT para generar las columnas definidas."""
     global df_leads
     if df_leads.empty:
         print("[LOG] df_leads vacío, no generamos contenido.")
@@ -278,8 +357,9 @@ def generar_contenido_para_todos():
 
     for idx, row in df_leads.iterrows():
         try:
-            print(f"[LOG] Generando ChatGPT para lead idx={idx}...")
+            print(f"[LOG] Generando contenido ChatGPT para lead idx={idx}...")
             result = generar_contenido_chatgpt_por_fila(row)
+
             df_leads.at[idx, "Personalization"] = result["Personalization"]
             df_leads.at[idx, "Your Value Prop"] = result["Your Value Prop"]
             df_leads.at[idx, "Target Niche"] = result["Target Niche"]
@@ -287,27 +367,18 @@ def generar_contenido_para_todos():
             df_leads.at[idx, "Your Targets Value Prop"] = result["Your Targets Value Prop"]
             df_leads.at[idx, "Cliffhanger Value Prop"] = result["Cliffhanger Value Prop"]
             df_leads.at[idx, "CTA"] = result["CTA"]
+
         except Exception as e:
             print(f"[ERROR] Error inesperado en lead idx={idx}: {e}")
 
-        df_leads.at[idx, "Personalization"] = result["Personalization"]
-        df_leads.at[idx, "Your Value Prop"] = result["Your Value Prop"]
-        df_leads.at[idx, "Target Niche"] = result["Target Niche"]
-        df_leads.at[idx, "Your Targets Goal"] = result["Your Targets Goal"]
-        df_leads.at[idx, "Your Targets Value Prop"] = result["Your Targets Value Prop"]
-        df_leads.at[idx, "Cliffhanger Value Prop"] = result["Cliffhanger Value Prop"]
-        df_leads.at[idx, "CTA"] = result["CTA"]
-        time.sleep(1.5) 
-
-    # Tras generarlo, hacemos limpieza de "NaN"/"nan" y quitamos corchetes.
+    # Limpieza final
     cleanup_leads()
 
 def cleanup_leads():
-    """Reemplaza NaN, nan, None con '-' y quita corchetes [ ] en las columnas."""
+    """Reemplaza NaN, None y corchetes en las columnas de texto final."""
     global df_leads
     if df_leads.empty:
         return
-    # Columnas a limpiar
     cols_to_clean = [
         "Personalization", "Your Value Prop", "Target Niche",
         "Your Targets Goal", "Your Targets Value Prop",
@@ -319,9 +390,13 @@ def cleanup_leads():
             df_leads[col] = df_leads[col].replace(
                 ["NaN", "nan", "None", "none"], "-", regex=True
             )
+            # Quitar corchetes de array si aparecieran
             df_leads[col] = df_leads[col].replace(r"\[|\]", "", regex=True)
 
-def tabla_html(df: pd.DataFrame, max_filas=5) -> str:
+##########################################
+# Mostrar tabla HTML (solo primeros 10)
+##########################################
+def tabla_html(df: pd.DataFrame, max_filas=10) -> str:
     """Convierte las primeras 'max_filas' filas del DF en tabla HTML."""
     if df.empty:
         return "<p><em>DataFrame vacío</em></p>"
@@ -334,30 +409,27 @@ def tabla_html(df: pd.DataFrame, max_filas=5) -> str:
         rows_html += f"<tr>{row_html}</tr>"
     return f"<table><tr>{thead}</tr>{rows_html}</table>"
 
+##########################################
+# Rutas Flask
+##########################################
 @app.route("/", methods=["GET","POST"])
 def index():
-    global client
     global df_leads
     global scrap_proveedor_text
-    global api_key_global, url_proveedor_global
-
-    # Variables globales para mapeo
-    global mapeo_nombre_contacto
-    global mapeo_puesto
-    global mapeo_empresa
-    global mapeo_industria
-    global mapeo_website
-    global mapeo_location
+    global info_proveedor_global
+    global mapeo_nombre_contacto, mapeo_puesto, mapeo_empresa
+    global mapeo_industria, mapeo_website, mapeo_location
 
     status_msg = ""
+    url_proveedor_global = ""  # Moveremos esto a variable local
 
     if request.method == "POST":
         # Subir CSV de leads
         leadf = request.files.get("leads_csv")
         if leadf and leadf.filename:
-            df_leads = pd.read_csv(leadf)
-            # [NUEVA LÍNEA ADICIONADA] --------------------------------------
-            # Aquí se obtiene el rango de filas y se aplica
+            # Leer sin filtrar primero
+            df_full = pd.read_csv(leadf)
+            # Rango de filas
             start_row_str = request.form.get("start_row", "").strip()
             end_row_str = request.form.get("end_row", "").strip()
 
@@ -366,33 +438,25 @@ def index():
             except:
                 start_row = 0
             try:
-                end_row = int(end_row_str) if end_row_str else (len(df_leads) - 1)
+                end_row = int(end_row_str) if end_row_str else (len(df_full) - 1)
             except:
-                end_row = len(df_leads) - 1
+                end_row = len(df_full) - 1
 
-            if start_row < 0: 
+            if start_row < 0:
                 start_row = 0
-            if end_row >= len(df_leads):
-                end_row = len(df_leads) - 1
+            if end_row >= len(df_full):
+                end_row = len(df_full) - 1
             if start_row > end_row:
-                start_row, end_row = 0, len(df_leads) - 1
+                start_row, end_row = 0, len(df_full) - 1
 
-            df_leads = df_leads.iloc[start_row:end_row+1].copy()
-            # [NUEVA LÍNEA ADICIONADA] --------------------------------------
+            df_leads = df_full.iloc[start_row:end_row+1].copy()
 
-            status_msg += f"Leads CSV cargado, filas originales={{len(pd.read_csv(leadf))}}.<br>"
-            status_msg += f"Filas aplicadas en rango [{start_row}, {end_row}]. Total ahora={{len(df_leads)}}<br>"
+            status_msg += (
+                f"Leads CSV cargado. Filas totales={len(df_full)}. "
+                f"Rango aplicado [{start_row}, {end_row}] => {len(df_leads)} filas cargadas.<br>"
+            )
 
-        # Parámetros
-        new_api = request.form.get("api_key", "").strip()
-        if new_api:
-            api_key_global = new_api
-            status_msg += "API Key actualizada.<br>"
-            if OpenAI:
-                client = OpenAI(api_key=new_api)
-            else:
-                status_msg += "[ERROR] 'OpenAI' no disponible.<br>"
-
+        # URL del proveedor
         new_urlp = request.form.get("url_proveedor", "").strip()
         if new_urlp:
             url_proveedor_global = new_urlp
@@ -423,22 +487,28 @@ def index():
             status_msg += f"Mapeo Website = '{col_website}'<br>"
         if col_location:
             mapeo_location = col_location
-            status_msg += f"Mapeo Website = '{col_location}'<br>"
+            status_msg += f"Mapeo Ubicación = '{col_location}'<br>"
 
         # Acción
         accion = request.form.get("accion", "")
         if accion == "scrap_proveedor" and url_proveedor_global:
-            # Scrape
+            # Hacemos scraping
             sc = realizar_scraping(url_proveedor_global)
             scrap_proveedor_text = sc
+
+            # Analizamos con ChatGPT para extraer info
+            info_proveedor_global = analizar_proveedor_scraping_con_chatgpt(sc)
+
+            # En df_leads, guardamos el texto crudo (para que se use en la generación)
             if not df_leads.empty:
                 df_leads["scrapping_proveedor"] = sc
-            status_msg += "Scraping del proveedor asignado a df_leads.<br>"
+
+            status_msg += "Scraping y análisis del proveedor completado.<br>"
 
         elif accion == "generar_tabla":
             procesar_leads()
             generar_contenido_para_todos()
-            status_msg += "Leads procesados y ChatGPT aplicado. Revisa la tabla abajo.<br>"
+            status_msg += "Leads procesados y contenido de ChatGPT generado.<br>"
 
         elif accion == "exportar_archivo":
             formato = request.form.get("formato", "csv")
@@ -464,7 +534,7 @@ def index():
                     resp.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     return resp
 
-    # Bloque final en español (Cold Email Strategy)
+    # Bloque informativo (en español)
     block_text_es = """
 <h2>Cold Email Strategy</h2>
 <p>Ejemplo de estructura para tu email:</p>
@@ -524,13 +594,11 @@ Laura"
 </table>
 """
 
-    # Generación del HTML principal
-    # Se eliminó cualquier mención a segment/clicker ni "caso de éxito".
+    # Construcción final del HTML
     page_html = f"""
     <html>
-    <link rel="icon" href="{{{{ url_for('static', filename='favicon.ico') }}}}">
     <head>
-        <title>Campaign Maker: Sin corchetes, sin NaN, con Nombre real</title>
+        <title>Campaign Maker: Sin corchetes, sin NaN</title>
         <style>
             body {{
                 background: url('https://expomatch.com.mx/wp-content/uploads/2025/03/u9969268949_creame_una_pagina_web_que_muestre_unas_bases_de_d_4f30c12d-8f6a-4913-aa47-1d927038ce10_0-1.png') no-repeat center center fixed;
@@ -562,27 +630,18 @@ Laura"
                 border-collapse: collapse;
                 margin-top: 10px;
                 background: #fff;
+                color: #000;
             }}
             table th {{
                 background-color: #1E90FF;
                 color: #fff;
             }}
             table td {{
-                color: #000;
-            }}
-            table tr:hover {{
-                background-color: #2A2A2A;
-                color: #fff;
-                transition: background-color 0.3s;
-            }}
-            table th, td {{
-                vertical-align: middle;
                 padding: 8px;
                 border: 1px solid #444;
             }}
             input[type="file"],
             input[type="text"],
-            input[type="password"],
             select {{
                 width: 100%;
                 padding: 10px;
@@ -619,8 +678,6 @@ Laura"
                 margin: 10px auto;
                 padding: 10px;
                 border-radius: 8px;
-                max-height: 150px;
-                overflow-y: auto;
                 text-align: left;
             }}
             .content-block {{
@@ -631,16 +688,6 @@ Laura"
                 padding: 20px;
                 border-radius: 10px;
                 text-align: left;
-            }}
-            .content-block table {{
-                width: 100%;
-                border-collapse: collapse;
-                background:#fff;
-                color: #000;
-            }}
-            .content-block th, .content-block td {{
-                border: 1px solid #444;
-                padding: 8px;
             }}
         </style>
     </head>
@@ -654,12 +701,10 @@ Laura"
           <label>Base de Datos:</label>
           <input type="file" name="leads_csv"/>
 
-          <!-- [NUEVA SECCIÓN DE RANGO DE FILAS] -->
           <label>Fila de inicio:</label>
           <input type="text" name="start_row" placeholder="0" />
           <label>Fila de fin:</label>
-          <input type="text" name="end_row" placeholder="(ultima)" />
-          <!-- [FIN NUEVA SECCIÓN DE RANGO DE FILAS] -->
+          <input type="text" name="end_row" placeholder="(última)" />
 
           <button type="submit">Subir Archivo</button>
         </form>
@@ -667,10 +712,8 @@ Laura"
 
         <form method="POST">
           <h2>2) Parámetros</h2>
-          <label>API Key ChatGPT:</label>
-          <input type="password"name="api_key" value="{api_key_global}"/>
-          <label>Tu sitio WEB</label>
-          <input type="text" name="url_proveedor" value="{url_proveedor_global}"/>
+          <label>Tu sitio web (Proveedor)</label>
+          <input type="text" name="url_proveedor"/>
 
           <p>Mapeo de columnas (si tu CSV usa nombres distintos):</p>
           <label>Nombre del contacto:</label>
@@ -684,7 +727,6 @@ Laura"
             <option value="">(Sin cambio)</option>
             {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
           </select>
-        
 
           <label>Nombre de la empresa:</label>
           <select name="col_empresa">
@@ -703,7 +745,7 @@ Laura"
             <option value="">(Sin cambio)</option>
             {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
           </select>
-          
+
           <label>Ubicación:</label>
           <select name="col_location">
             <option value="">(Sin cambio)</option>
@@ -711,17 +753,21 @@ Laura"
           </select>
 
           <input type="hidden" name="accion" value="scrap_proveedor"/>
-          <button type="submit">Obtener Información del proveedor</button>
+          <button type="submit">Analizar Proveedor</button>
         </form>
 
         <div class="scrap-container">
-          <strong>Información Proveedor:</strong><br>
-          {scrap_proveedor_text.replace("<","&lt;").replace(">","&gt;")}
+          <strong>Información del proveedor (resumen ChatGPT):</strong><br>
+          <p><b>Nombre de la Empresa:</b> {info_proveedor_global["Nombre de la Empresa"]}</p>
+          <p><b>Objetivo:</b> {info_proveedor_global["Objetivo"]}</p>
+          <p><b>Productos o Servicios:</b> {info_proveedor_global["Productos o Servicios"]}</p>
+          <p><b>Industrias:</b> {info_proveedor_global["Industrias"]}</p>
+          <p><b>Clientes o Casos de Exito:</b> {info_proveedor_global["Clientes o Casos de Exito"]}</p>
         </div>
         <hr>
 
         <form method="POST">
-          <h2>3) Generar Tabla</h2>
+          <h2>3) Generar Tabla de Leads + ChatGPT</h2>
           <input type="hidden" name="accion" value="generar_tabla"/>
           <button type="submit">Generar (Procesar + ChatGPT)</button>
         </form>
@@ -740,8 +786,8 @@ Laura"
       </div>
 
       <div class="container-wide">
-        <h2>Base de datos</h2>
-        {tabla_html(df_leads,7)}
+        <h2>Base de datos (primeros 10 registros)</h2>
+        {tabla_html(df_leads,10)}
       </div>
 
       <div class="content-block">
@@ -754,5 +800,5 @@ Laura"
     return page_html
 
 if __name__ == "__main__":
-    print("[LOG] Inicia la app: sin corchetes, sin NaN, mapeo de columnas y sin segment/clicker.")
+    print("[LOG] Inicia la app con la modificación para parsear JSON con llaves.")
     app.run(debug=True, port=5000)
