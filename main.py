@@ -178,7 +178,7 @@ Devuélveme exactamente en formato JSON los siguientes campos:
 
 Si no encuentras algo, simplemente pon "-".
 
-Texto del sitio:
+Texto del sitio (Si a continuación no te doy info del sitio, pon - en todas):
 {texto_scrapeado}
     """
 
