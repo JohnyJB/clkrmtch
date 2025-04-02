@@ -682,7 +682,7 @@ Laura"
     page_html = f"""
     <html>
     <head>
-        <title>Campaign Maker: Sin corchetes, sin NaN</title>
+        <title>ClickerMaker</title>
         <style>
             body {{
                 background: url('https://expomatch.com.mx/wp-content/uploads/2025/03/u9969268949_creame_una_pagina_web_que_muestre_unas_bases_de_d_4f30c12d-8f6a-4913-aa47-1d927038ce10_0-1.png') no-repeat center center fixed;
@@ -776,101 +776,86 @@ Laura"
         </style>
     </head>
     <body>
-      <div class="container">
+    <div class="container">
         <h1>ClickerMatch</h1>
         <div class="status">{status_msg}</div>
 
+        <!-- Sección 1: Cargar CSV y Mapeo -->
         <form method="POST" enctype="multipart/form-data">
-          <h2>1) Cargar CSV de Leads</h2>
-          <label>Base de Datos:</label>
-          <input type="file" name="leads_csv"/>
+        <h2>1) Cargar CSV de Leads y Mapeo</h2>
+        <label>Base de Datos:</label>
+        <input type="file" name="leads_csv"/>
+        <label>Fila de inicio:</label>
+        <input type="text" name="start_row" placeholder="0" />
+        <label>Fila de fin:</label>
+        <input type="text" name="end_row" placeholder="(última)" />
 
-          <label>Fila de inicio:</label>
-          <input type="text" name="start_row" placeholder="0" />
-          <label>Fila de fin:</label>
-          <input type="text" name="end_row" placeholder="(última)" />
+        <p>Mapeo de columnas:</p>
+        <label>Nombre del contacto:</label>
+        <select name="col_nombre">{build_select_options(mapeo_nombre_contacto, df_leads.columns if not df_leads.empty else [])}</select>
+        <label>Puesto/Title:</label>
+        <select name="col_puesto">{build_select_options(mapeo_puesto, df_leads.columns if not df_leads.empty else [])}</select>
+        <label>Nombre de la empresa:</label>
+        <select name="col_empresa">{build_select_options(mapeo_empresa, df_leads.columns if not df_leads.empty else [])}</select>
+        <label>Industria:</label>
+        <select name="col_industria">{build_select_options(mapeo_industria, df_leads.columns if not df_leads.empty else [])}</select>
+        <label>Website:</label>
+        <select name="col_website">{build_select_options(mapeo_website, df_leads.columns if not df_leads.empty else [])}</select>
+        <label>Ubicación:</label>
+        <select name="col_location">{build_select_options(mapeo_location, df_leads.columns if not df_leads.empty else [])}</select>
 
-          <button type="submit">Subir Archivo</button>
+        <button type="submit">Subir Archivo</button>
         </form>
         <hr>
 
+        <!-- Sección 2: Proveedor -->
         <form method="POST">
-          <h2>2) Parámetros</h2>
-          <label>Tu sitio web (Proveedor)</label>
-          <input type="text" name="url_proveedor"/>
+        <h2>2) Introduce tu sitio web y analiza</h2>
+        <label>Tu sitio web (Proveedor)</label>
+        <input type="text" name="url_proveedor"/>
 
-          <p>Mapeo de columnas:</p>
-          <label>Nombre del contacto:</label>
-          <select name="col_nombre">
-            {build_select_options(mapeo_nombre_contacto, df_leads.columns if not df_leads.empty else [])}
-          </select>
-
-          <label>Puesto/Title:</label>
-          <select name="col_puesto">
-            {build_select_options(mapeo_puesto, df_leads.columns if not df_leads.empty else [])}
-          </select>
-
-          <label>Nombre de la empresa:</label>
-          <select name="col_empresa">
-            {build_select_options(mapeo_empresa, df_leads.columns if not df_leads.empty else [])}
-          </select>
-
-          <label>Industria:</label>
-          <select name="col_industria">
-            {build_select_options(mapeo_industria, df_leads.columns if not df_leads.empty else [])}
-          </select>
-
-          <label>Website:</label>
-          <select name="col_website">
-            {build_select_options(mapeo_website, df_leads.columns if not df_leads.empty else [])}
-          </select>
-
-          <label>Ubicación:</label>
-          <select name="col_location">
-            {build_select_options(mapeo_location, df_leads.columns if not df_leads.empty else [])}
-          </select>
-
-          <input type="hidden" name="accion" value="scrap_proveedor"/>
-          <button type="submit">Analizar Proveedor</button>
+        <input type="hidden" name="accion" value="scrap_proveedor"/>
+        <button type="submit">Analizar Proveedor</button>
         </form>
-        
+
         <div class="scrap-container">
-          <strong>Información del proveedor (resumen ChatGPT):</strong><br>
-          <p><b>Nombre de la Empresa:</b> {info_proveedor_global["Nombre de la Empresa"]}</p>
-          <p><b>Objetivo:</b> {info_proveedor_global["Objetivo"]}</p>
-          <p><b>Productos o Servicios:</b> {info_proveedor_global["Productos o Servicios"]}</p>
-          <p><b>Industrias:</b> {info_proveedor_global["Industrias"]}</p>
-          <p><b>Clientes o Casos de Exito:</b> {info_proveedor_global["Clientes o Casos de Exito"]}</p>
+        <strong>Información del proveedor (resumen ChatGPT):</strong><br>
+        <p><b>Nombre de la Empresa:</b> {info_proveedor_global["Nombre de la Empresa"]}</p>
+        <p><b>Objetivo:</b> {info_proveedor_global["Objetivo"]}</p>
+        <p><b>Productos o Servicios:</b> {info_proveedor_global["Productos o Servicios"]}</p>
+        <p><b>Industrias:</b> {info_proveedor_global["Industrias"]}</p>
+        <p><b>Clientes o Casos de Exito:</b> {info_proveedor_global["Clientes o Casos de Exito"]}</p>
         </div>
         <hr>
 
+        <!-- Lo demás igual -->
         <form method="POST">
-          <h2>3) Generar Tabla de Leads + ChatGPT</h2>
-          <input type="hidden" name="accion" value="generar_tabla"/>
-          <button type="submit">Generar (Procesar + ChatGPT)</button>
+        <h2>3) Generar Tabla de Leads + ChatGPT</h2>
+        <input type="hidden" name="accion" value="generar_tabla"/>
+        <button type="submit">Generar (Procesar + ChatGPT)</button>
         </form>
         <hr>
 
         <form method="POST">
-          <h2>4) Exportar</h2>
-          <label>Formato:</label>
-          <select name="formato">
+        <h2>4) Exportar</h2>
+        <label>Formato:</label>
+        <select name="formato">
             <option value="csv">CSV</option>
             <option value="xlsx">XLSX</option>
-          </select>
-          <input type="hidden" name="accion" value="exportar_archivo"/>
-          <button type="submit">Exportar</button>
+        </select>
+        <input type="hidden" name="accion" value="exportar_archivo"/>
+        <button type="submit">Exportar</button>
         </form>
-      </div>
+    </div>
 
-      <div class="container-wide">
+    <div class="container-wide">
         <h2>Base de datos (primeros 10 registros)</h2>
         {tabla_html(df_leads,10)}
-      </div>
+    </div>
 
-      <div class="content-block">
+    <div class="content-block">
         {block_text_es}
-      </div>
+    </div>
     </body>
     </html>
     """
