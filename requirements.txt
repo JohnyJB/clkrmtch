@@ -3,6 +3,7 @@ gunicorn
 requests
 pandas
 beautifulsoup4
+python-dotenv
 openpyxl
 openai>=1.0.0
 
