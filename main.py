@@ -10,13 +10,9 @@ import pandas as pd
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from flask import Flask, request, make_response
-<<<<<<< HEAD
-
-=======
 from cryptography.fernet import Fernet
 
 
->>>>>>> origin/main
 # Si tu wrapper es distinto, adapta la importación:
 try:
     from openai import OpenAI
@@ -27,9 +23,6 @@ except ImportError:
 ###############################
 # 1) Hardcodear la API Key
 ###############################
-<<<<<<< HEAD
-HARDCODED_API_KEY = "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"
-=======
 ENCRYPTION_KEY = b'yMybaWCe4meeb3v4LWNI4Sxz7oS54Gn0Fo9yJovqVN0='
 
 def decrypt_api_key(encrypted_data: bytes) -> str:
@@ -65,7 +58,6 @@ except Exception as e:
     print("[ERROR]", e)
     
 
->>>>>>> origin/main
 
 ###############################
 # Inicializar el cliente
@@ -286,23 +278,32 @@ INSTRUCCIONES:
   "CTA".
 
 CONTEXTO:
-<<<<<<< HEAD
-Somos un proveedor (info en 'Información del proveedor').
-Nuestro potencial cliente es {companyName} (info en 'Información del cliente').
-=======
 somos (En base al scrapping del proveedor pon nos un nombre, allí viene)
 Harás un correo eléctronico, no vendas, usa "llegar" en vez de "vender", socializa, pero en realidad solo me daras las siguientes partes, cada parte es un renglón del mensaje:
->>>>>>> origin/main
 
-Información del cliente:
-Nombre del contacto: {lead_name}
-Puesto: {title}
-Industria: {industry}
-Sitio del cliente: {scrapping_lead}
-Ubicación: {location}
+Tenemos un cliente llamado {companyName}.
+Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
+
+1. Personalization (usa el nombre del contacto, no te presentes, nin a nosotros, una introducción personalizada basada exclusivamente en la información del sitio web del cliente. El objetivo es captar su atención de inmediato. Escribe un mensaje breve, pero emocionante reconocimiento de su empresa "Hola {lead_name} (sigue, aqui no digas nada de nosotros ni que hacemos)" breve)
+2. Your Value Prop (Propuesta de valor del proveedor, basado en su web. breve)
+3. Target Niche (El segmento de mercado al que el proveedor llega, definido por industria, subsegmento y ubicación del cliente. No vas a mencionar estos datos, pero si algo ejemplo: "Somos y nos dedicamos a tal cosa, (del scrapping del proveedor pero orientado a scrapping del cliente) en (Mencionar la ubicación cliente)")
+4. Your Targets Goal (La meta principal de {lead_name} considerando que es {title}. Qué quiere lograr con su negocio o estrategia. "Veo que aportas (hacer observación de a que se dedica el contácto)" breve)
+5. Your Targets Value Prop (La propuesta de valor de {companyName}. Cómo se diferencian en su mercado. "Parece que ustedes buscan... (decir algo en base al scrapping del cliente)" breve)
+6. Cliffhanger Value Prop (Propuesta intrigante o gancho para motivar la conversación. ejemplo "me encantaría mostrarte mi plan para... (crea algo breve en lo que ambos podamos trabajar juntos comparando scrapping proveedor y scrapping cliente)" breve)
+7. CTA (Acción concreta que queremos que tome el cliente, como agendar una reunión.)
+
+escribelos de manera que conecten en un solo mensaje
+
+Información del lead:
+- Contacto: {lead_name}
+- Puesto: {title}
+- Industria: {industry}
+- El cliente es: {companyName}
+- Contenido del sitio web del cliente(scrapping del cliente): {scrapping_lead}
+- La ubicación de la empresa es: {location} (si no te doy una ubicación, ignóralo)
 
 Información del proveedor:
-{scrapping_proveedor}
+- Contenido extraído del sitio web del proveedor: {scrapping_proveedor}
 
 SOLICITUD:
 Genera cada uno de estos campos en español y de forma breve:
@@ -458,17 +459,21 @@ def cleanup_leads():
 # Mostrar tabla HTML (solo primeros 10)
 ##########################################
 def tabla_html(df: pd.DataFrame, max_filas=10) -> str:
-    """Convierte las primeras 'max_filas' filas del DF en tabla HTML."""
     if df.empty:
         return "<p><em>DataFrame vacío</em></p>"
-    subset = df.head(max_filas)
+
+    # Aquí haces el drop para ocultar "scrapping_proveedor"
+    subset = df.drop(columns=["scrapping_proveedor"], errors="ignore").head(max_filas)
     cols = list(subset.columns)
+
     thead = "".join(f"<th>{col}</th>" for col in cols)
     rows_html = ""
     for _, row in subset.iterrows():
         row_html = "".join(f"<td>{str(row[col])}</td>" for col in cols)
         rows_html += f"<tr>{row_html}</tr>"
+
     return f"<table><tr>{thead}</tr>{rows_html}</table>"
+
 
 ##########################################
 # Rutas Flask
@@ -516,8 +521,6 @@ def index():
                 f"Leads CSV cargado. Filas totales={len(df_full)}. "
                 f"Rango aplicado [{start_row}, {end_row}] => {len(df_leads)} filas cargadas.<br>"
             )
-<<<<<<< HEAD
-=======
 
             # (AÑADIDO) Checar si existen columnas específicas y reasignar por default
             if 'First name' in df_leads.columns:
@@ -532,7 +535,6 @@ def index():
                 mapeo_website = 'Company Website'
             if 'Location' in df_leads.columns:
                 mapeo_location = 'Location'
->>>>>>> origin/main
 
         # URL del proveedor
         new_urlp = request.form.get("url_proveedor", "").strip()
@@ -593,24 +595,27 @@ def index():
             if df_leads.empty:
                 status_msg += "No hay leads para exportar.<br>"
             else:
+                # Crea una copia del df sin la columna que quieres omitir
+                df_export = df_leads.drop(columns=["scrapping_proveedor"], errors="ignore")
+
                 if formato == "csv":
                     csv_output = io.StringIO()
-                    df_leads.to_csv(csv_output, index=False, encoding="utf-8-sig")
+                    df_export.to_csv(csv_output, index=False, encoding="utf-8-sig")
                     csv_output.seek(0)
                     resp = make_response(csv_output.getvalue())
                     resp.headers["Content-Disposition"] = "attachment; filename=leads_final.csv"
                     resp.headers["Content-Type"] = "text/csv"
                     return resp
                 else:
-                    # XLSX
                     from openpyxl import Workbook
                     bio = io.BytesIO()
-                    df_leads.to_excel(bio, index=False, engine="openpyxl")
+                    df_export.to_excel(bio, index=False, engine="openpyxl")
                     bio.seek(0)
                     resp = make_response(bio.getvalue())
                     resp.headers["Content-Disposition"] = "attachment; filename=leads_final.xlsx"
                     resp.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     return resp
+
 
     # Bloque informativo (en español)
     block_text_es = """
