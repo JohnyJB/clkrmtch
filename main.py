@@ -7,9 +7,16 @@ import re
 import json
 import requests
 import pandas as pd
+from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from flask import Flask, request, make_response
+<<<<<<< HEAD
 
+=======
+from cryptography.fernet import Fernet
+
+
+>>>>>>> origin/main
 # Si tu wrapper es distinto, adapta la importación:
 try:
     from openai import OpenAI
@@ -20,7 +27,45 @@ except ImportError:
 ###############################
 # 1) Hardcodear la API Key
 ###############################
+<<<<<<< HEAD
 HARDCODED_API_KEY = "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"
+=======
+ENCRYPTION_KEY = b'yMybaWCe4meeb3v4LWNI4Sxz7oS54Gn0Fo9yJovqVN0='
+
+def decrypt_api_key(encrypted_data: bytes) -> str:
+    """
+    Desencripta los datos en bytes usando ENCRYPTION_KEY,
+    y devuelve la API key en texto plano.
+    """
+    f = Fernet(ENCRYPTION_KEY)
+    decrypted_bytes = f.decrypt(encrypted_data)
+    return decrypted_bytes.decode("utf-8")
+
+def load_api_key_from_file(file_path: str) -> str:
+    """
+    Lee el contenido cifrado de 'api.txt' y lo desencripta.
+    Retorna la clave original (en texto claro).
+    """
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"No se encontró el archivo: {file_path}")
+    
+    with open(file_path, "rb") as f:
+        encrypted_data = f.read()
+    
+    return decrypt_api_key(encrypted_data)
+
+# -------------------------------
+# Cargamos la clave descifrada
+# -------------------------------
+try:
+    HARDCODED_API_KEY = load_api_key_from_file("api.txt")
+except Exception as e:
+    # Por si el archivo no existe o hay error
+    HARDCODED_API_KEY = ""
+    print("[ERROR]", e)
+    
+
+>>>>>>> origin/main
 
 ###############################
 # Inicializar el cliente
@@ -241,8 +286,13 @@ INSTRUCCIONES:
   "CTA".
 
 CONTEXTO:
+<<<<<<< HEAD
 Somos un proveedor (info en 'Información del proveedor').
 Nuestro potencial cliente es {companyName} (info en 'Información del cliente').
+=======
+somos (En base al scrapping del proveedor pon nos un nombre, allí viene)
+Harás un correo eléctronico, no vendas, usa "llegar" en vez de "vender", socializa, pero en realidad solo me daras las siguientes partes, cada parte es un renglón del mensaje:
+>>>>>>> origin/main
 
 Información del cliente:
 Nombre del contacto: {lead_name}
@@ -347,6 +397,17 @@ def procesar_leads():
             df_leads.at[idx, "scrapping"] = sc_lead
         else:
             df_leads.at[idx, "scrapping"] = "-"
+def build_select_options(default_value, columns):
+    """
+    Crea las etiquetas <option> para un <select>, 
+    marcando con 'selected' la que coincida con 'default_value'.
+    """
+    # Opción inicial para no cambiar nada manualmente
+    opts = ["<option value=''> (Sin cambio) </option>"]
+    for col in columns:
+        selected = "selected" if col == default_value else ""
+        opts.append(f"<option value='{col}' {selected}>{col}</option>")
+    return "\n".join(opts)
 
 def generar_contenido_para_todos():
     """Itera sobre df_leads y llama a ChatGPT para generar las columnas definidas."""
@@ -455,6 +516,23 @@ def index():
                 f"Leads CSV cargado. Filas totales={len(df_full)}. "
                 f"Rango aplicado [{start_row}, {end_row}] => {len(df_leads)} filas cargadas.<br>"
             )
+<<<<<<< HEAD
+=======
+
+            # (AÑADIDO) Checar si existen columnas específicas y reasignar por default
+            if 'First name' in df_leads.columns:
+                mapeo_nombre_contacto = 'First name'
+            if 'Title' in df_leads.columns:
+                mapeo_puesto = 'Title'
+            if 'Company Name' in df_leads.columns:
+                mapeo_empresa = 'Company Name'
+            if 'Company Industry' in df_leads.columns:
+                mapeo_industria = 'Company Industry'
+            if 'Company Website' in df_leads.columns:
+                mapeo_website = 'Company Website'
+            if 'Location' in df_leads.columns:
+                mapeo_location = 'Location'
+>>>>>>> origin/main
 
         # URL del proveedor
         new_urlp = request.form.get("url_proveedor", "").strip()
@@ -462,7 +540,7 @@ def index():
             url_proveedor_global = new_urlp
             status_msg += f"URL Proveedor={url_proveedor_global}<br>"
 
-        # Mapeo de columnas
+        # Mapeo de columnas (por si el usuario quiere sobreescribir manualmente)
         col_nombre = request.form.get("col_nombre", "").strip()
         col_puesto = request.form.get("col_puesto", "").strip()
         col_empresa = request.form.get("col_empresa", "").strip()
@@ -715,47 +793,41 @@ Laura"
           <label>Tu sitio web (Proveedor)</label>
           <input type="text" name="url_proveedor"/>
 
-          <p>Mapeo de columnas (si tu CSV usa nombres distintos):</p>
+          <p>Mapeo de columnas:</p>
           <label>Nombre del contacto:</label>
           <select name="col_nombre">
-            <option value="">(Sin cambio)</option>
-            {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
+            {build_select_options(mapeo_nombre_contacto, df_leads.columns if not df_leads.empty else [])}
           </select>
 
           <label>Puesto/Title:</label>
           <select name="col_puesto">
-            <option value="">(Sin cambio)</option>
-            {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
+            {build_select_options(mapeo_puesto, df_leads.columns if not df_leads.empty else [])}
           </select>
 
           <label>Nombre de la empresa:</label>
           <select name="col_empresa">
-            <option value="">(Sin cambio)</option>
-            {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
+            {build_select_options(mapeo_empresa, df_leads.columns if not df_leads.empty else [])}
           </select>
 
           <label>Industria:</label>
           <select name="col_industria">
-            <option value="">(Sin cambio)</option>
-            {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
+            {build_select_options(mapeo_industria, df_leads.columns if not df_leads.empty else [])}
           </select>
 
           <label>Website:</label>
           <select name="col_website">
-            <option value="">(Sin cambio)</option>
-            {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
+            {build_select_options(mapeo_website, df_leads.columns if not df_leads.empty else [])}
           </select>
 
           <label>Ubicación:</label>
           <select name="col_location">
-            <option value="">(Sin cambio)</option>
-            {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
+            {build_select_options(mapeo_location, df_leads.columns if not df_leads.empty else [])}
           </select>
 
           <input type="hidden" name="accion" value="scrap_proveedor"/>
           <button type="submit">Analizar Proveedor</button>
         </form>
-
+        
         <div class="scrap-container">
           <strong>Información del proveedor (resumen ChatGPT):</strong><br>
           <p><b>Nombre de la Empresa:</b> {info_proveedor_global["Nombre de la Empresa"]}</p>
