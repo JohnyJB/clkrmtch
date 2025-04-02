@@ -4,6 +4,7 @@ requests
 pandas
 beautifulsoup4
 python-dotenv
+cryptography
 openpyxl
 openai>=1.0.0
 
