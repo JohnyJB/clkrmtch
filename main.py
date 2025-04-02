@@ -10,6 +10,8 @@ import pandas as pd
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from flask import Flask, request, make_response
+from cryptography.fernet import Fernet
+
 
 # Si tu wrapper es distinto, adapta la importación:
 try:
@@ -21,10 +23,41 @@ except ImportError:
 ###############################
 # 1) Hardcodear la API Key
 ###############################
+ENCRYPTION_KEY = b'yMybaWCe4meeb3v4LWNI4Sxz7oS54Gn0Fo9yJovqVN0='
 
-load_dotenv()  # Esto busca ".env" y carga sus valores a las variables de entorno
+def decrypt_api_key(encrypted_data: bytes) -> str:
+    """
+    Desencripta los datos en bytes usando ENCRYPTION_KEY,
+    y devuelve la API key en texto plano.
+    """
+    f = Fernet(ENCRYPTION_KEY)
+    decrypted_bytes = f.decrypt(encrypted_data)
+    return decrypted_bytes.decode("utf-8")
 
-HARDCODED_API_KEY = os.getenv("OPENAI_API_KEY", "")
+def load_api_key_from_file(file_path: str) -> str:
+    """
+    Lee el contenido cifrado de 'api.txt' y lo desencripta.
+    Retorna la clave original (en texto claro).
+    """
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"No se encontró el archivo: {file_path}")
+    
+    with open(file_path, "rb") as f:
+        encrypted_data = f.read()
+    
+    return decrypt_api_key(encrypted_data)
+
+# -------------------------------
+# Cargamos la clave descifrada
+# -------------------------------
+try:
+    HARDCODED_API_KEY = load_api_key_from_file("api.txt")
+except Exception as e:
+    # Por si el archivo no existe o hay error
+    HARDCODED_API_KEY = ""
+    print("[ERROR]", e)
+    
+
 
 ###############################
 # Inicializar el cliente
