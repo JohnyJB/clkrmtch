@@ -20,7 +20,7 @@ except ImportError:
 ###############################
 # 1) Hardcodear la API Key
 ###############################
-HARDCODED_API_KEY = "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"
+HARDCODED_API_KEY = "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"
 
 ###############################
 # Inicializar el cliente
