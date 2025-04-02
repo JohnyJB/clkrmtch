@@ -361,6 +361,17 @@ def procesar_leads():
             df_leads.at[idx, "scrapping"] = sc_lead
         else:
             df_leads.at[idx, "scrapping"] = "-"
+def build_select_options(default_value, columns):
+    """
+    Crea las etiquetas <option> para un <select>, 
+    marcando con 'selected' la que coincida con 'default_value'.
+    """
+    # Opción inicial para no cambiar nada manualmente
+    opts = ["<option value=''> (Sin cambio) </option>"]
+    for col in columns:
+        selected = "selected" if col == default_value else ""
+        opts.append(f"<option value='{col}' {selected}>{col}</option>")
+    return "\n".join(opts)
 
 def generar_contenido_para_todos():
     """Itera sobre df_leads y llama a ChatGPT para generar las columnas definidas."""
@@ -743,47 +754,41 @@ Laura"
           <label>Tu sitio web (Proveedor)</label>
           <input type="text" name="url_proveedor"/>
 
-          <p>Mapeo de columnas (si tu CSV usa nombres distintos):</p>
+          <p>Mapeo de columnas:</p>
           <label>Nombre del contacto:</label>
           <select name="col_nombre">
-            <option value="">(Sin cambio)</option>
-            {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
+            {build_select_options(mapeo_nombre_contacto, df_leads.columns if not df_leads.empty else [])}
           </select>
 
           <label>Puesto/Title:</label>
           <select name="col_puesto">
-            <option value="">(Sin cambio)</option>
-            {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
+            {build_select_options(mapeo_puesto, df_leads.columns if not df_leads.empty else [])}
           </select>
 
           <label>Nombre de la empresa:</label>
           <select name="col_empresa">
-            <option value="">(Sin cambio)</option>
-            {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
+            {build_select_options(mapeo_empresa, df_leads.columns if not df_leads.empty else [])}
           </select>
 
           <label>Industria:</label>
           <select name="col_industria">
-            <option value="">(Sin cambio)</option>
-            {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
+            {build_select_options(mapeo_industria, df_leads.columns if not df_leads.empty else [])}
           </select>
 
           <label>Website:</label>
           <select name="col_website">
-            <option value="">(Sin cambio)</option>
-            {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
+            {build_select_options(mapeo_website, df_leads.columns if not df_leads.empty else [])}
           </select>
 
           <label>Ubicación:</label>
           <select name="col_location">
-            <option value="">(Sin cambio)</option>
-            {"".join([f"<option value='{c}'>{c}</option>" for c in df_leads.columns])}
+            {build_select_options(mapeo_location, df_leads.columns if not df_leads.empty else [])}
           </select>
 
           <input type="hidden" name="accion" value="scrap_proveedor"/>
           <button type="submit">Analizar Proveedor</button>
         </form>
-
+        
         <div class="scrap-container">
           <strong>Información del proveedor (resumen ChatGPT):</strong><br>
           <p><b>Nombre de la Empresa:</b> {info_proveedor_global["Nombre de la Empresa"]}</p>
