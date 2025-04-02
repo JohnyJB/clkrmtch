@@ -241,18 +241,32 @@ INSTRUCCIONES:
   "CTA".
 
 CONTEXTO:
-Somos un proveedor (info en 'Información del proveedor').
-Nuestro potencial cliente es {companyName} (info en 'Información del cliente').
+somos (En base al scrapping del proveedor pon nos un nombre, allí viene)
+Harás un correo eléctronico, no vendas, usa "llegar" en vez de "vender", socializa, pero en realidad solo me daras las siguientes partes, cada parte es un renglón del mensaje:
 
-Información del cliente:
-Nombre del contacto: {lead_name}
-Puesto: {title}
-Industria: {industry}
-Sitio del cliente: {scrapping_lead}
-Ubicación: {location}
+Tenemos un cliente llamado {companyName}.
+Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
+
+1. Personalization (usa el nombre del contacto, no te presentes, nin a nosotros, una introducción personalizada basada exclusivamente en la información del sitio web del cliente. El objetivo es captar su atención de inmediato. Escribe un mensaje breve, pero emocionante reconocimiento de su empresa "Hola {lead_name} (sigue, aqui no digas nada de nosotros ni que hacemos)" breve)
+2. Your Value Prop (Propuesta de valor del proveedor, basado en su web. breve)
+3. Target Niche (El segmento de mercado al que el proveedor llega, definido por industria, subsegmento y ubicación del cliente. No vas a mencionar estos datos, pero si algo ejemplo: "Somos y nos dedicamos a tal cosa, (del scrapping del proveedor pero orientado a scrapping del cliente) en (Mencionar la ubicación cliente)")
+4. Your Targets Goal (La meta principal de {lead_name} considerando que es {title}. Qué quiere lograr con su negocio o estrategia. "Veo que aportas (hacer observación de a que se dedica el contácto)" breve)
+5. Your Targets Value Prop (La propuesta de valor de {companyName}. Cómo se diferencian en su mercado. "Parece que ustedes buscan... (decir algo en base al scrapping del cliente)" breve)
+6. Cliffhanger Value Prop (Propuesta intrigante o gancho para motivar la conversación. ejemplo "me encantaría mostrarte mi plan para... (crea algo breve en lo que ambos podamos trabajar juntos comparando scrapping proveedor y scrapping cliente)" breve)
+7. CTA (Acción concreta que queremos que tome el cliente, como agendar una reunión.)
+
+escribelos de manera que conecten en un solo mensaje
+
+Información del lead:
+- Contacto: {lead_name}
+- Puesto: {title}
+- Industria: {industry}
+- El cliente es: {companyName}
+- Contenido del sitio web del cliente(scrapping del cliente): {scrapping_lead}
+- La ubicación de la empresa es: {location} (si no te doy una ubicación, ignóralo)
 
 Información del proveedor:
-{scrapping_proveedor}
+- Contenido extraído del sitio web del proveedor: {scrapping_proveedor}
 
 SOLICITUD:
 Genera cada uno de estos campos en español y de forma breve:
@@ -456,13 +470,27 @@ def index():
                 f"Rango aplicado [{start_row}, {end_row}] => {len(df_leads)} filas cargadas.<br>"
             )
 
+            # (AÑADIDO) Checar si existen columnas específicas y reasignar por default
+            if 'First name' in df_leads.columns:
+                mapeo_nombre_contacto = 'First name'
+            if 'Title' in df_leads.columns:
+                mapeo_puesto = 'Title'
+            if 'Company Name' in df_leads.columns:
+                mapeo_empresa = 'Company Name'
+            if 'Company Industry' in df_leads.columns:
+                mapeo_industria = 'Company Industry'
+            if 'Company Website' in df_leads.columns:
+                mapeo_website = 'Company Website'
+            if 'Location' in df_leads.columns:
+                mapeo_location = 'Location'
+
         # URL del proveedor
         new_urlp = request.form.get("url_proveedor", "").strip()
         if new_urlp:
             url_proveedor_global = new_urlp
             status_msg += f"URL Proveedor={url_proveedor_global}<br>"
 
-        # Mapeo de columnas
+        # Mapeo de columnas (por si el usuario quiere sobreescribir manualmente)
         col_nombre = request.form.get("col_nombre", "").strip()
         col_puesto = request.form.get("col_puesto", "").strip()
         col_empresa = request.form.get("col_empresa", "").strip()
