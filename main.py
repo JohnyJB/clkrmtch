@@ -7,6 +7,7 @@ import re
 import json
 import requests
 import pandas as pd
+from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from flask import Flask, request, make_response
 
@@ -20,7 +21,10 @@ except ImportError:
 ###############################
 # 1) Hardcodear la API Key
 ###############################
-HARDCODED_API_KEY = "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"
+
+load_dotenv()  # Esto busca ".env" y carga sus valores a las variables de entorno
+
+HARDCODED_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
 ###############################
 # Inicializar el cliente
