@@ -464,6 +464,7 @@ def tabla_html(df: pd.DataFrame, max_filas=10) -> str:
 
     # Aquí haces el drop para ocultar "scrapping_proveedor"
     subset = df.drop(columns=["scrapping_proveedor"], errors="ignore").head(max_filas)
+    subset = df.drop(columns=["scrapping"], errors="ignore").head(max_filas)
     cols = list(subset.columns)
 
     thead = "".join(f"<th>{col}</th>" for col in cols)
