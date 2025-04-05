@@ -266,8 +266,8 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
     # PROMPT: asegurarse de que ChatGPT devuelva un JSON con llaves
     prompt = f"""
 INSTRUCCIONES:
-- Devuelve la respuesta SOLO como un objeto JSON (usando llaves).
-- No incluyas texto adicional antes o después del JSON.
+- Devuelve la respuesta SOLO como un objeto JSON (usando llaves)
+- No incluyas texto adicional antes o después del JSON
 - Utiliza únicamente estas claves: 
   "Personalization",
   "Your Value Prop",
@@ -773,6 +773,19 @@ Laura"
                 border-radius: 10px;
                 text-align: left;
             }}
+            .spinner {{
+                margin: 20px auto;
+                width: 50px;
+                height: 50px;
+                border: 6px solid #ccc;
+                border-top: 6px solid #1E90FF;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                }}
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
+                }}
         </style>
     </head>
     <body>
@@ -809,17 +822,17 @@ Laura"
         <hr>
 
         <!-- Sección 2: Proveedor -->
-        <form method="POST">
+        <form method="POST" onsubmit="showLoader()">
         <h2>2) Introduce tu sitio web y analiza</h2>
-        <label>Tu sitio web (Proveedor)</label>
+        <label>Tu sitio web</label>
         <input type="text" name="url_proveedor"/>
 
         <input type="hidden" name="accion" value="scrap_proveedor"/>
-        <button type="submit">Analizar Proveedor</button>
+        <button type="submit">Escanear tu contenido</button>
         </form>
 
         <div class="scrap-container">
-        <strong>Información del proveedor (resumen ChatGPT):</strong><br>
+        <strong>Escaneo:</strong><br>
         <p><b>Nombre de la Empresa:</b> {info_proveedor_global["Nombre de la Empresa"]}</p>
         <p><b>Objetivo:</b> {info_proveedor_global["Objetivo"]}</p>
         <p><b>Productos o Servicios:</b> {info_proveedor_global["Productos o Servicios"]}</p>
@@ -829,7 +842,7 @@ Laura"
         <hr>
 
         <!-- Lo demás igual -->
-        <form method="POST">
+        <form method="POST" onsubmit="showLoader()">
         <h2>3) Generar Tabla de Leads + ChatGPT</h2>
         <input type="hidden" name="accion" value="generar_tabla"/>
         <button type="submit">Generar (Procesar + ChatGPT)</button>
@@ -857,6 +870,11 @@ Laura"
         {block_text_es}
     </div>
     </body>
+    <div id="loader" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;text-align:center;padding-top:200px;">
+    <div style="color:white;font-size:20px;">⏳ Cargando datos... por favor espera</div>
+    <div class="spinner"></div>
+    </div>
+
     </html>
     """
 
