@@ -74,6 +74,13 @@ app.secret_key = "CLAVE_SECRETA_PARA_SESSION"  # si deseas usar session
 # DataFrame principal
 df_leads = pd.DataFrame()
 
+#Campos industria y area
+industrias_interes = ""
+area_interes = ""
+plan_estrategico = ""
+
+
+
 # Datos del proveedor (estructurado desde ChatGPT)
 info_proveedor_global = {
     "Nombre de la Empresa": "-",
@@ -92,16 +99,30 @@ mapeo_puesto = "title"
 mapeo_empresa = "companyName"
 mapeo_industria = "industry"
 mapeo_website = "website"
+mapeo_empleados = "Company Employee Count Range"
 mapeo_location = "location"
+
+
 
 # Configuraciones
 MAX_SCRAPING_CHARS = 6000
-OPENAI_MODEL = "gpt-3.5-turbo"
+OPENAI_MODEL = "gpt-4-turbo"
 OPENAI_MAX_TOKENS = 1000
 
 ###############################
 # Funciones auxiliares
 ###############################
+def guardar_prompt_log(prompt: str, lead_name: str = "", idx: int = -1):
+    """
+    Guarda el prompt en un archivo de texto. Usa el nombre del contacto o índice para identificarlo.
+    """
+    timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"logs/prompt_{idx}_{lead_name}_{timestamp}.txt".replace(" ", "_").replace(":", "-")
+    
+    os.makedirs("logs", exist_ok=True)
+
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write(prompt)
 
 def _limpiar_caracteres_raros(texto: str) -> str:
     """
@@ -235,6 +256,8 @@ Texto del sitio (Si a continuación no te doy info del sitio, pon - en todas):
 #####################################
 # Función ChatGPT para leads
 #####################################
+
+
 def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
     """
     Genera las columnas definidas: Personalization, Your Value Prop, etc.
@@ -258,7 +281,10 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
     title = str(row.get(mapeo_puesto, "-"))
     industry = str(row.get(mapeo_industria, "-"))
     companyName = str(row.get(mapeo_empresa, "-"))
+    employee_range = str(row.get(mapeo_empleados, "-"))
     location = str(row.get(mapeo_location, "-"))
+    
+    
 
     scrapping_lead = str(row.get("scrapping", "-"))
     scrapping_proveedor = str(row.get("scrapping_proveedor", "-"))
@@ -268,57 +294,67 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
 INSTRUCCIONES:
 - Devuelve la respuesta SOLO como un objeto JSON (usando llaves)
 - No incluyas texto adicional antes o después del JSON
-- Utiliza únicamente estas claves: 
+- Utiliza únicamente estas claves:
   "Personalization",
   "Your Value Prop",
-  "Target Niche",
-  "Your Targets Goal",
-  "Your Targets Value Prop",
+  "Your Target Niche",
+  "Your Client Goal",
+  "Your Client Value Prop",
   "Cliffhanger Value Prop",
   "CTA".
-
-CONTEXTO:
-somos (En base al scrapping del proveedor pon nos un nombre, allí viene)
-Harás un correo eléctronico, no vendas, usa "llegar" en vez de "vender", socializa, pero en realidad solo me daras las siguientes partes, cada parte es un renglón del mensaje:
 
 Tenemos un cliente llamado {companyName}.
 Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
 
-1. Personalization (usa el nombre del contacto, no te presentes, nin a nosotros, una introducción personalizada basada exclusivamente en la información del sitio web del cliente. El objetivo es captar su atención de inmediato. Escribe un mensaje breve, pero emocionante reconocimiento de su empresa "Hola {lead_name} (sigue, aqui no digas nada de nosotros ni que hacemos)" breve)
-2. Your Value Prop (Propuesta de valor del proveedor, basado en su web. breve)
-3. Target Niche (El segmento de mercado al que el proveedor llega, definido por industria, subsegmento y ubicación del cliente. No vas a mencionar estos datos, pero si algo ejemplo: "Somos y nos dedicamos a tal cosa, (del scrapping del proveedor pero orientado a scrapping del cliente) en (Mencionar la ubicación cliente)")
-4. Your Targets Goal (La meta principal de {lead_name} considerando que es {title}. Qué quiere lograr con su negocio o estrategia. "Veo que aportas (hacer observación de a que se dedica el contácto)" breve)
-5. Your Targets Value Prop (La propuesta de valor de {companyName}. Cómo se diferencian en su mercado. "Parece que ustedes buscan... (decir algo en base al scrapping del cliente)" breve)
-6. Cliffhanger Value Prop (Propuesta intrigante o gancho para motivar la conversación. ejemplo "me encantaría mostrarte mi plan para... (crea algo breve en lo que ambos podamos trabajar juntos comparando scrapping proveedor y scrapping cliente)" breve)
-7. CTA (Acción concreta que queremos que tome el cliente, como agendar una reunión.)
+Personalization: Es una introducción personalizada basada en un hecho reciente o logro dela empresa cliente, el objetivo es captar su atención de inmediato. Empresa Cliente → Se basa en su actividad, logros o contexto.
+Your Value Prop. Es la propuesta de valor de tu empresa, lo que ofreces y cómo ayudas a resolver un problema específico. Proveedor → Es nuestro diferenciador y lo que podemos hacer por el cliente.
+Your Target Niche (Niche, Subsegment, Location). El segmento de mercado al que queremos llegar, definido por industria, subsegmento y ubicación. Proveedor → Es nuestra audiencia objetivo.
+Your Cliente Goal. La meta principal del puesto del cliente. ¿Qué quiere lograr con su negocio o estrategia?. Cliente → Es su necesidad o aspiración.
+Your Cliente Value Prop. La propuesta de valor del cliente. ¿Cómo se diferencian ellos en su mercado? ¿Qué buscan potenciar?. Cliente → Es cómo ellos se presentan en su industria.
+Cliffhanger Value Prop. Una propuesta intrigante o gancho para motivar la conversación, generalmente una promesa de resultados o insights valiosos. Proveedor → Un beneficio atractivo para generar curiosidad.
+CTA (Call to Action). La acción concreta que queremos que tome el cliente, como agendar una reunión o responder al correo. Proveedor → Es nuestra invitación a la acción.
 
-escribelos de manera que conecten en un solo mensaje
+
+Escríbelos de manera que conecten en un solo mensaje
+
 
 Información del lead:
-- Contacto: {lead_name}
-- Puesto: {title}
-- Industria: {industry}
 - El cliente es: {companyName}
+- Contacto: {lead_name}
+- Puesto del contácto: {title}
+- Industria: {industry}
+
+Información del ICP (Ideal Customer Profile):
+- Industrias de Interés: {industrias_interes}
+- Área de Interés: {area_interes}
+
 - Contenido del sitio web del cliente(scrapping del cliente): {scrapping_lead}
-- La ubicación de la empresa es: {location} (si no te doy una ubicación, ignóralo)
+
+
+- La ubicación de la empresa es: (si no te doy una ubicación, ignóralo)
+
 
 Información del proveedor:
-- Contenido extraído del sitio web del proveedor: {scrapping_proveedor}
-
+- Contenido extraído del sitio web del proveedor: 
+{plan_estrategico}
 SOLICITUD:
 Genera cada uno de estos campos en español y de forma breve:
 1) Personalization
 2) Your Value Prop
-3) Target Niche
-4) Your Targets Goal
-5) Your Targets Value Prop
+3) Your Target Niche
+4) Your Client Goal
+5) Your Client Value Prop
 6) Cliffhanger Value Prop
 7) CTA
 
+
 Recuerda: la respuesta debe ser válido JSON con llaves y comillas en cada clave-valor, sin texto adicional.
-    """
+"""
 
     prompt = _limpiar_caracteres_raros(prompt)
+    #guardar_prompt_log(prompt, lead_name=lead_name, idx=row.name)
+    print(f"[PROMPT] idx={row.name}, lead={lead_name}")
+    #print(prompt)
 
     try:
         print("[LOG] Llamando ChatGPT (leads)...")
@@ -336,9 +372,9 @@ Recuerda: la respuesta debe ser válido JSON con llaves y comillas en cada clave
             parsed = json.loads(content)
             personalization = parsed.get("Personalization", "-")
             value_prop = parsed.get("Your Value Prop", "-")
-            target_niche = parsed.get("Target Niche", "-")
-            targets_goal = parsed.get("Your Targets Goal", "-")
-            targets_value_prop = parsed.get("Your Targets Value Prop", "-")
+            target_niche = parsed.get("Your Target Niche", "-")
+            targets_goal = parsed.get("Your Client Goal", "-")
+            targets_value_prop = parsed.get("Your Client Value Prop", "-")
             cliffhanger = parsed.get("Cliffhanger Value Prop", "-")
             cta = parsed.get("CTA", "-")
         except Exception as ex:
@@ -375,6 +411,99 @@ Recuerda: la respuesta debe ser válido JSON con llaves y comillas en cada clave
             "CTA": "-"
         }
 
+def generar_emails_estrategia(row: pd.Series) -> dict:
+    if client is None:
+        print("[ERROR] Cliente ChatGPT no disponible.")
+        return {k: "-" for k in [
+            "Strategy - 25% Reply Rate Email", "Strategy - One Sentence Email",
+            "Strategy - Asking for an Introduction", "Strategy - Ask for Permission",
+            "Strategy - Loom Video", "Strategy - Free Sample List"
+        ]}
+    lead_name = str(row.get(mapeo_nombre_contacto, "-"))
+    title = str(row.get(mapeo_puesto, "-"))
+    industry = str(row.get(mapeo_industria, "-"))
+    companyName = str(row.get(mapeo_empresa, "-"))
+    employee_range = str(row.get(mapeo_empleados, "-"))
+    location = str(row.get(mapeo_location, "-"))
+    base_context = f"""
+Resultados para adaptar
+- "Personalization": {row.get("Personalization", "-")}
+- "Your Value Prop": {row.get("Your Value Prop", "-")}
+- "Target Niche": {row.get("Target Niche", "-")}
+- "Your Client Goal": {row.get("Your Targets Goal", "-")}
+- "Your Client Value Prop": {row.get("Your Targets Value Prop", "-")}
+- "Cliffhanger Value Prop": {row.get("Cliffhanger Value Prop", "-")}
+- "CTA": {row.get("CTA", "-")}    
+    
+Basado en los "resultados para adaptar", desarrollame los copys de los siguientes emails
+"Strategy: 25% Reply Rate Email"
+Estructura:
+ Personalization | Your Value Prop | Target Niche | Your Targets Goal | Your Targets Value Prop | Cliffhanger Value Prop | CTA
+
+
+Strategy: One Sentence Email
+structura:
+Personalization | Your Value Prop | Target Niche | CTA
+
+Strategy: Asking for an Introduction
+Estructura:
+Personalization | Your Targets Value Prop | CTA
+
+Strategy: Ask for Permission
+Estructura:
+Personalization | Your Targets Value Prop | Cliffhanger Value Prop | CTA
+
+Strategy: Loom Video
+Estructura:
+Personalization | Your Targets Value Prop | Your Value Prop | CTA
+
+Strategy: Free Sample List
+Estructura:
+Personalization | Your Targets Goal | Your Value Prop | CTA
+
+
+Devuelve un JSON como este (sin texto adicional):
+
+{{
+  "Strategy - 25% Reply Rate Email": "...",
+  "Strategy - One Sentence Email": "...",
+  "Strategy - Asking for an Introduction": "...",
+  "Strategy - Ask for Permission": "...",
+  "Strategy - Loom Video": "...",
+  "Strategy - Free Sample List": "..."
+}}
+"""
+    print(base_context)
+    try:
+        response = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[{"role": "user", "content": base_context}],
+            max_tokens=1000,
+            temperature=0.7,
+            timeout=30
+        )
+        content = response.choices[0].message.content.strip()
+        print("[RAW RESPONSE EMAILS STRATEGY]:", content)
+
+        # 🔥 FIX para quitar ```json y ```
+        if content.startswith("```json"):
+            content = content.replace("```json", "").strip()
+        if content.endswith("```"):
+            content = content[:-3].strip()
+
+        parsed = json.loads(content)
+        return parsed
+
+    except Exception as e:
+        print("[ERROR] Fallo al generar emails por estrategia:", e)
+        return {k: "-" for k in [
+            "Strategy - 25% Reply Rate Email", "Strategy - One Sentence Email",
+            "Strategy - Asking for an Introduction", "Strategy - Ask for Permission",
+            "Strategy - Loom Video", "Strategy - Free Sample List"
+        ]}
+
+
+
 def procesar_leads():
     """Scrapea website de cada lead y rellena df_leads con el texto."""
     global df_leads
@@ -390,6 +519,19 @@ def procesar_leads():
     for c in needed_cols:
         if c not in df_leads.columns:
             df_leads[c] = ""
+
+    estrategias_cols = [
+        "Strategy - 25% Reply Rate Email",
+        "Strategy - One Sentence Email",
+        "Strategy - Asking for an Introduction",
+        "Strategy - Ask for Permission",
+        "Strategy - Loom Video",
+        "Strategy - Free Sample List"
+    ]
+    for col in estrategias_cols:
+        if col not in df_leads.columns:
+            df_leads[col] = "-"
+
 
     for idx, row in df_leads.iterrows():
         website = str(row.get(mapeo_website, "")).strip()
@@ -429,6 +571,11 @@ def generar_contenido_para_todos():
             df_leads.at[idx, "Your Targets Value Prop"] = result["Your Targets Value Prop"]
             df_leads.at[idx, "Cliffhanger Value Prop"] = result["Cliffhanger Value Prop"]
             df_leads.at[idx, "CTA"] = result["CTA"]
+            row.update(result)  # <- ACTUALIZA los valores en la variable row
+            emails = generar_emails_estrategia(row)
+            for col, val in emails.items():
+                df_leads.at[idx, col] = val
+
 
         except Exception as e:
             print(f"[ERROR] Error inesperado en lead idx={idx}: {e}")
@@ -444,8 +591,12 @@ def cleanup_leads():
     cols_to_clean = [
         "Personalization", "Your Value Prop", "Target Niche",
         "Your Targets Goal", "Your Targets Value Prop",
-        "Cliffhanger Value Prop", "CTA"
+        "Cliffhanger Value Prop", "CTA",
+        "Strategy - 25% Reply Rate Email", "Strategy - One Sentence Email",
+        "Strategy - Asking for an Introduction", "Strategy - Ask for Permission",
+        "Strategy - Loom Video", "Strategy - Free Sample List"
     ]
+
     for col in cols_to_clean:
         if col in df_leads.columns:
             df_leads[col] = df_leads[col].astype(str)
@@ -485,12 +636,16 @@ def index():
     global scrap_proveedor_text
     global info_proveedor_global
     global mapeo_nombre_contacto, mapeo_puesto, mapeo_empresa
-    global mapeo_industria, mapeo_website, mapeo_location
+    global mapeo_industria, mapeo_website, mapeo_location, mapeo_empleados
+    global industrias_interes, area_interes, plan_estrategico
+
+
 
     status_msg = ""
     url_proveedor_global = ""  # Moveremos esto a variable local
 
     if request.method == "POST":
+        accion = request.form.get("accion", "")
         # Subir CSV de leads
         leadf = request.files.get("leads_csv")
         if leadf and leadf.filename:
@@ -543,32 +698,23 @@ def index():
             url_proveedor_global = new_urlp
             status_msg += f"URL Proveedor={url_proveedor_global}<br>"
 
-        # Mapeo de columnas (por si el usuario quiere sobreescribir manualmente)
-        col_nombre = request.form.get("col_nombre", "").strip()
-        col_puesto = request.form.get("col_puesto", "").strip()
-        col_empresa = request.form.get("col_empresa", "").strip()
-        col_industria = request.form.get("col_industria", "").strip()
-        col_website = request.form.get("col_website", "").strip()
-        col_location = request.form.get("col_location", "").strip()
+        #Guardar campo de especificación industria y area buscada
+        if accion == "guardar_custom_fields":
+            industrias_interes = request.form.get("industrias_interes", "").strip()
+            area_interes = request.form.get("area_interes", "").strip()
+            plan_estrategico = request.form.get("plan_estrategico", "").strip()
+            status_msg += f"Campos personalizados guardados.<br>"
+               
 
-        if col_nombre:
-            mapeo_nombre_contacto = col_nombre
-            status_msg += f"Mapeo Nombre del contacto = '{col_nombre}'<br>"
-        if col_puesto:
-            mapeo_puesto = col_puesto
-            status_msg += f"Mapeo Puesto = '{col_puesto}'<br>"
-        if col_empresa:
-            mapeo_empresa = col_empresa
-            status_msg += f"Mapeo Empresa = '{col_empresa}'<br>"
-        if col_industria:
-            mapeo_industria = col_industria
-            status_msg += f"Mapeo Industria = '{col_industria}'<br>"
-        if col_website:
-            mapeo_website = col_website
-            status_msg += f"Mapeo Website = '{col_website}'<br>"
-        if col_location:
-            mapeo_location = col_location
-            status_msg += f"Mapeo Ubicación = '{col_location}'<br>"
+        # Mapeo de columnas (por si el usuario quiere sobreescribir manualmente)
+        mapeo_nombre_contacto = request.form.get("col_nombre", mapeo_nombre_contacto).strip() or mapeo_nombre_contacto
+        mapeo_puesto = request.form.get("col_puesto", mapeo_puesto).strip() or mapeo_puesto
+        mapeo_empresa = request.form.get("col_empresa", mapeo_empresa).strip() or mapeo_empresa
+        mapeo_industria = request.form.get("col_industria", mapeo_industria).strip() or mapeo_industria
+        mapeo_website = request.form.get("col_website", mapeo_website).strip() or mapeo_website
+        mapeo_location = request.form.get("col_location", mapeo_location).strip() or mapeo_location
+        mapeo_empleados = request.form.get("col_employees", mapeo_empleados).strip() or mapeo_empleados
+
 
         # Acción
         accion = request.form.get("accion", "")
@@ -677,6 +823,7 @@ Laura"
   </tr>
 </table>
 """
+
 
     # Construcción final del HTML
     page_html = f"""
@@ -814,11 +961,31 @@ Laura"
         <select name="col_industria">{build_select_options(mapeo_industria, df_leads.columns if not df_leads.empty else [])}</select>
         <label>Website:</label>
         <select name="col_website">{build_select_options(mapeo_website, df_leads.columns if not df_leads.empty else [])}</select>
+        <label>Rango de empleados:</label>
+        <select name="col_employees">{build_select_options(mapeo_empleados, df_leads.columns if not df_leads.empty else [])}</select>
         <label>Ubicación:</label>
         <select name="col_location">{build_select_options(mapeo_location, df_leads.columns if not df_leads.empty else [])}</select>
 
         <button type="submit">Subir Archivo</button>
         </form>
+        <form method="POST">
+            <label>Plan Estratégico:</label>
+            <textarea name="plan_estrategico" rows="6" style="width:100%;border-radius:10px;">{plan_estrategico or ''}</textarea>
+
+            <label>Industrias de Interés:</label>
+            <input type="text" name="industrias_interes" value="{industrias_interes or ''}" placeholder="Ej: Automotriz, Manufactura"/>
+
+            <label>Área de Interés:</label>
+            <input type="text" name="area_interes" value="{area_interes or ''}" placeholder="Ej: Finanzas"/>
+
+            <input type="hidden" name="accion" value="guardar_custom_fields"/>
+            <button type="submit">Guardar Campos</button>
+            <p><strong>Actual:</strong><br>
+            Industrias: {industrias_interes}<br>
+            Área: {area_interes}</p>      
+        </form>
+        
+        
         <hr>
 
         <!-- Sección 2: Proveedor -->

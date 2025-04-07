@@ -1,0 +1,59 @@
+
+INSTRUCCIONES:
+- Devuelve la respuesta SOLO como un objeto JSON (usando llaves)
+- No incluyas texto adicional antes o después del JSON
+- Utiliza únicamente estas claves:
+  "Personalization",
+  "Your Value Prop",
+  "Your Target Niche",
+  "Your Client Goal",
+  "Your Client Value Prop",
+  "Cliffhanger Value Prop",
+  "CTA".
+
+Tenemos un cliente llamado -.
+Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
+
+Personalization: Es una introducción personalizada basada en un hecho reciente o logro del cliente. El objetivo es captar su atención de inmediato. Cliente  Se basa en su actividad, logros o contexto.
+Your Value Prop. Es la propuesta de valor de tu empresa, lo que ofreces y cómo ayudas a resolver un problema específico. Proveedor  Es nuestro diferenciador y lo que podemos hacer por el cliente.
+Your Target Niche (Niche, Subsegment, Location). El segmento de mercado al que queremos llegar, definido por industria, subsegmento y ubicación. Proveedor  Es nuestra audiencia objetivo.
+Your Cliente Goal. La meta principal del cliente. ¿Qué quiere lograr con su negocio o estrategia?. Cliente  Es su necesidad o aspiración.
+Your Cliente Value Prop. La propuesta de valor del cliente. ¿Cómo se diferencian ellos en su mercado? ¿Qué buscan potenciar?. Cliente  Es cómo ellos se presentan en su industria.
+Cliffhanger Value Prop. Una propuesta intrigante o gancho para motivar la conversación, generalmente una promesa de resultados o insights valiosos. Proveedor  Un beneficio atractivo para generar curiosidad.
+CTA (Call to Action). La acción concreta que queremos que tome el cliente, como agendar una reunión o responder al correo. Proveedor  Es nuestra invitación a la acción.
+
+
+Escríbelos de manera que conecten en un solo mensaje
+
+
+Información del lead:
+- El cliente es: -
+- Contacto: -
+- Puesto: Partner & Commercial Director
+- Industria: Real Estate
+
+Información del ICP (Ideal Customer Profile):
+- Industrias de Interés: 
+- Área de Interés: 
+
+- Contenido del sitio web del cliente(scrapping del cliente): -
+
+
+- La ubicación de la empresa es: (si no te doy una ubicación, ignóralo)
+
+
+Información del proveedor:
+- Contenido extraído del sitio web del proveedor: 
+
+SOLICITUD:
+Genera cada uno de estos campos en español y de forma breve:
+1) Personalization
+2) Your Value Prop
+3) Your Target Niche
+4) Your Client Goal
+5) Your Client Value Prop
+6) Cliffhanger Value Prop
+7) CTA
+
+
+Recuerda: la respuesta debe ser válido JSON con llaves y comillas en cada clave-valor, sin texto adicional.
