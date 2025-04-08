@@ -461,7 +461,7 @@ Strategy: Free Sample List
 Estructura:
 Personalization | Your Targets Goal | Your Value Prop | CTA
 
-
+Encabezado + saludo + cuerpo del mensaje + despedida + firma de la empresa.
 Devuelve un JSON como este (sin texto adicional):
 
 {{
