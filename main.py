@@ -1007,29 +1007,11 @@ Laura"
         </form>
         
         <hr>
-        <!-- Sección 2: Proveedor -->
-        <form method="POST" onsubmit="showLoader()">
-        <h2>2) Introduce tu sitio web y analiza</h2>
-        <label>Tu sitio web</label>
-        <input type="text" name="url_proveedor"/>
 
-        <input type="hidden" name="accion" value="scrap_proveedor"/>
-        <button type="submit">Escanear tu contenido</button>
-        </form>
-
-        <div class="scrap-container">
-        <strong>Escaneo:</strong><br>
-        <p><b>Nombre de la Empresa:</b> {info_proveedor_global["Nombre de la Empresa"]}</p>
-        <p><b>Objetivo:</b> {info_proveedor_global["Objetivo"]}</p>
-        <p><b>Productos o Servicios:</b> {info_proveedor_global["Productos o Servicios"]}</p>
-        <p><b>Industrias:</b> {info_proveedor_global["Industrias"]}</p>
-        <p><b>Clientes o Casos de Exito:</b> {info_proveedor_global["Clientes o Casos de Exito"]}</p>
-        </div>
-        <hr>
 
         <!-- Lo demás igual -->
         <form method="POST" onsubmit="showLoader()">
-        <h2>3) Generar Tabla de Leads + ChatGPT</h2>
+        <h2>Generar Tabla de Leads + ChatGPT</h2>
         <input type="hidden" name="accion" value="generar_tabla"/>
         <button type="submit">Generar (Procesar + ChatGPT)</button>
         </form>
@@ -1037,7 +1019,7 @@ Laura"
         
     
         <form method="POST">
-        <h2>4) Exportar</h2>
+        <h2>Exportar</h2>
         <label>Formato:</label>
         <select name="formato">
             <option value="csv">CSV</option>
