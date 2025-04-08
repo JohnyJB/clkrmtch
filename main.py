@@ -106,7 +106,7 @@ mapeo_location = "location"
 
 # Configuraciones
 MAX_SCRAPING_CHARS = 6000
-OPENAI_MODEL = "gpt-4-turbo"
+OPENAI_MODEL = "gpt-3.5-turbo"
 OPENAI_MAX_TOKENS = 1000
 
 ###############################
