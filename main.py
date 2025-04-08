@@ -963,7 +963,7 @@ Laura"
 
         <!-- Sección 1: Cargar CSV y Mapeo -->
         <form method="POST" enctype="multipart/form-data">
-        <h2>1) Cargar CSV de Leads y Mapeo</h2>
+        <h2>Cargar CSV de Leads y Mapeo</h2>
         <label>Base de Datos:</label>
         <input type="file" name="leads_csv"/>
         <label>Fila de inicio:</label>
@@ -1006,9 +1006,16 @@ Laura"
             Área: {area_interes}</p>      
         </form>
         
+        <hr>
+        <!-- Sección 2: Proveedor -->
+        <form method="POST" onsubmit="showLoader()">
+        <button type="submit">Procesar + ChatGPT</button>
+        </form>
+        <hr>
+        
     
         <form method="POST">
-        <h2>4) Exportar</h2>
+        <h2>Exportar</h2>
         <label>Formato:</label>
         <select name="formato">
             <option value="csv">CSV</option>
