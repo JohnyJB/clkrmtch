@@ -617,10 +617,24 @@ def tabla_html(df: pd.DataFrame, max_filas=10) -> str:
     subset = df.drop(columns=["scrapping_proveedor", "scrapping"], errors="ignore").head(max_filas)
     cols = list(subset.columns)
 
-    thead = "".join(f"<th>{col}</th>" for col in cols)
+    anchas = [
+        "Personalization", "Your Value Prop", "Target Niche", "Your Targets Goal",
+        "Your Targets Value Prop", "Cliffhanger Value Prop", "CTA",
+        "Strategy - 25% Reply Rate Email", "Strategy - One Sentence Email",
+        "Strategy - Asking for an Introduction", "Strategy - Ask for Permission",
+        "Strategy - Loom Video", "Strategy - Free Sample List"
+    ]
+    thead = "".join(
+        f"<th class='col-ancha'>{col}</th>" if col in anchas else f"<th>{col}</th>"
+        for col in cols
+    )
+
     rows_html = ""
     for _, row in subset.iterrows():
-        row_html = "".join(f"<td>{str(row[col])}</td>" for col in cols)
+        row_html = "".join(
+            f"<td class='col-ancha'>{str(row[col])}</td>" if col in anchas else f"<td>{str(row[col])}</td>"
+            for col in cols
+        )
         rows_html += f"<tr>{row_html}</tr>"
 
     return f"<table><tr>{thead}</tr>{rows_html}</table>"
@@ -933,6 +947,13 @@ Laura"
                 0% {{ transform: rotate(0deg); }}
                 100% {{ transform: rotate(360deg); }}
                 }}
+            th.col-ancha, td.col-ancha {{
+                min-width: 300px;
+                max-width: 400px;
+                word-wrap: break-word;
+                white-space: pre-wrap;
+            }}
+            
         </style>
     </head>
     <body>
@@ -985,37 +1006,7 @@ Laura"
             Área: {area_interes}</p>      
         </form>
         
-        
-        <hr>
-
-        <!-- Sección 2: Proveedor -->
-        <form method="POST" onsubmit="showLoader()">
-        <h2>2) Introduce tu sitio web y analiza</h2>
-        <label>Tu sitio web</label>
-        <input type="text" name="url_proveedor"/>
-
-        <input type="hidden" name="accion" value="scrap_proveedor"/>
-        <button type="submit">Escanear tu contenido</button>
-        </form>
-
-        <div class="scrap-container">
-        <strong>Escaneo:</strong><br>
-        <p><b>Nombre de la Empresa:</b> {info_proveedor_global["Nombre de la Empresa"]}</p>
-        <p><b>Objetivo:</b> {info_proveedor_global["Objetivo"]}</p>
-        <p><b>Productos o Servicios:</b> {info_proveedor_global["Productos o Servicios"]}</p>
-        <p><b>Industrias:</b> {info_proveedor_global["Industrias"]}</p>
-        <p><b>Clientes o Casos de Exito:</b> {info_proveedor_global["Clientes o Casos de Exito"]}</p>
-        </div>
-        <hr>
-
-        <!-- Lo demás igual -->
-        <form method="POST" onsubmit="showLoader()">
-        <h2>3) Generar Tabla de Leads + ChatGPT</h2>
-        <input type="hidden" name="accion" value="generar_tabla"/>
-        <button type="submit">Generar (Procesar + ChatGPT)</button>
-        </form>
-        <hr>
-
+    
         <form method="POST">
         <h2>4) Exportar</h2>
         <label>Formato:</label>
