@@ -5,11 +5,8 @@ import time
 
 app = Flask(__name__)
 
-# Leer archivos CSV
-archivo1_path = "archivo1.csv"
-archivo2_path = "archivo2.csv"
-df_archivo1 = pd.read_csv(archivo1_path) if os.path.exists(archivo1_path) else pd.DataFrame()
-df_archivo2 = pd.read_csv(archivo2_path) if os.path.exists(archivo2_path) else pd.DataFrame()
+df_user_csv = pd.DataFrame()
+df_enriched_csv = pd.DataFrame()
 
 def tabla_html(df: pd.DataFrame, max_filas=20) -> str:
     if df.empty:
@@ -35,28 +32,40 @@ def tabla_html(df: pd.DataFrame, max_filas=20) -> str:
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    mostrar = request.form.get("mostrar", "archivo1")
+    global df_user_csv, df_enriched_csv
+    tabla = ""
+    status = ""
 
-    # Simular carga de 17 segundos si se envió formulario
     if request.method == "POST":
-        time.sleep(17)
+        accion = request.form.get("accion", "")
 
-    df = df_archivo1 if mostrar == "archivo1" else df_archivo2
-    tabla = tabla_html(df)
+        if accion == "cargar_csv":
+            archivo = request.files.get("csvfile")
+            if archivo and archivo.filename:
+                df_user_csv = pd.read_csv(archivo)
+                status = f"Se cargaron {len(df_user_csv)} filas."
 
-    volver_boton = ""
-    if mostrar == "archivo2":
-        volver_boton = """
-        <form method='POST' onsubmit='return showLoader();'>
-            <input type='hidden' name='mostrar' value='archivo1'>
-            <button type='submit'>Volver a archivo1.csv</button>
-        </form>
-        """
+        elif accion == "mostrar_base":
+            time.sleep(2)
+            tabla = tabla_html(df_user_csv)
+
+        elif accion == "enriquecer_ia":
+            time.sleep(5)
+            if not df_user_csv.empty:
+                enriched_path = "archivo2.csv"
+                if os.path.exists(enriched_path):
+                    df_enriched_csv = pd.read_csv(enriched_path)
+                    tabla = tabla_html(df_enriched_csv)
+                    status = "Mostrando base enriquecida con IA."
+                else:
+                    status = "No se encontró archivo enriquecido (archivo2.csv)."
+            else:
+                status = "Primero carga un archivo CSV."
 
     return f"""
     <html>
     <head>
-        <title>CSV Viewer</title>
+        <title>Enriquecedor IA</title>
         <style>
             body {{
                 background: url('https://expomatch.com.mx/wp-content/uploads/2025/03/u9969268949_creame_una_pagina_web_que_muestre_unas_bases_de_d_4f30c12d-8f6a-4913-aa47-1d927038ce10_0-1.png') no-repeat center center fixed;
@@ -103,42 +112,43 @@ def index():
             button:hover {{
                 background-color: #00BFFF;
             }}
+            input[type="file"] {{
+                padding: 10px;
+                margin: 10px;
+                background: #2A2A2A;
+                color: white;
+                border-radius: 10px;
+                border: 1px solid #555;
+            }}
             th.col-ancha, td.col-ancha {{
                 min-width: 300px;
                 max-width: 400px;
                 word-wrap: break-word;
                 white-space: pre-wrap;
             }}
-            #loader {{
-                display: none;
-                position: fixed;
-                top: 0; left: 0;
-                width: 100%; height: 100%;
-                background: rgba(0, 0, 0, 0.8);
-                z-index: 9999;
-                color: white;
-                font-size: 24px;
-                text-align: center;
-                padding-top: 200px;
-            }}
         </style>
-        <script>
-            function showLoader() {{
-                document.getElementById('loader').style.display = 'block';
-                return true;
-            }}
-        </script>
     </head>
     <body>
-        <div id="loader">⏳ Cargando datos... por favor espera</div>
         <div class="container">
-            <h1>Visualizador de Archivos CSV</h1>
-            <form method="POST" onsubmit="return showLoader();">
-                <input type="hidden" name="mostrar" value="{('archivo2' if mostrar == 'archivo1' else 'archivo1')}">
-                <button type="submit">Convertir</button>
+            <h1>Enriquecimiento de Datos con IA</h1>
+            <form method="POST" enctype="multipart/form-data">
+                <input type="file" name="csvfile" required />
+                <input type="hidden" name="accion" value="cargar_csv" />
+                <button type="submit">Subir Base de Datos CSV</button>
             </form>
+
+            <form method="POST">
+                <input type="hidden" name="accion" value="mostrar_base" />
+                <button type="submit">Mostrar Base Cargada</button>
+            </form>
+
+            <form method="POST">
+                <input type="hidden" name="accion" value="enriquecer_ia" />
+                <button type="submit">Enriquecer con IA</button>
+            </form>
+
+            <p>{status}</p>
             <div>{tabla}</div>
-            <div style="margin-top:20px;">{volver_boton}</div>
         </div>
     </body>
     </html>
