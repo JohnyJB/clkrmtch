@@ -140,10 +140,18 @@ def guardar_prompt_log(prompt: str, lead_name: str = "", idx: int = -1):
 
 def _limpiar_caracteres_raros(texto: str) -> str:
     """
-    Elimina caracteres extraños (ej. emojis o símbolos no usuales)
-    manteniendo letras, dígitos, ciertos signos de puntuación y acentos básicos.
+    Elimina caracteres extraños y normaliza los saltos de línea.
     """
-    return re.sub(r'[^\w\sáéíóúÁÉÍÓÚñÑüÜ:;,.!?@#%&()"+\-\//$\'\"\n\r\t¿¡]', '', texto)
+    # 1. Elimina caracteres extraños no deseados
+    texto = re.sub(r'[^\w\sáéíóúÁÉÍÓÚñÑüÜ:;,.!?@#%&()"+\-\//$\'\"\n\r\t¿¡]', '', texto)
+
+    # 2. Reemplaza múltiples saltos de línea por uno solo
+    texto = re.sub(r'\n\s*\n+', '\n', texto)
+
+    # 3. Reemplaza múltiples espacios por uno solo
+    texto = re.sub(r'[ ]{2,}', ' ', texto)
+
+    return texto.strip()
 
 def _asegurar_https(url: str) -> str:
     """Si la URL no empieza con http(s)://, antepone https://."""
