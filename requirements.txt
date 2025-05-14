@@ -7,4 +7,7 @@ python-dotenv
 cryptography
 openpyxl
 openai>=1.0.0
-
+pdfminer.six
+pillow
+pytesseract
+pdf2image
