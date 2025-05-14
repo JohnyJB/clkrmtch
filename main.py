@@ -894,12 +894,19 @@ def index():
 
                     # Hacemos merge left para mantener todas las filas originales
                     df_leads = df_leads.merge(df_cat, how='left', left_on=mapeo_industria, right_on='company_industry')
+                    # Crear columna si no existe
+                    if 'Industria Mayor' not in df_leads.columns:
+                        df_leads['Industria Mayor'] = ""
 
-                    # Renombrar la nueva columna si no existe o sobrescribirla
-                    df_leads['Industria Mayor'] = df_leads['company_mayor_industry'].fillna(df_leads.get('Industria Mayor', "")).fillna("")
+                    # Crear columna si no existe
+                    if 'Industria Mayor' not in df_leads.columns:
+                        df_leads['Industria Mayor'] = ""
 
+                    # Si hay datos en company_mayor_industry, copiarlos a 'Industria Mayor'
+                    if 'company_mayor_industry' in df_leads.columns:
+                        df_leads['Industria Mayor'] = df_leads['company_mayor_industry'].fillna(df_leads['Industria Mayor'])
 
-                    # Limpiar columnas auxiliares
+                    # Limpiar columnas auxiliares usadas solo para el merge
                     df_leads.drop(columns=['company_industry', 'company_mayor_industry'], errors='ignore', inplace=True)
 
                     # Reordenar columna si existe
