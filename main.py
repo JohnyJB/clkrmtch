@@ -17,9 +17,11 @@ import pytesseract
 from pdf2image import convert_from_path
 # Rutas comunes para explorar además de la principal
 EXTRA_PATHS = ["/about", "/about-us", "/nosotros", "/quienes-somos", "/servicios", "/services"]
-
-
-
+COMMON_INFO_PATHS = [
+    "/about", "/about-us", "/nosotros", "/quienes-somos", "/servicios", "/services",
+    "/company", "/corporate", "/equipo", "/team", "/products", "/solutions",
+    "/what-we-do", "/mission", "/mision", "/historia", "/history"
+]
 
 # Si tu wrapper es distinto, adapta la importación:
 try:
@@ -85,6 +87,9 @@ scraping_progress = {
     "total": 0,
     "procesados": 0
 }
+
+logs_urls_scrap = []
+
 #Campos industria y area
 industrias_interes = ""
 area_interes = ""
@@ -177,6 +182,9 @@ def extraer_texto_pdf(pdf_path: str) -> str:
     except Exception as e:
         print("[ERROR] Al leer PDF:", e)
         return "-"
+
+
+
 def realizar_super_scraping(base_url: str) -> str:
     """
     Hace scraping de rutas comunes como /about, /nosotros, /servicios si están disponibles.
@@ -231,19 +239,53 @@ def realizar_scraping(url: str) -> str:
 
 #Scrapping de urls
 def extraer_urls_de_web(base_url: str) -> str:
-    """Extrae todos los enlaces href del sitio principal de la empresa."""
+    """Extrae todos los enlaces href del sitio principal de la empresa y los devuelve separados por coma y espacio."""
     base_url = _asegurar_https(base_url)
     try:
         resp = requests.get(base_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
         if resp.status_code == 200:
             sopa = BeautifulSoup(resp.text, "html.parser")
             enlaces = [a.get("href") for a in sopa.find_all("a", href=True)]
+
             # Filtrar duplicados y normalizar
             enlaces_filtrados = list(set(filter(None, enlaces)))
-            return "\n".join(enlaces_filtrados)
+
+            # Convertir relativos a absolutos
+            enlaces_absolutos = [
+                enlace if enlace.startswith("http") else base_url.rstrip("/") + "/" + enlace.lstrip("/")
+                for enlace in enlaces_filtrados
+            ]
+
+            return ", ".join(enlaces_absolutos)
     except Exception as e:
         print(f"[ERROR] al extraer enlaces de {base_url}:", e)
     return "-"
+
+def realizar_scrap_adicional(urls_csv: str) -> str:
+    """
+    Recibe un string de URLs separadas por coma (campo "URLs on WEB"),
+    filtra aquellas que contienen rutas comunes, y concatena el texto de scraping.
+    """
+    urls = [u.strip() for u in urls_csv.split(",") if u.strip()]
+    matching_urls = [u for u in urls if any(path in u for path in COMMON_INFO_PATHS)]
+    
+    print(f"[SCRAP-ADICIONAL] Coincidencias encontradas: {len(matching_urls)}")
+
+    texto_total = ""
+    for link in matching_urls:
+        try:
+            full_url = _asegurar_https(link)
+            resp = requests.get(full_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+            if resp.status_code == 200:
+                sopa = BeautifulSoup(resp.text, "html.parser")
+                texto = sopa.get_text()
+                limpio = _limpiar_caracteres_raros(texto[:3000])
+                texto_total += f"\n[{link}]\n{limpio}\n"
+        except Exception as e:
+            print(f"[ERROR] Scraping adicional falló en {link} →", e)
+
+    return texto_total if texto_total.strip() else "-"
+
 
 
 #####################################
@@ -830,13 +872,34 @@ def index():
     global mapeo_nombre_contacto, mapeo_puesto, mapeo_empresa
     global mapeo_industria, mapeo_website, mapeo_location, mapeo_empleados
     global industrias_interes, area_interes, plan_estrategico
-
-
+    global logs_urls_scrap
 
     status_msg = ""
     url_proveedor_global = ""  # Moveremos esto a variable local
     accion = request.form.get("accion", "")
     if request.method == "POST":
+        if accion == "scrap_urls_filtradas":
+            if not df_leads.empty:
+                if "URLs on WEB" not in df_leads.columns:
+                    status_msg += "Primero debes ejecutar 'ExtraerURLs'.<br>"
+                else:
+                    df_leads["Scrapping Adicional"] = "-"
+                    scraping_progress["total"] = len(df_leads)
+                    scraping_progress["procesados"] = 0
+
+                    for idx, row in df_leads.iterrows():
+                        urls_csv = str(row.get("URLs on WEB", "")).strip()
+                        if urls_csv and urls_csv != "-":
+                            texto_adicional = realizar_scrap_adicional(urls_csv)
+                            df_leads.at[idx, "Scrapping Adicional"] = texto_adicional
+                        else:
+                            df_leads.at[idx, "Scrapping Adicional"] = "-"
+                        scraping_progress["procesados"] += 1
+
+                    status_msg += "Scraping adicional de URLs comunes completado.<br>"
+            else:
+                status_msg += "Primero carga una base de leads.<br>"
+
         if accion == "extraer_urls_leads":
             logs_urls_scrap.clear()
             if not df_leads.empty:
@@ -1391,7 +1454,11 @@ Laura"
         <form method="POST">
             <input type="hidden" name="accion" value="extraer_urls_leads"/>
             <button type="submit">ExtraerURLs</button>
-        </form>            
+        </form>   
+        <form method="POST">
+            <input type="hidden" name="accion" value="scrap_urls_filtradas"/>
+            <button type="submit">Scrapping URLs Filtradas</button>
+        </form>          
     </details>            
         
         <hr>
@@ -1514,6 +1581,11 @@ fetch("/progreso_scrap")
     <div style="color:white;font-size:20px;">⏳ Cargando datos... por favor espera</div>
     <div class="spinner"></div>
     </div>
+    <div class="scrap-container">
+        <h3>Logs de Scraping</h3>
+        <pre>{{ logs_text }}</pre>
+    </div>
+    
 
     </html>
     """
