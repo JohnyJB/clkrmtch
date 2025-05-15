@@ -229,6 +229,22 @@ def realizar_scraping(url: str) -> str:
 
     return texto_total[:MAX_SCRAPING_CHARS] if texto_total.strip() else "-"
 
+#Scrapping de urls
+def extraer_urls_de_web(base_url: str) -> str:
+    """Extrae todos los enlaces href del sitio principal de la empresa."""
+    base_url = _asegurar_https(base_url)
+    try:
+        resp = requests.get(base_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+        if resp.status_code == 200:
+            sopa = BeautifulSoup(resp.text, "html.parser")
+            enlaces = [a.get("href") for a in sopa.find_all("a", href=True)]
+            # Filtrar duplicados y normalizar
+            enlaces_filtrados = list(set(filter(None, enlaces)))
+            return "\n".join(enlaces_filtrados)
+    except Exception as e:
+        print(f"[ERROR] al extraer enlaces de {base_url}:", e)
+    return "-"
+
 
 #####################################
 # 2) Función para analizar con ChatGPT
@@ -839,7 +855,22 @@ def index():
                         status_msg += "Super scraping completado para todos los leads.<br>"
                     else:
                         status_msg += "Cargue una base de leads primero.<br>"
-                        
+# Extrae urls del scrapp
+    elif accion == "extraer_urls_leads":
+        if not df_leads.empty:
+            df_leads["URLs on WEB"] = "-"
+            scraping_progress["total"] = len(df_leads)
+            scraping_progress["procesados"] = 0
+            for idx, row in df_leads.iterrows():
+                url = str(row.get(mapeo_website, "")).strip()
+                if url:
+                    urls_extraidas = extraer_urls_de_web(url)
+                    df_leads.at[idx, "URLs on WEB"] = urls_extraidas
+                scraping_progress["procesados"] += 1
+            status_msg += "Extracción de URLs completada para todos los leads.<br>"
+        else:
+            status_msg += "Primero carga una base de leads.<br>"
+                                    
 # PDF para Plan Estratégico
         pdf_file = request.files.get("pdf_plan_estrategico")
         if pdf_file and pdf_file.filename.endswith(".pdf"):
@@ -1344,7 +1375,10 @@ Laura"
             <input type="hidden" name="accion" value="super_scrap_leads"/>
             <button type="submit">Super Scraping de Leads</button>
         </form>
-        
+        <form method="POST">
+            <input type="hidden" name="accion" value="extraer_urls_leads"/>
+            <button type="submit">ExtraerURLs</button>
+        </form>            
     </details>            
         
         <hr>
