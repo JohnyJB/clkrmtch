@@ -838,20 +838,29 @@ def index():
     accion = request.form.get("accion", "")
     if request.method == "POST":
         if accion == "extraer_urls_leads":
-            status_msg += f"🔗 Iniciando scraping de: {url}<br>"
+            logs_urls_scrap.clear()
             if not df_leads.empty:
                 df_leads["URLs on WEB"] = "-"
                 scraping_progress["total"] = len(df_leads)
                 scraping_progress["procesados"] = 0
+
                 for idx, row in df_leads.iterrows():
                     url = str(row.get(mapeo_website, "")).strip()
+
                     if url:
+                        logs_urls_scrap.append(f"🔗 Iniciando scraping de: {url}")
                         urls_extraidas = extraer_urls_de_web(url)
                         df_leads.at[idx, "URLs on WEB"] = urls_extraidas
+                        logs_urls_scrap.append(f"✅ Finalizado: {url}")
+                    else:
+                        logs_urls_scrap.append(f"⚠️ URL vacía en fila {idx}")
+
                     scraping_progress["procesados"] += 1
+
                 status_msg += "Extracción de URLs completada para todos los leads.<br>"
             else:
                 status_msg += "Primero carga una base de leads.<br>"
+
                 
         if accion == "super_scrap_leads":
                    
