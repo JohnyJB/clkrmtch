@@ -189,7 +189,7 @@ def realizar_super_scraping(base_url: str) -> str:
         try:
             full_url = base_url.rstrip("/") + ruta
             full_url = _asegurar_https(full_url)
-            resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+            resp = requests.get(full_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
             if resp.status_code == 200:
                 sopa = BeautifulSoup(resp.text, "html.parser")
                 texto = sopa.get_text()
@@ -229,6 +229,21 @@ def realizar_scraping(url: str) -> str:
 
     return texto_total[:MAX_SCRAPING_CHARS] if texto_total.strip() else "-"
 
+#Scrapping de urls
+def extraer_urls_de_web(base_url: str) -> str:
+    """Extrae todos los enlaces href del sitio principal de la empresa."""
+    base_url = _asegurar_https(base_url)
+    try:
+        resp = requests.get(base_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+        if resp.status_code == 200:
+            sopa = BeautifulSoup(resp.text, "html.parser")
+            enlaces = [a.get("href") for a in sopa.find_all("a", href=True)]
+            # Filtrar duplicados y normalizar
+            enlaces_filtrados = list(set(filter(None, enlaces)))
+            return "\n".join(enlaces_filtrados)
+    except Exception as e:
+        print(f"[ERROR] al extraer enlaces de {base_url}:", e)
+    return "-"
 
 
 #####################################
@@ -822,6 +837,22 @@ def index():
     url_proveedor_global = ""  # Moveremos esto a variable local
     accion = request.form.get("accion", "")
     if request.method == "POST":
+        if accion == "extraer_urls_leads":
+            status_msg += f"🔗 Iniciando scraping de: {url}<br>"
+            if not df_leads.empty:
+                df_leads["URLs on WEB"] = "-"
+                scraping_progress["total"] = len(df_leads)
+                scraping_progress["procesados"] = 0
+                for idx, row in df_leads.iterrows():
+                    url = str(row.get(mapeo_website, "")).strip()
+                    if url:
+                        urls_extraidas = extraer_urls_de_web(url)
+                        df_leads.at[idx, "URLs on WEB"] = urls_extraidas
+                    scraping_progress["procesados"] += 1
+                status_msg += "Extracción de URLs completada para todos los leads.<br>"
+            else:
+                status_msg += "Primero carga una base de leads.<br>"
+                
         if accion == "super_scrap_leads":
                    
                     if not df_leads.empty:
@@ -831,24 +862,27 @@ def index():
                         for idx, row in df_leads.iterrows():
                             url = str(row.get(mapeo_website, "")).strip()
                             if url:
-                                texto_scrap = realizar_scraping(url)
-                                #texto_scrap = realizar_super_scraping(url)
-                                df_leads.at[idx, "super_scrapping"] = texto_scrap
+                                print(f"[SCRAP-URLS] Iniciando extracción de URLs en: {url}")
+                                urls_extraidas = extraer_urls_de_web(url)
+                                df_leads.at[idx, "URLs on WEB"] = urls_extraidas
+                            else:
+                                print(f"[SCRAP-URLS] No se encontró URL en el lead idx={idx}")
                                 scraping_progress["procesados"] += 1
                                 porcentaje = int(scraping_progress["procesados"] / scraping_progress["total"] * 100)
                                 print(f"[LOG] Scrapping de {url} listo ({scraping_progress['procesados']} de {scraping_progress['total']}) - {porcentaje}%")
                         status_msg += "Super scraping completado para todos los leads.<br>"
                     else:
                         status_msg += "Cargue una base de leads primero.<br>"
-                        
-# PDF para Plan Estratégico
-        pdf_file = request.files.get("pdf_plan_estrategico")
-        if pdf_file and pdf_file.filename.endswith(".pdf"):
-            ruta_temp = "plan_temp.pdf"
-            pdf_file.save(ruta_temp)
-            texto_extraido = extraer_texto_pdf(ruta_temp)
-            plan_estrategico = texto_extraido
-            status_msg += "Texto extraído del PDF cargado en Plan Estratégico.<br>"
+
+        if accion == "subir_pdf_plan":                                   
+        # PDF para Plan Estratégico
+                pdf_file = request.files.get("pdf_plan_estrategico")
+                if pdf_file and pdf_file.filename.endswith(".pdf"):
+                    ruta_temp = "plan_temp.pdf"
+                    pdf_file.save(ruta_temp)
+                    texto_extraido = extraer_texto_pdf(ruta_temp)
+                    plan_estrategico = texto_extraido
+                    status_msg += "Texto extraído del PDF cargado en Plan Estratégico.<br>"
 
         # Clasificar area
         if accion == "clasificar_areas":
@@ -1078,7 +1112,7 @@ def index():
                     resp.headers["Content-Disposition"] = "attachment; filename=leads_final.xlsx"
                     resp.headers["Content-Type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     return resp
-
+    
 
     # Bloque informativo (en español)
 
@@ -1345,7 +1379,10 @@ Laura"
             <input type="hidden" name="accion" value="super_scrap_leads"/>
             <button type="submit">Super Scraping de Leads</button>
         </form>
-        
+        <form method="POST">
+            <input type="hidden" name="accion" value="extraer_urls_leads"/>
+            <button type="submit">ExtraerURLs</button>
+        </form>            
     </details>            
         
         <hr>
