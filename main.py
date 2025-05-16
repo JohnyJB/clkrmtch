@@ -44,6 +44,33 @@ def decrypt_api_key(encrypted_data: bytes) -> str:
     decrypted_bytes = f.decrypt(encrypted_data)
     return decrypted_bytes.decode("utf-8")
 
+def scrapear_linkedin_empresa(linkedin_url: str) -> str:
+    """
+    Hace scraping de un perfil público de empresa en LinkedIn.
+    Extrae texto visible en la descripción o secciones relevantes.
+    """
+    linkedin_url = _asegurar_https(linkedin_url)
+    try:
+        if "linkedin.com/company/" not in linkedin_url:
+            return "-"
+        headers = {
+            "User-Agent": "Mozilla/5.0",
+        }
+        resp = requests.get(linkedin_url, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            print(f"[ERROR] LinkedIn HTTP {resp.status_code} para {linkedin_url}")
+            return "-"
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        texto = soup.get_text(separator=" ", strip=True)
+        limpio = _limpiar_caracteres_raros(texto)
+        return limpio[:1500]  # Puedes ajustar el tamaño máximo
+
+    except Exception as e:
+        print(f"[ERROR] al scrapear LinkedIn {linkedin_url}:", e)
+        return "-"
+
+
 def load_api_key_from_file(file_path: str) -> str:
     """
     Lee el contenido cifrado de 'api.txt' y lo desencripta.
@@ -159,11 +186,13 @@ def _limpiar_caracteres_raros(texto: str) -> str:
     return texto.strip()
 
 def _asegurar_https(url: str) -> str:
-    """Si la URL no empieza con http(s)://, antepone https://."""
+    """Asegura que la URL comience con https://"""
     url = url.strip()
     if not url:
         return ""
-    if not re.match(r'^https?://', url, re.IGNORECASE):
+    if url.startswith("http://"):
+        url = url.replace("http://", "https://")
+    elif not url.startswith("https://"):
         url = "https://" + url
     return url
 
@@ -197,10 +226,11 @@ def realizar_super_scraping(base_url: str) -> str:
         try:
             full_url = base_url.rstrip("/") + ruta
             full_url = _asegurar_https(full_url)
-            resp = requests.get(full_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+            resp = requests.get(full_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8, verify=False)
             if resp.status_code == 200:
                 sopa = BeautifulSoup(resp.text, "html.parser")
                 texto = sopa.get_text()
+                print(f"[DEBUG] Texto obtenido: {texto[:300]}")
                 limpio = _limpiar_caracteres_raros(texto[:2000])
                 texto_total += f"\n[{ruta}]\n{limpio}\n"
         except:
@@ -220,11 +250,12 @@ def realizar_scraping(url: str) -> str:
         try:
             full_url = url.rstrip("/") + path
             print("[SCRAPING]", full_url)
-            resp = requests.get(full_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
+            resp = requests.get(full_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5, verify=False)
 
             if resp.status_code == 200:
                 sopa = BeautifulSoup(resp.text, "html.parser")
                 texto = sopa.get_text()
+                print(f"[DEBUG] Texto obtenido: {texto[:300]}")
                 texto = _limpiar_caracteres_raros(texto)
                 texto_total += texto + "\n"
             else:
@@ -242,7 +273,7 @@ def extraer_urls_de_web(base_url: str) -> str:
     """Extrae todos los enlaces href del sitio principal de la empresa y los devuelve separados por coma y espacio."""
     base_url = _asegurar_https(base_url)
     try:
-        resp = requests.get(base_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+        resp = requests.get(base_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8, verify=False)
         if resp.status_code == 200:
             sopa = BeautifulSoup(resp.text, "html.parser")
             enlaces = [a.get("href") for a in sopa.find_all("a", href=True)]
@@ -267,24 +298,140 @@ def realizar_scrap_adicional(urls_csv: str) -> str:
     filtra aquellas que contienen rutas comunes, y concatena el texto de scraping.
     """
     urls = [u.strip() for u in urls_csv.split(",") if u.strip()]
-    matching_urls = [u for u in urls if any(path in u for path in COMMON_INFO_PATHS)]
     
+    # 🔒 Filtrar dominios no deseados como LinkedIn
+    urls = [u for u in urls if not any(domain in u.lower() for domain in ["linkedin.com"])]
+
+    # 🎯 Solo tomar las rutas que coinciden con las comunes
+    matching_urls = [u for u in urls if any(path in u for path in COMMON_INFO_PATHS)]
+
     print(f"[SCRAP-ADICIONAL] Coincidencias encontradas: {len(matching_urls)}")
 
     texto_total = ""
     for link in matching_urls:
         try:
             full_url = _asegurar_https(link)
-            resp = requests.get(full_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8)
+            resp = requests.get(full_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8, verify=False)
             if resp.status_code == 200:
                 sopa = BeautifulSoup(resp.text, "html.parser")
                 texto = sopa.get_text()
+                print(f"[DEBUG] Texto obtenido: {texto[:300]}")
                 limpio = _limpiar_caracteres_raros(texto[:3000])
                 texto_total += f"\n[{link}]\n{limpio}\n"
         except Exception as e:
             print(f"[ERROR] Scraping adicional falló en {link} →", e)
 
     return texto_total if texto_total.strip() else "-"
+
+#Extraer redes de scrapp
+def extraer_contactos_redes(url: str) -> dict:
+    """Extrae teléfono y redes sociales de un sitio web."""
+    resultado = {
+        "web_celular": "",
+        "web_instagram": "",
+        "web_facebook": "",
+        "web_linkedin": ""
+    }
+
+    url = _asegurar_https(url)
+    try:
+        resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8, verify=False)
+        if resp.status_code != 200:
+            return resultado
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        enlaces = [a.get("href") for a in soup.find_all("a", href=True)]
+
+        for href in enlaces:
+            if not href: continue
+            if "tel:" in href:
+                resultado["web_celular"] = href.replace("tel:", "").strip()
+            elif "facebook.com" in href and not resultado["web_facebook"]:
+                resultado["web_facebook"] = href
+            elif "instagram.com" in href and not resultado["web_instagram"]:
+                resultado["web_instagram"] = href
+            elif "linkedin.com" in href and not resultado["web_linkedin"]:
+                resultado["web_linkedin"] = href
+
+        # Buscar también por texto (teléfono sin <a href="tel:...">)
+        texto = soup.get_text()
+        match_tel = re.search(r"\(?\+?\d{1,3}[\s\-\.]?\(?\d{2,3}\)?[\s\-\.]?\d{3,4}[\s\-\.]?\d{4}", texto)
+        if match_tel and not resultado["web_celular"]:
+            resultado["web_celular"] = match_tel.group()
+
+    except Exception as e:
+        print(f"[ERROR] al extraer redes/teléfono de {url}:", e)
+
+    return resultado
+#Generar desafíos
+def generar_desafios_por_lead(row: pd.Series) -> dict:
+    if client is None:
+        return {"Desafio 1": "-", "Desafio 2": "-", "Desafio 3": "-"}
+
+    title = str(row.get("title", "-"))
+    nivel = str(row.get("Nivel Jerarquico", "-"))
+    subarea = str(row.get("area_menor", "-"))
+    municipio = str(row.get("Municipio", "-"))
+    estado = str(row.get("Estado", "-"))
+    pais = str(row.get("Pais", "-"))
+    objetivo = str(row.get("Objetivo", "-"))
+    productos = str(row.get("Productos o Servicios", "-"))
+    industria = str(row.get("Industria Mayor", "-"))
+    emp_count = str(row.get("Company Employee Count Range", "-"))
+    founded = str(row.get("Company Founded", "-"))
+    descripcion = str(row.get("linkedin_description", "-"))
+    scrap_basico = str(row.get("scrapping", "-"))
+    scrap_adicional = str(row.get("Scrapping Adicional", "-"))
+
+    prompt = f"""
+Eres un analista de negocio B2B. Con base en esta información de un lead, genera 3 desafíos específicos que esta persona podría estar enfrentando en su empresa.
+
+Devuelve la respuesta en este JSON:
+{{
+  "Desafio 1": "...",
+  "Desafio 2": "...",
+  "Desafio 3": "..."
+}}
+
+Datos del lead:
+- Puesto: {title}
+- Nivel Jerárquico: {nivel}
+- Subárea: {subarea}
+- Ubicación: Municipio: {municipio}, Estado: {estado}, País: {pais}
+- Objetivo del negocio: {objetivo}
+- Productos o Servicios: {productos}
+- Industria: {industria}
+- Rango de empleados: {emp_count}
+- Año de Fundación: {founded}
+- Descripción en LinkedIn: {descripcion}
+- Texto del sitio web: {scrap_basico}
+- Texto adicional del sitio web: {scrap_adicional}
+"""
+
+    try:
+        respuesta = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=800,
+            temperature=0.7,
+            timeout=30
+        )
+        content = respuesta.choices[0].message.content.strip()
+
+        if content.startswith("```json"):
+            content = content.replace("```json", "").strip()
+        if content.endswith("```"):
+            content = content[:-3].strip()
+
+        parsed = json.loads(content)
+        return {
+            "Desafio 1": parsed.get("Desafio 1", "-"),
+            "Desafio 2": parsed.get("Desafio 2", "-"),
+            "Desafio 3": parsed.get("Desafio 3", "-")
+        }
+    except Exception as e:
+        print("[ERROR] al generar desafíos:", e)
+        return {"Desafio 1": "-", "Desafio 2": "-", "Desafio 3": "-"}
 
 
 
@@ -834,7 +981,8 @@ def tabla_html(df: pd.DataFrame, max_filas=10) -> str:
         return "<p><em>DataFrame vacío</em></p>"
 
     # Crear una copia solo para la visualización, eliminando las columnas ocultas
-    subset = df.drop(columns=["scrapping_proveedor", "scrapping"], errors="ignore").head(max_filas)
+    #subset = df.drop(columns=["scrapping_proveedor", "scrapping"], errors="ignore").head(max_filas)
+    subset = df.head(max_filas)
     cols = list(subset.columns)
 
     anchas = [
@@ -852,7 +1000,7 @@ def tabla_html(df: pd.DataFrame, max_filas=10) -> str:
     rows_html = ""
     for _, row in subset.iterrows():
         row_html = "".join(
-            f"<td class='col-ancha'>{str(row[col])}</td>" if col in anchas else f"<td>{str(row[col])}</td>"
+            f"<td class='col-ancha'><div class='cell-collapsible'>{str(row[col])}</div></td>" if col in anchas else f"<td><div class='cell-collapsible'>{str(row[col])}</div></td>"
             for col in cols
         )
         rows_html += f"<tr>{row_html}</tr>"
@@ -878,6 +1026,51 @@ def index():
     url_proveedor_global = ""  # Moveremos esto a variable local
     accion = request.form.get("accion", "")
     if request.method == "POST":
+        if accion == "generar_desafios":
+            if not df_leads.empty:
+                for col in ["Desafio 1", "Desafio 2", "Desafio 3"]:
+                    if col not in df_leads.columns:
+                        df_leads[col] = "-"
+
+                for idx, row in df_leads.iterrows():
+                    if all(df_leads.at[idx, col] in ["-", "", None] for col in ["Desafio 1", "Desafio 2", "Desafio 3"]):
+                        resultado = generar_desafios_por_lead(row)
+                        df_leads.at[idx, "Desafio 1"] = resultado.get("Desafio 1", "-")
+                        df_leads.at[idx, "Desafio 2"] = resultado.get("Desafio 2", "-")
+                        df_leads.at[idx, "Desafio 3"] = resultado.get("Desafio 3", "-")
+                status_msg += "Desafíos generados con éxito.<br>"
+            else:
+                status_msg += "Primero debes cargar una base de leads.<br>"
+        if accion == "scrapear_linkedin_empresas":
+            if not df_leads.empty and "Company Linkedin Url" in df_leads.columns:
+                if "linkedin_description" not in df_leads.columns:
+                    df_leads["linkedin_description"] = "-"
+
+                for idx, row in df_leads.iterrows():
+                    linkedin_url = str(row.get("Company Linkedin Url", "")).strip()
+                    if linkedin_url:
+                        descripcion = scrapear_linkedin_empresa(linkedin_url)
+                        df_leads.at[idx, "linkedin_description"] = descripcion
+                status_msg += "Scraping de LinkedIn completado y guardado en 'linkedin_description'.<br>"
+            else:
+                status_msg += "No se encontró la columna 'Company Linkedin Url' o no hay datos.<br>"
+
+        if accion == "extraer_redes_y_telefono":
+            if not df_leads.empty:
+                for col in ["web_celular", "web_instagram", "web_facebook", "web_linkedin"]:
+                    if col not in df_leads.columns:
+                        df_leads[col] = ""
+
+                for idx, row in df_leads.iterrows():
+                    sitio = str(row.get(mapeo_website, "")).strip()
+                    if sitio:
+                        info = extraer_contactos_redes(sitio)
+                        for k, v in info.items():
+                            df_leads.at[idx, k] = v
+                status_msg += "Redes sociales y teléfonos extraídos desde los sitios web.<br>"
+            else:
+                status_msg += "Carga primero tu base de leads para extraer redes y teléfonos.<br>"
+
         if accion == "scrap_urls_filtradas":
             if not df_leads.empty:
                 if "URLs on WEB" not in df_leads.columns:
@@ -924,27 +1117,48 @@ def index():
             else:
                 status_msg += "Primero carga una base de leads.<br>"
 
-                
         if accion == "super_scrap_leads":
-                   
-                    if not df_leads.empty:
-                        df_leads["super_scrapping"] = "-"
-                        scraping_progress["total"] = len(df_leads)
-                        scraping_progress["procesados"] = 0
-                        for idx, row in df_leads.iterrows():
-                            url = str(row.get(mapeo_website, "")).strip()
-                            if url:
-                                print(f"[SCRAP-URLS] Iniciando extracción de URLs en: {url}")
-                                urls_extraidas = extraer_urls_de_web(url)
-                                df_leads.at[idx, "URLs on WEB"] = urls_extraidas
-                            else:
-                                print(f"[SCRAP-URLS] No se encontró URL en el lead idx={idx}")
-                                scraping_progress["procesados"] += 1
-                                porcentaje = int(scraping_progress["procesados"] / scraping_progress["total"] * 100)
-                                print(f"[LOG] Scrapping de {url} listo ({scraping_progress['procesados']} de {scraping_progress['total']}) - {porcentaje}%")
-                        status_msg += "Super scraping completado para todos los leads.<br>"
+            if not df_leads.empty:
+                if "scrapping" not in df_leads.columns:
+                    df_leads["scrapping"] = "-"
+                if "URLs on WEB" not in df_leads.columns:
+                    df_leads["URLs on WEB"] = "-"
+                
+                scraping_progress["total"] = len(df_leads)
+                scraping_progress["procesados"] = 0
+
+                for idx, row in df_leads.iterrows():
+                    url = str(row.get(mapeo_website, "")).strip()
+                    if url:
+                        print(f"[SCRAP-LEAD] Scraping principal en: {url}")
+                        try:
+                            texto_scrap = realizar_scraping(url)
+                            df_leads.at[idx, "scrapping"] = texto_scrap if texto_scrap.strip() else "-"
+                        except Exception as e:
+                            print(f"[ERROR] Scraping lead idx={idx}: {e}")
+                            df_leads.at[idx, "scrapping"] = "-"
+
+                        print(f"[SCRAP-URLS] Extrayendo URLs de: {url}")
+                        try:
+                            urls_extraidas = extraer_urls_de_web(url)
+                            df_leads.at[idx, "URLs on WEB"] = urls_extraidas if urls_extraidas.strip() else "-"
+                        except Exception as e:
+                            print(f"[ERROR] Extrayendo URLs idx={idx}: {e}")
+                            df_leads.at[idx, "URLs on WEB"] = "-"
                     else:
-                        status_msg += "Cargue una base de leads primero.<br>"
+                        print(f"[SCRAP-LEAD] Sin URL en idx={idx}")
+                        df_leads.at[idx, "scrapping"] = "-"
+                        df_leads.at[idx, "URLs on WEB"] = "-"
+
+                    scraping_progress["procesados"] += 1
+                    porcentaje = int(scraping_progress["procesados"] / scraping_progress["total"] * 100)
+                    print(f"[LOG] Scrapping {scraping_progress['procesados']} de {scraping_progress['total']} ({porcentaje}%)")
+
+                status_msg += "Scraping principal y extracción de URLs completados para todos los leads.<br>"
+            else:
+                status_msg += "Cargue una base de leads primero.<br>"
+                        
+
 
         if accion == "subir_pdf_plan":                                   
         # PDF para Plan Estratégico
@@ -1365,6 +1579,42 @@ Laura"
                 border-radius: 50%;
                 animation: spin 1s linear infinite;
                 }}
+            .cell-collapsible {{
+                max-height: 60px;
+                overflow: hidden;
+                position: relative;
+                cursor: pointer;
+                transition: max-height 0.3s ease;
+                white-space: pre-wrap;
+            }}
+            .cell-collapsible.expanded {{
+                max-height: 1000px;
+            }}
+            .cell-collapsible::after {{
+                content: '▼';
+                position: absolute;
+                bottom: 5px;
+                right: 10px;
+                font-size: 12px;
+                color: gray;
+            }}
+            .cell-collapsible.expanded::after {{
+                content: '▲';
+            }}
+
+            table th {{
+                background-color: #1E90FF;
+                color: #fff;
+                position: sticky;
+                top: 0;
+                z-index: 1;
+            }}
+
+            .container-wide {{
+                max-height: 600px;
+                overflow-y: auto;
+            }}
+
             @keyframes spin {{
                 0% {{ transform: rotate(0deg); }}
                 100% {{ transform: rotate(360deg); }}
@@ -1449,7 +1699,7 @@ Laura"
         </form>
         <form method="POST">
             <input type="hidden" name="accion" value="super_scrap_leads"/>
-            <button type="submit">Super Scraping de Leads</button>
+            <button type="submit">Scraping de Leads</button>
         </form>
         <form method="POST">
             <input type="hidden" name="accion" value="extraer_urls_leads"/>
@@ -1458,7 +1708,20 @@ Laura"
         <form method="POST">
             <input type="hidden" name="accion" value="scrap_urls_filtradas"/>
             <button type="submit">Scrapping URLs Filtradas</button>
-        </form>          
+        </form> 
+        <form method="POST">
+            <input type="hidden" name="accion" value="extraer_redes_y_telefono"/>
+            <button type="submit">Extraer Redes y Teléfono</button>
+        </form>
+        <form method="POST">
+            <input type="hidden" name="accion" value="scrapear_linkedin_empresas"/>
+            <button type="submit">Scrapear LinkedIn Empresas</button>
+        </form>  
+        <form method="POST">
+            <input type="hidden" name="accion" value="generar_desafios"/>
+            <button type="submit">Determinar Desafíos con IA</button>
+        </form>
+                 
     </details>            
         
         <hr>
@@ -1572,6 +1835,13 @@ fetch("/progreso_scrap")
     }}
     }});
 }}
+document.addEventListener("DOMContentLoaded", () => {{
+    document.querySelectorAll(".cell-collapsible").forEach(cell => {{
+        cell.addEventListener("click", () => {{
+            cell.classList.toggle("expanded");
+        }});
+    }});
+}});
 </script>
 
 
