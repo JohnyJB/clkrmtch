@@ -18,11 +18,12 @@ from pdf2image import convert_from_path
 # Rutas comunes para explorar además de la principal
 EXTRA_PATHS = ["/about", "/about-us", "/nosotros", "/quienes-somos", "/servicios", "/services"]
 COMMON_INFO_PATHS = [
-    "/about", "/about-us", "/nosotros", "/quienes-somos", "/servicios", "/services",
-    "/company", "/corporate", "/equipo", "/team", "/products", "/solutions",
-    "/what-we-do", "/mission", "/mision", "/historia", "/history"
+    "/about", "/about-us", "/nosotros", "/quienes-somos", "/servicios", "/services", "/recursos",
+    "/company", "/compañia", "/compania", "/equipo", "/team", "/products", "/productos", "/solutions", "/soluciones",
+    "/what-we-do", "/mission", "/mision", "/historia", "/history", "/markets", "/industries", "/cases", "/case-studies",
+    "/casestudies", "/casosdeexito", "/sobre-nosotros"
 ]
-
+#corporate 
 # Si tu wrapper es distinto, adapta la importación:
 try:
     from openai import OpenAI
@@ -1247,40 +1248,37 @@ def index():
         
         
         if accion == "clasificar_puestos":
-            #catalogo_file = request.files.get("catalogo_puestos_csv")
-            columna_comparacion_catalogo = request.form.get("columna_comparacion_catalogo", "Puesto Director")
-
             if os.path.exists("catalogopuesto.xlsx"):
                 try:
                     global catalogo_df
-                    catalogo_df = pd.read_excel("catalogopuesto.xlsx")  # Usa Excel en vez de CSV
-                    columna_comparacion_catalogo = "Puesto Director"  # o el nombre que uses
+                    catalogo_df = pd.read_excel("catalogopuesto.xlsx")
 
                     def clasificar_puesto(title):
                         for _, row in catalogo_df.iterrows():
-                            valor_cat = str(row.get(columna_comparacion_catalogo, "")).lower()
-                            if valor_cat and valor_cat in str(title).lower():
-                                return row.get("Clasificación", "")
+                            palabra_clave = str(row.get("Palabra Clave", "")).strip().lower()
+                            if palabra_clave and palabra_clave in str(title).lower():
+                                return row.get("Nivel Jerárquico", "")
                         return "-"
 
                     if not df_leads.empty:
                         df_leads["Nivel Jerarquico"] = df_leads[mapeo_puesto].apply(clasificar_puesto)
-                        # Reordenar columnas para que 'Nivel Jerarquico' quede después de 'title' o el mapeo actual
+
                         cols = list(df_leads.columns)
                         if mapeo_puesto in cols and "Nivel Jerarquico" in cols:
                             cols.remove("Nivel Jerarquico")
                             insert_idx = cols.index(mapeo_puesto) + 1
                             cols.insert(insert_idx, "Nivel Jerarquico")
                             df_leads = df_leads[cols]
-                        status_msg += "Clasificación de puestos aplicada correctamente desde catalogopuesto.xlsx.<br>"
+
+                        status_msg += "Clasificación de puestos aplicada usando 'Palabra Clave' y 'Nivel Jerárquico'.<br>"
                     else:
                         status_msg += "Carga primero tu base de leads antes de clasificar.<br>"
 
                 except Exception as e:
                     status_msg += f"Error al cargar o clasificar con catalogopuesto.xlsx: {e}<br>"
-
             else:
-                status_msg += "No se subió ningún archivo de catálogo.<br>"
+                status_msg += "No se encontró el archivo catalogopuesto.xlsx.<br>"
+
 
         # Subir CSV de leads
         leadf = request.files.get("leads_csv")
