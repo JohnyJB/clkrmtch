@@ -1326,9 +1326,10 @@ def index():
                     catalogo_df = pd.read_excel("catalogopuesto.xlsx")
 
                     def clasificar_puesto(title):
+                        title = str(title).strip().lower()
                         for _, row in catalogo_df.iterrows():
                             palabra_clave = str(row.get("Palabra Clave", "")).strip().lower()
-                            if palabra_clave and palabra_clave in str(title).lower():
+                            if palabra_clave == title:
                                 return row.get("Nivel Jerárquico", "")
                         return "-"
 
