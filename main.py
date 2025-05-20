@@ -1327,9 +1327,15 @@ def index():
 
                     def clasificar_puesto(title):
                         title = str(title).strip().lower()
-                        for _, row in catalogo_df.iterrows():
+
+                        # Ordenar catálogo por longitud de palabra clave descendente (para priorizar coincidencias más específicas)
+                        catalogo_ordenado = catalogo_df.copy()
+                        catalogo_ordenado["longitud"] = catalogo_ordenado["Palabra Clave"].astype(str).apply(len)
+                        catalogo_ordenado = catalogo_ordenado.sort_values(by="longitud", ascending=False)
+
+                        for _, row in catalogo_ordenado.iterrows():
                             palabra_clave = str(row.get("Palabra Clave", "")).strip().lower()
-                            if palabra_clave == title:
+                            if palabra_clave and palabra_clave in title:
                                 return row.get("Nivel Jerárquico", "")
                         return "-"
 
