@@ -106,16 +106,6 @@ if OpenAI:
 else:
     print("[ERROR] La clase OpenAI no está disponible. Por favor revisa tu librería o wrapper de OpenAI.")
 
-# Estados para saber si ya se ejecutó cada acción
-acciones_realizadas = {
-    "clasificar_puestos": False,
-    "clasificar_areas": False,
-    "clasificar_industrias": False,
-    "super_scrap_leads": False,
-    "generar_desafios": False,
-    "generar_tabla": False
-}
-
 app = Flask(__name__)
 app.secret_key = "CLAVE_SECRETA_PARA_SESSION"  # si deseas usar session
 
@@ -1072,21 +1062,6 @@ def index():
     url_proveedor_global = ""  # Moveremos esto a variable local
     accion = request.form.get("accion", "")
     if request.method == "POST":
-        if accion == "guardar_custom_fields":
-            industrias_interes = request.form.get("industrias_interes", "").strip()
-            area_interes = request.form.get("area_interes", "").strip()
-            plan_estrategico = request.form.get("plan_estrategico", "").strip()
-            status_msg += f"Campos personalizados guardados.<br>"
-
-        url_scrap_plan = request.form.get("url_scrap_plan", "").strip()
-        if url_scrap_plan:
-            try:
-                texto_scrapeado = realizar_scraping(url_scrap_plan)
-                plan_estrategico = texto_scrapeado
-                status_msg += f"Texto extraído desde {url_scrap_plan} para Plan Estratégico.<br>"
-            except Exception as e:
-                status_msg += f"Error al hacer scraping de {url_scrap_plan}: {e}<br>"
-        
         if accion == "generar_desafios":
             if not df_leads.empty:
                 for col in ["Desafio 1", "Desafio 2", "Desafio 3"]:
@@ -1099,7 +1074,6 @@ def index():
                         df_leads.at[idx, "Desafio 1"] = resultado.get("Desafio 1", "-")
                         df_leads.at[idx, "Desafio 2"] = resultado.get("Desafio 2", "-")
                         df_leads.at[idx, "Desafio 3"] = resultado.get("Desafio 3", "-")
-                acciones_realizadas["generar_desafios"] = True
                 status_msg += "Desafíos generados con éxito.<br>"
             else:
                 status_msg += "Primero debes cargar una base de leads.<br>"
@@ -1214,7 +1188,6 @@ def index():
 
                     scraping_progress["procesados"] += 1
                     porcentaje = int(scraping_progress["procesados"] / scraping_progress["total"] * 100)
-                    acciones_realizadas["super_scrap_leads"] = True
                     print(f"[LOG] Scrapping {scraping_progress['procesados']} de {scraping_progress['total']} ({porcentaje}%)")
 
                 status_msg += "Scraping principal y extracción de URLs completados para todos los leads.<br>"
@@ -1258,7 +1231,6 @@ def index():
                                 insert_idx = cols.index(mapeo_puesto) + 1
                                 cols.insert(insert_idx, col)
                         df_leads = df_leads[cols]
-                        acciones_realizadas["clasificar_areas"] = True
 
                         status_msg += "Clasificación de áreas aplicada correctamente desde catalogoarea.xlsx.<br>"
                     else:
@@ -1301,7 +1273,7 @@ def index():
                         insert_idx = cols.index(mapeo_industria) + 1
                         cols.insert(insert_idx, 'Industria Mayor')
                         df_leads = df_leads[cols]
-                    acciones_realizadas["clasificar_industrias"] = True
+
                     status_msg += "Clasificación de industrias aplicada desde catalogoindustrias.csv.<br>"
                 else:
                     status_msg += "No hay datos para clasificar o falta el archivo catalogoindustrias.csv.<br>"
@@ -1332,7 +1304,7 @@ def index():
                             insert_idx = cols.index(mapeo_puesto) + 1
                             cols.insert(insert_idx, "Nivel Jerarquico")
                             df_leads = df_leads[cols]
-                            acciones_realizadas["clasificar_puestos"] = True
+
                         status_msg += "Clasificación de puestos aplicada usando 'Palabra Clave' y 'Nivel Jerárquico'.<br>"
                     else:
                         status_msg += "Carga primero tu base de leads antes de clasificar.<br>"
@@ -1369,8 +1341,6 @@ def index():
                 start_row, end_row = 0, len(df_full) - 1
 
             df_leads = df_full.iloc[start_row:end_row+1].copy()
-            for k in acciones_realizadas:
-                acciones_realizadas[k] = False
 
             status_msg += (
                 f"Leads CSV cargado. Filas totales={len(df_full)}. "
@@ -1434,7 +1404,6 @@ def index():
         elif accion == "generar_tabla":
             procesar_leads()
             generar_contenido_para_todos()
-            acciones_realizadas["generar_tabla"] = True
             status_msg += "Leads procesados y contenido de ChatGPT generado.<br>"
 
         elif accion == "exportar_archivo":
@@ -1535,15 +1504,6 @@ Laura"
             opciones_select += f"<option value='{col}' {selected}>{col}</option>"
     else:
         opciones_select = "<option selected value='Puesto Director'>Puesto Director</option>"
-
-    # Asignar colores según acciones realizadas
-    color_puestos = "green" if acciones_realizadas["clasificar_puestos"] else "#1E90FF"
-    color_areas = "green" if acciones_realizadas["clasificar_areas"] else "#1E90FF"
-    color_industrias = "green" if acciones_realizadas["clasificar_industrias"] else "#1E90FF"
-    color_scrap = "green" if acciones_realizadas["super_scrap_leads"] else "#1E90FF"
-    color_desafios = "green" if acciones_realizadas["generar_desafios"] else "#1E90FF"
-    color_tabla = "green" if acciones_realizadas["generar_tabla"] else "#1E90FF"
-        
         
     page_html = f"""
     <html>
@@ -1760,27 +1720,19 @@ Laura"
     <summary style="cursor: pointer; font-weight: bold;">➕ Clasificadores</summary>
         <form method="POST" enctype="multipart/form-data">
             <input type="hidden" name="accion" value="clasificar_puestos"/>
-            <button type="submit" style="background-color: {color_puestos};">
-                Clasificar Puesto
-            </button>
+            <button type="submit">Clasificar Puesto</button>
         </form>
         <form method="POST">
             <input type="hidden" name="accion" value="clasificar_areas"/>
-            <button type="submit" style="background-color: {color_areas};">
-                Clasificar Área Mayor y Menor
-            </button>
+            <button type="submit">Clasificar Área Mayor y Menor</button>
         </form>
         <form method="POST">
             <input type="hidden" name="accion" value="clasificar_industrias"/>
-            <button type="submit" style="background-color: {color_industrias};">
-                Clasificar Industria Mayor
-            </button>
+            <button type="submit">Clasificar Industria Mayor</button>
         </form>
         <form method="POST">
             <input type="hidden" name="accion" value="super_scrap_leads"/>
-            <button type="submit" style="background-color: {color_scrap};">
-                Scraping de Leads
-            </button>
+            <button type="submit">Scraping de Leads</button>
         </form>
         <form method="POST">
             <input type="hidden" name="accion" value="extraer_urls_leads"/>
@@ -1800,11 +1752,8 @@ Laura"
         </form>  
         <form method="POST">
             <input type="hidden" name="accion" value="generar_desafios"/>
-            <button type="submit" style="background-color: {color_desafios};">
-                Determinar Desafíos con IA
-            </button>
+            <button type="submit">Determinar Desafíos con IA</button>
         </form>
-
                  
     </details>            
         
@@ -1816,15 +1765,11 @@ Laura"
             <details>
             <summary style="cursor:pointer; font-weight: bold;">📄 Plan Estrategico</summary>
             <textarea name="plan_estrategico" rows="3" style="width:100%;border-radius:10px;margin-top:8px;">{plan_estrategico or ''}</textarea>
-            <label>URL para Scraping del Plan Estratégico:</label>
-            <input type="text" name="url_scrap_plan" placeholder="https://ejemplo.com/about"/>            
             <p><strong>Actual:</strong><br>
             Industrias: {industrias_interes}<br>
             Área: {area_interes}</p>  
             </details>
-            <label>URL para obtener Plan Estratégico:</label>
-            <input type="text" name="url_scrap_plan" placeholder="https://miempresa.com/quienes-somos"/>            
-            <label>o Sube PDF para Plan Estratégico:</label>
+            <label>Subir PDF para Plan Estratégico:</label>
             <input type="file" name="pdf_plan_estrategico" id="pdf_plan_estrategico" accept="application/pdf" />
 
             <label>Industrias de Interés:</label>
@@ -1841,9 +1786,7 @@ Laura"
         <hr>
         <form method="POST">
             <input type="hidden" name="accion" value="generar_tabla"/>
-            <button type="submit" style="background-color: {{ 'green' if acciones_realizadas['generar_tabla'] else '#1E90FF' }};">
-                Generar Mails con ChatGPT
-            </button>
+            <button type="submit">Generar Mails con ChatGPT</button>
         </form>
         <hr>
     </details>    
@@ -1950,9 +1893,7 @@ document.addEventListener("DOMContentLoaded", () => {{
 
     </html>
     """
-    # Rellenar valores dinámicos para botones
-    for clave, valor in acciones_realizadas.items():
-        page_html = page_html.replace(f"{{{{ acciones_realizadas['{clave}'] }}}}", str(valor).lower())        
+
     return page_html
 
 
