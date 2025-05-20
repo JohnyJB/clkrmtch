@@ -9,7 +9,7 @@ import requests
 import pandas as pd
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
-from flask import Flask, request, make_response
+from flask import Flask, request, make_response, session, redirect, url_for
 from cryptography.fernet import Fernet
 from pdfminer.high_level import extract_text
 from PIL import Image
@@ -1052,8 +1052,35 @@ def tabla_html(df: pd.DataFrame, max_filas=10) -> str:
 ##########################################
 # Rutas Flask
 ##########################################
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = ""
+    if request.method == "POST":
+        if request.form.get("password") == "clicker25":
+            session["autenticado"] = True
+            return redirect(url_for("index"))
+        else:
+            error = "Contraseña incorrecta."
+    
+    return f"""
+        <html>
+        <head><title>Login</title></head>
+        <body style="background-color:#111; color:#fff; font-family:sans-serif; text-align:center; padding-top:100px;">
+            <h2>🔒 Ingreso a ClickerMatch</h2>
+            <form method="POST">
+                <input type="password" name="password" placeholder="Contraseña" style="padding:10px; border-radius:8px;" />
+                <br><br>
+                <button type="submit" style="padding:10px 20px;">Entrar</button>
+            </form>
+            <p style="color:red;">{error}</p>
+        </body>
+        </html>
+    """
+
 @app.route("/", methods=["GET","POST"])
 def index():
+    if not session.get("autenticado"):
+        return redirect(url_for("login"))    
     global df_leads
     global scrap_proveedor_text
     global info_proveedor_global
