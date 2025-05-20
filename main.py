@@ -1064,7 +1064,7 @@ def index():
     global industrias_interes, area_interes, plan_estrategico
     global logs_urls_scrap
 
-    status_msg = ""
+    
     url_proveedor_global = ""  # Moveremos esto a variable local
     accion = request.form.get("accion", "")
     if request.method == "POST":
@@ -1404,14 +1404,14 @@ def index():
         new_urlp = request.form.get("url_proveedor", "").strip()
         if new_urlp:
             url_proveedor_global = new_urlp
-            status_msg += f"URL Proveedor={url_proveedor_global}<br>"
+            #status_msg += f"URL Proveedor={url_proveedor_global}<br>"
 
         #Guardar campo de especificación industria y area buscada
         if accion == "guardar_custom_fields":
             industrias_interes = request.form.get("industrias_interes", "").strip()
             area_interes = request.form.get("area_interes", "").strip()
             plan_estrategico = request.form.get("plan_estrategico", "").strip()
-            status_msg += f"Campos personalizados guardados.<br>"
+            #status_msg += f"Campos personalizados guardados.<br>"
                
 
         # Mapeo de columnas (por si el usuario quiere sobreescribir manualmente)
@@ -1438,13 +1438,13 @@ def index():
             if not df_leads.empty:
                 df_leads["scrapping_proveedor"] = sc
 
-            status_msg += "Scraping y análisis del proveedor completado.<br>"
+            #status_msg += "Scraping y análisis del proveedor completado.<br>"
 
         elif accion == "generar_tabla":
             procesar_leads()
             generar_contenido_para_todos()
             acciones_realizadas["generar_tabla"] = True
-            status_msg += "Leads procesados y contenido de ChatGPT generado.<br>"
+            #status_msg += "Leads procesados y contenido de ChatGPT generado.<br>"
 
         elif accion == "exportar_archivo":
             formato = request.form.get("formato", "csv")
@@ -1790,10 +1790,6 @@ Laura"
             <button type="submit" style="background-color: {color_scrap};">
                 Scraping de Leads
             </button>
-        </form>
-        <form method="POST">
-            <input type="hidden" name="accion" value="extraer_urls_leads"/>
-            <button type="submit">ExtraerURLs</button>
         </form>   
         <form method="POST">
             <input type="hidden" name="accion" value="scrap_urls_filtradas"/>
@@ -1805,7 +1801,7 @@ Laura"
         </form>
         <form method="POST">
             <input type="hidden" name="accion" value="scrapear_linkedin_empresas"/>
-            <button type="submit">Scrapear LinkedIn Empresas</button>
+            <button type="submit">Srapp Linkedin (Próximamente)</button>
         </form>  
         <form method="POST">
             <input type="hidden" name="accion" value="generar_desafios"/>
