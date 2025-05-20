@@ -382,6 +382,7 @@ def generar_desafios_por_lead(row: pd.Series) -> dict:
     title = str(row.get("title", "-"))
     nivel = str(row.get("Nivel Jerarquico", "-"))
     subarea = str(row.get("area_menor", "-"))
+    areamayor = str(row.get("area_mayor", "-"))
     municipio = str(row.get("Municipio", "-"))
     estado = str(row.get("Estado", "-"))
     pais = str(row.get("Pais", "-"))
@@ -408,15 +409,10 @@ Datos del lead:
 - Puesto: {title}
 - Nivel Jerárquico: {nivel}
 - Subárea: {subarea}
-- Ubicación: Municipio: {municipio}, Estado: {estado}, País: {pais}
-- Objetivo del negocio: {objetivo}
-- Productos o Servicios: {productos}
+- Área Mayor: {areamayor}
 - Industria: {industria}
 - Rango de empleados: {emp_count}
-- Año de Fundación: {founded}
-- Descripción en LinkedIn: {descripcion}
-- Texto del sitio web: {scrap_basico}
-- Texto adicional del sitio web: {scrap_adicional}
+
 """
 
     try:
@@ -1075,8 +1071,21 @@ def index():
         if accion == "guardar_custom_fields":
             industrias_interes = request.form.get("industrias_interes", "").strip()
             area_interes = request.form.get("area_interes", "").strip()
-            plan_estrategico = request.form.get("plan_estrategico", "").strip()
-            status_msg += f"Campos personalizados guardados.<br>"
+            plan_estrategico_input = request.form.get("plan_estrategico", "").strip()
+
+            url_scrap_plan = request.form.get("url_scrap_plan", "").strip()
+
+            # Si se dio una URL, usamos scraping. Si no, usamos lo que el usuario haya escrito manualmente
+            if url_scrap_plan:
+                try:
+                    plan_estrategico = realizar_scraping(url_scrap_plan)
+                    status_msg += f"✅ Scraping exitoso desde <code>{url_scrap_plan}</code><br>"
+                except Exception as e:
+                    plan_estrategico = plan_estrategico_input
+                    status_msg += f"❌ Error al hacer scraping: {e}<br>Usando el texto proporcionado manualmente.<br>"
+            else:
+                plan_estrategico = plan_estrategico_input
+                status_msg += f"✅ Texto ingresado manualmente cargado como Plan Estratégico.<br>"
 
         url_scrap_plan = request.form.get("url_scrap_plan", "").strip()
         if url_scrap_plan:
