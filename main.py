@@ -382,7 +382,7 @@ def generar_desafios_por_lead(row: pd.Series) -> dict:
     title = str(row.get("title", "-"))
     nivel = str(row.get("Nivel Jerarquico", "-"))
     subarea = str(row.get("area_menor", "-"))
-    areamayor = str(row.get("area_mayor", "-"))
+    area = str(row.get("Company Industry", "-"))
     municipio = str(row.get("Municipio", "-"))
     estado = str(row.get("Estado", "-"))
     pais = str(row.get("Pais", "-"))
@@ -408,10 +408,8 @@ Devuelve la respuesta en este JSON:
 Datos del lead:
 - Puesto: {title}
 - Nivel Jerárquico: {nivel}
-- Subárea: {subarea}
-- Área Mayor: {areamayor}
+- Área Mayor: {area}
 - Industria: {industria}
-- Rango de empleados: {emp_count}
 
 """
 
