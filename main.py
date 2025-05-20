@@ -1248,11 +1248,18 @@ def index():
                     catalogo_area["title_minusc"] = catalogo_area["title_minusc"].str.strip().str.lower()
 
                     def asignar_areas(title):
-                        t = str(title).strip().lower()
-                        match = catalogo_area[catalogo_area["title_minusc"] == t]
-                        if not match.empty:
-                            return match.iloc[0]["area_menor"], match.iloc[0]["area_mayor"]
+                        t = str(title).strip().lower().replace(",", " ")  # quitar comas
+                        t_words = set(t.split())  # lista de palabras del title sin comas
+
+                        for _, row in catalogo_area.iterrows():
+                            clave = str(row["title_minusc"]).strip().lower().replace(",", " ")
+                            clave_words = set(clave.split())
+
+                            if clave_words.issubset(t_words):  # todas las palabras clave están en el título
+                                return row["area_menor"], row["area_mayor"]
+
                         return "", ""
+
 
                     if not df_leads.empty:
                         df_leads["area_menor"], df_leads["area_mayor"] = zip(*df_leads[mapeo_puesto].map(asignar_areas))
