@@ -1275,17 +1275,27 @@ def index():
                     catalogo_area["title_minusc"] = catalogo_area["title_minusc"].str.strip().str.lower()
 
                     def asignar_areas(title):
-                        t = str(title).strip().lower().replace(",", " ")  # quitar comas
-                        t_words = set(t.split())  # lista de palabras del title sin comas
+                        t = str(title).strip().lower().replace(",", " ")
+                        t_words = set(t.split())
 
+                        # 1️⃣ Buscar coincidencias con TODAS las palabras
                         for _, row in catalogo_area.iterrows():
                             clave = str(row["title_minusc"]).strip().lower().replace(",", " ")
                             clave_words = set(clave.split())
 
-                            if clave_words.issubset(t_words):  # todas las palabras clave están en el título
+                            if clave_words.issubset(t_words):  # todas las palabras clave están presentes
+                                return row["area_menor"], row["area_mayor"]
+
+                        # 2️⃣ Si no encontró exacto, buscar coincidencia con al menos UNA palabra
+                        for _, row in catalogo_area.iterrows():
+                            clave = str(row["title_minusc"]).strip().lower().replace(",", " ")
+                            clave_words = set(clave.split())
+
+                            if t_words & clave_words:  # al menos una palabra coincide
                                 return row["area_menor"], row["area_mayor"]
 
                         return "", ""
+
 
 
                     if not df_leads.empty:
@@ -1656,16 +1666,37 @@ Laura"
             button {{
                 padding: 10px 16px;
                 border: none;
-                border-radius: 10px;
+                border-radius: 0px; /* <- sin bordes redondeados */
                 background-color: #1E90FF;
                 color: #fff;
                 cursor: pointer;
-                margin: 6px;
+                margin: 6px 0;
                 font-size: 14px;
+                width: 100%; /* <- que ocupen todo el ancho */
+                box-sizing: border-box; /* para que el padding no los saque del contenedor */
             }}
             button:hover {{
                 background-color: #00BFFF;
             }}
+            details summary {{
+                background-color: #2A2A2A;
+                color: #ffffff;
+                font-weight: bold;
+                padding: 12px;
+                cursor: pointer;
+                border: none;
+                outline: none;
+                width: 100%;
+                box-sizing: border-box;
+                margin: 8px 0;
+                display: block;
+            }}
+
+            details summary::marker {{
+                color: #aaa;
+            }}
+
+
             .status {{
                 background-color: #333;
                 margin: 10px auto;
