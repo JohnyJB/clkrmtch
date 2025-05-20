@@ -241,7 +241,7 @@ def realizar_super_scraping(base_url: str) -> str:
             if resp.status_code == 200:
                 sopa = BeautifulSoup(resp.text, "html.parser")
                 texto = sopa.get_text()
-                print(f"[DEBUG] Texto obtenido: {texto[:300]}")
+                #print(f"[DEBUG] Texto obtenido: {texto[:300]}")
                 limpio = _limpiar_caracteres_raros(texto[:2000])
                 texto_total += f"\n[{ruta}]\n{limpio}\n"
         except:
@@ -260,13 +260,13 @@ def realizar_scraping(url: str) -> str:
     for path in rutas:
         try:
             full_url = url.rstrip("/") + path
-            print("[SCRAPING]", full_url)
+            #print("[SCRAPING]", full_url)
             resp = requests.get(full_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5, verify=False)
 
             if resp.status_code == 200:
                 sopa = BeautifulSoup(resp.text, "html.parser")
                 texto = sopa.get_text()
-                print(f"[DEBUG] Texto obtenido: {texto[:300]}")
+                #print(f"[DEBUG] Texto obtenido: {texto[:300]}")
                 texto = _limpiar_caracteres_raros(texto)
                 texto_total += texto + "\n"
             else:
@@ -316,7 +316,7 @@ def realizar_scrap_adicional(urls_csv: str) -> str:
     # 🎯 Solo tomar las rutas que coinciden con las comunes
     matching_urls = [u for u in urls if any(path in u for path in COMMON_INFO_PATHS)]
 
-    print(f"[SCRAP-ADICIONAL] Coincidencias encontradas: {len(matching_urls)}")
+    #print(f"[SCRAP-ADICIONAL] Coincidencias encontradas: {len(matching_urls)}")
 
     texto_total = ""
     for link in matching_urls:
@@ -326,7 +326,7 @@ def realizar_scrap_adicional(urls_csv: str) -> str:
             if resp.status_code == 200:
                 sopa = BeautifulSoup(resp.text, "html.parser")
                 texto = sopa.get_text()
-                print(f"[DEBUG] Texto obtenido: {texto[:300]}")
+                #print(f"[DEBUG] Texto obtenido: {texto[:300]}")
                 limpio = _limpiar_caracteres_raros(texto[:3000])
                 texto_total += f"\n[{link}]\n{limpio}\n"
         except Exception as e:
@@ -492,7 +492,7 @@ Texto del sitio (Si a continuación no te doy info del sitio, pon - en todas):
             timeout=30
         )
         content = respuesta.choices[0].message.content.strip()
-        print("[LOG] Respuesta ChatGPT (Análisis proveedor):", content)
+        #print("[LOG] Respuesta ChatGPT (Análisis proveedor):", content)
 
         # Parsear JSON
         try:
@@ -638,7 +638,7 @@ Recuerda: la respuesta debe ser válido JSON con llaves y comillas en cada clave
 
     prompt = _limpiar_caracteres_raros(prompt)
     #guardar_prompt_log(prompt, lead_name=lead_name, idx=row.name)
-    print(f"[PROMPT] idx={row.name}, lead={lead_name}")
+    #print(f"[PROMPT] idx={row.name}, lead={lead_name}")
     #print(prompt)
 
     try:
@@ -774,7 +774,7 @@ Estructuras:
 - Strategy: Free Sample List  
   Personalization | Your Targets Goal | Your Value Prop | CTA
 """
-    print(base_context)
+    #print(base_context)
     try:
         response = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -784,7 +784,7 @@ Estructuras:
             timeout=30
         )
         content = response.choices[0].message.content.strip()
-        print("[RAW RESPONSE EMAILS STRATEGY]:", content)
+        #print("[RAW RESPONSE EMAILS STRATEGY]:", content)
 
         # 🔥 FIX para quitar ```json y ```
         if content.startswith("```json"):
@@ -1207,7 +1207,7 @@ def index():
                             print(f"[ERROR] Scraping lead idx={idx}: {e}")
                             df_leads.at[idx, "scrapping"] = "-"
 
-                        print(f"[SCRAP-URLS] Extrayendo URLs de: {url}")
+                        #print(f"[SCRAP-URLS] Extrayendo URLs de: {url}")
                         try:
                             urls_extraidas = extraer_urls_de_web(url)
                             df_leads.at[idx, "URLs on WEB"] = urls_extraidas if urls_extraidas.strip() else "-"
