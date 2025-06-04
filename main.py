@@ -1015,7 +1015,7 @@ def cleanup_leads():
 ##########################################
 # Mostrar tabla HTML (solo primeros 10)
 ##########################################
-def tabla_html(df: pd.DataFrame, max_filas=10) -> str:
+def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
     if df.empty:
         return "<p><em>DataFrame vacío</em></p>"
 
@@ -1617,8 +1617,9 @@ Laura"
                 text-align: center;
             }}
             .container {{
-                max-width: 460px;
-                width: 460px; 
+                width: 5%;
+                max-width: 300px;
+                min-width: 300px;
                 flex-shrink: 0; 
                 margin: 40px auto;
                 background-color: #1F1F1F;
@@ -1787,9 +1788,9 @@ Laura"
         </style>
     </head>
     <body>
-    <div style="text-align:center; margin-top:20px; background-color: black; padding: 10px;">
-    <img src="https://recordsencrisis.com/wp-content/uploads/2025/05/LOGO-CLICKER-MATCH.png" alt="ClickerMatch" style="max-width: 220px; height: auto;" />
-    <div class="status">{status_msg}</div>
+    <div style="display: flex; align-items: center; justify-content: flex-start; padding: 20px;">
+        <img src="https://recordsencrisis.com/wp-content/uploads/2025/05/LOGO-CLICKER-MATCH.png" alt="ClickerMatch" style="max-height: 80px; margin-right: 20px;" />
+        <h1 style="color: white; font-size: 20px; font-weight: normal;">IA para generar prospectos B2B calificados y agendar citas reales con tomadores de decisión.</h1>
     </div>   
     <div style="display: flex; gap: 20px; align-items: flex-start;">
     <div class="container">
@@ -1938,8 +1939,8 @@ Laura"
     </div>
     </details>
     <div class="container-wide">
-        <h2>Base de datos (primeros 10 registros)</h2>
-        {tabla_html(df_leads,10)}
+        <h2>Base de datos (primeros 50 registros)</h2>
+        {tabla_html(df_leads,50)}
     </div>
     </div>
 
