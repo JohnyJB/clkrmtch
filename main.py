@@ -1790,7 +1790,7 @@ Laura"
     <body>
     <div style="display: flex; align-items: center; justify-content: flex-start; padding: 20px;">
         <img src="https://recordsencrisis.com/wp-content/uploads/2025/05/LOGO-CLICKER-MATCH.png" alt="ClickerMatch" style="max-height: 80px; margin-right: 20px;" />
-        <h1 style="color: white; font-size: 20px; font-weight: normal;">IA para generar prospectos B2B calificados y agendar citas reales con tomadores de decisión.</h1>
+        <h1 style="color: white; font-size: 30px; font-weight: normal;">IA que prospecta y agenda citas con tomadores de decisiones.</h1>
     </div>   
     <div style="display: flex; gap: 20px; align-items: flex-start;">
     <div class="container">
