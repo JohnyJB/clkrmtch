@@ -1478,6 +1478,7 @@ def index():
         if accion == "scrap_proveedor" and url_proveedor_global:
             # Hacemos scraping
             sc = realizar_scraping(url_proveedor_global)
+            plan_estrategico = sc  
             scrap_proveedor_text = sc
 
             # Analizamos con ChatGPT para extraer info
@@ -1892,22 +1893,27 @@ Laura"
             <details>
             <summary style="cursor:pointer; font-weight: bold;">📄 Plan Estrategico</summary>
             <textarea name="plan_estrategico" rows="3" style="width:100%;border-radius:10px;margin-top:8px;">{plan_estrategico or ''}</textarea>
-            <label>URL para Scraping del Plan Estratégico:</label>
-            <input type="text" name="url_scrap_plan" placeholder="https://ejemplo.com/about"/>            
+        
             <p><strong>Actual:</strong><br>
             Industrias: {industrias_interes}<br>
             Área: {area_interes}</p>  
             </details>
-            <label>URL para obtener Plan Estratégico:</label>
-            <input type="text" name="url_scrap_plan" placeholder="https://miempresa.com/quienes-somos"/>            
+
             <label>o Sube PDF para Plan Estratégico:</label>
             <input type="file" name="pdf_plan_estrategico" id="pdf_plan_estrategico" accept="application/pdf" />
+            <!-- Botón para hacer scraping explícito del proveedor -->
+            <form method="POST">
+            <input type="text" name="url_proveedor" placeholder="https://miempresa.com/about" />
+            <input type="hidden" name="accion" value="scrap_proveedor" />
+            <button type="submit">🔍 Scraping del Proveedor</button>
+            </form>
 
             <label>Industrias de Interés:</label>
             <input type="text" name="industrias_interes" value="{industrias_interes or ''}" placeholder="Ej: Automotriz, Manufactura"/>
 
             <label>Área de Interés:</label>
             <input type="text" name="area_interes" value="{area_interes or ''}" placeholder="Ej: Finanzas"/>
+
 
             <input type="hidden" name="accion" value="guardar_custom_fields"/>
             <button type="submit">Guardar Campos</button>     
