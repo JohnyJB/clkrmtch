@@ -1973,6 +1973,13 @@ Laura"
             </button>
         </form>   
         <form method="POST">
+        <input type="hidden" name="accion" value="scrap_urls_filtradas"/>
+        <button type="submit" style="background-color: #1E90FF;">
+            Scraping Adicional de URLs comunes
+        </button>
+        </form>
+
+        <form method="POST">
             <input type="hidden" name="accion" value="scrap_urls_filtradas"/>
             <!-- <button type="submit">Scrapping URLs Filtradas</button> -->
         </form> 
