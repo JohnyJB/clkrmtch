@@ -1496,16 +1496,12 @@ def index():
         # Acción
         accion = request.form.get("accion", "")
         if accion == "scrap_proveedor" and url_proveedor_global:
-            # Hacemos scraping
+            # Scrapeo y análisis del proveedor
             sc = realizar_scraping(url_proveedor_global)
             plan_estrategico = sc  
             scrap_proveedor_text = sc
 
-            # Analizamos con ChatGPT para extraer info
             info_proveedor_global = analizar_proveedor_scraping_con_chatgpt(sc)
-            print("[DEBUG] Resultado del prompt del proveedor (ChatGPT):")
-            print(json.dumps(info_proveedor_global, indent=2, ensure_ascii=False))
-
 
             descripcion_proveedor = str(info_proveedor_global.get("Objetivo", ""))
             productos_proveedor = str(info_proveedor_global.get("Productos o Servicios", ""))
@@ -1516,12 +1512,63 @@ def index():
                 mercado_proveedor = ", ".join(mercado_proveedor)
             else:
                 mercado_proveedor = str(mercado_proveedor)
-          
-            # En df_leads, guardamos el texto crudo (para que se use en la generación)
+        
             if not df_leads.empty:
                 df_leads["scrapping_proveedor"] = sc
 
             status_msg += "Scraping y análisis del proveedor completado.<br>"
+
+            # 🚀 Ejecutar también super_scrap_leads
+            if not df_leads.empty:
+                if "scrapping" not in df_leads.columns:
+                    df_leads["scrapping"] = "-"
+                if "URLs on WEB" not in df_leads.columns:
+                    df_leads["URLs on WEB"] = "-"
+                
+                scraping_progress["total"] = len(df_leads)
+                scraping_progress["procesados"] = 0
+
+                for idx, row in df_leads.iterrows():
+                    url = str(row.get(mapeo_website, "")).strip()
+                    if url:
+                        try:
+                            texto_scrap = realizar_scraping(url)
+                            df_leads.at[idx, "scrapping"] = texto_scrap if texto_scrap.strip() else "-"
+                        except Exception as e:
+                            df_leads.at[idx, "scrapping"] = "-"
+                            print(f"[ERROR] Scraping lead idx={idx}: {e}")
+                        try:
+                            urls_extraidas = extraer_urls_de_web(url)
+                            df_leads.at[idx, "URLs on WEB"] = urls_extraidas if urls_extraidas.strip() else "-"
+                        except Exception as e:
+                            df_leads.at[idx, "URLs on WEB"] = "-"
+                            print(f"[ERROR] Extrayendo URLs idx={idx}: {e}")
+                    else:
+                        df_leads.at[idx, "scrapping"] = "-"
+                        df_leads.at[idx, "URLs on WEB"] = "-"
+
+                    scraping_progress["procesados"] += 1
+
+                acciones_realizadas["super_scrap_leads"] = True
+                status_msg += "Scraping de leads ejecutado tras scrap del proveedor.<br>"
+            else:
+                status_msg += "No hay leads para aplicar scraping tras scrap del proveedor.<br>"
+
+            # ➕ También ejecutar scraping adicional de URLs comunes
+            if not df_leads.empty and "URLs on WEB" in df_leads.columns:
+                if "Scrapping Adicional" not in df_leads.columns:
+                    df_leads["Scrapping Adicional"] = "-"
+                for idx, row in df_leads.iterrows():
+                    urls_csv = str(row.get("URLs on WEB", "")).strip()
+                    if urls_csv and urls_csv != "-":
+                        try:
+                            texto_adicional = realizar_scrap_adicional(urls_csv)
+                            df_leads.at[idx, "Scrapping Adicional"] = texto_adicional
+                        except Exception as e:
+                            print(f"[ERROR] Scraping adicional idx={idx}:", e)
+                            df_leads.at[idx, "Scrapping Adicional"] = "-"
+                status_msg += "Scraping adicional también ejecutado tras scrap del proveedor.<br>"
+
 
         elif accion == "generar_tabla":
             procesar_leads()
