@@ -389,7 +389,7 @@ def generar_desafios_por_lead(row: pd.Series) -> dict:
 
     title = str(row.get("title", "-"))
     nivel = str(row.get("Nivel Jerarquico", "-"))
-    subarea = str(row.get("demartamento", "-"))
+    subarea = str(row.get("departamento", "-"))
     area = str(row.get("Company Industry", "-"))
     municipio = str(row.get("Municipio", "-"))
     estado = str(row.get("Estado", "-"))
@@ -748,7 +748,7 @@ Con base en los datos anteriores, desarrolla los siguientes 6 correos personaliz
 Información adicional del lead:
 - Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
 - Área Mayor: {row.get("area", "-")}
-- Área Menor: {row.get("demartamento", "-")}
+- Área Menor: {row.get("departamento", "-")}
 - Desafíos actuales: {row.get("Desafio 1", "-")}, {row.get("Desafio 2", "-")}, {row.get("Desafio 3", "-")}
 - Fragmentos del sitio web: {row.get("scrapping", "-")}
 - Texto adicional del sitio: {row.get("Scrapping Adicional", "-")}
@@ -838,7 +838,7 @@ Resultados para adaptar:
 Información adicional del contacto:
 - Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
 - Área Mayor: {row.get("area", "-")}
-- Área Menor: {row.get("demartamento", "-")}
+- Área Menor: {row.get("departamento", "-")}
 - Desafíos:
     - {row.get("Desafio 1", "-")}
     - {row.get("Desafio 2", "-")}
@@ -890,7 +890,7 @@ Resultados para adaptar:
 Información adicional del contacto:
 - Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
 - Área Mayor: {row.get("area", "-")}
-- Área Menor: {row.get("demartamento", "-")}
+- Área Menor: {row.get("departamento", "-")}
 - Desafíos:
     - {row.get("Desafio 1", "-")}
     - {row.get("Desafio 2", "-")}
@@ -1324,9 +1324,10 @@ def index():
 
 
                     if not df_leads.empty:
+                        # Asignar área y departamento
                         df_leads["departamento"], df_leads["area"] = zip(*df_leads[mapeo_puesto].map(asignar_areas))
-                        df_leads["departamento"] = df_leads["demartamento"].fillna(df_leads.get("demartamento", "-"))
-                        df_leads["area"] = df_leads["area"].fillna(df_leads.get("area", "-"))
+
+                        # Asegurar que estén justo después de la columna del puesto
                         cols = list(df_leads.columns)
                         for col in ["departamento", "area"]:
                             if col in cols:
