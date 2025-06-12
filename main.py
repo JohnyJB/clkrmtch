@@ -567,7 +567,7 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
             "CTA": "-"
         }
 
-    # Extraer datos
+    # Extraer datos-
     lead_name = str(row.get(mapeo_nombre_contacto, "-"))
     scrap_clean = str(row.get("scrapping", "-")).strip().replace("\n", " ")[:1500]
     scrap_adicional_clean = str(row.get("Scrapping Adicional", "-")).strip().replace("\n", " ")[:1500]
@@ -1077,7 +1077,7 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
 def login():
     error = ""
     if request.method == "POST":
-        if request.form.get("password") == "clicker25":
+        if request.form.get("password") == "clicker24":
             session["autenticado"] = True
             return redirect(url_for("index"))
         else:
@@ -1582,7 +1582,7 @@ def index():
             if df_leads.empty:
                 status_msg += "No hay leads para exportar.<br>"
             else:
-                # Crea una copia del df sin la columna que quieres omitir-
+                # Crea una copia del df sin la columna que quieres omitir
                 df_export = df_leads.drop(columns=["scrapping_proveedor"], errors="ignore")
 
                 if formato == "csv":
@@ -1688,7 +1688,7 @@ Laura"
     page_html = f"""
     <html>
     <head>
-        <title>ClickerMaker</title>
+        <title>Clicker Match</title>
         <style>
             body {{
                 background: url('/static/background.png') no-repeat center center fixed;
