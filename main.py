@@ -1582,7 +1582,7 @@ def index():
             if df_leads.empty:
                 status_msg += "No hay leads para exportar.<br>"
             else:
-                # Crea una copia del df sin la columna que quieres omitir
+                # Crea una copia del df sin la columna que quieres omitir-
                 df_export = df_leads.drop(columns=["scrapping_proveedor"], errors="ignore")
 
                 if formato == "csv":
