@@ -478,12 +478,12 @@ def analizar_proveedor_scraping_con_chatgpt(texto_scrapeado: str) -> dict:
     prompt = f"""
 Eres un asistente que analiza la información de un sitio web de una empresa (texto crudo).
 Devuélveme exactamente en formato JSON los siguientes campos:
-- Nombre de la Empresa
+- "Nombre de la Empresa"
 - Objetivo (o misión o enfoque principal)
-- Productos o Servicios (Si no dice el scrapp, infiere sobre que son)
-- Industrias (a qué industrias sirve o en cuáles se especializa)
-- Clientes o Casos de Exito (si aparecen referencias a clientes o casos)
-- ICP (Ideal Costumer Profile)
+- "Productos o Servicios" (Si no dice el scrapp, infiere sobre que son)
+- "Industrias" (a qué industrias sirve o en cuáles se especializa)
+- "Clientes o Casos de Exito" (si aparecen referencias a clientes o casos)
+- "ICP" (Ideal Costumer Profile, de industria, puesto)
 
 Si no encuentras algo, simplemente pon "-".
 
@@ -515,7 +515,6 @@ Texto del sitio (Si a continuación no te doy info del sitio, pon - en todas):
             industrias = parsed.get("Industrias", "-")
             clientes = parsed.get("Clientes o Casos de Exito", "-")
             icp = parsed.get("ICP", "-")
-
             return {
                 "Nombre de la Empresa": nombre,
                 "Objetivo": objetivo,
@@ -1504,6 +1503,9 @@ def index():
 
             # Analizamos con ChatGPT para extraer info
             info_proveedor_global = analizar_proveedor_scraping_con_chatgpt(sc)
+            print("[DEBUG] Resultado del prompt del proveedor (ChatGPT):")
+            print(json.dumps(info_proveedor_global, indent=2, ensure_ascii=False))
+
 
             descripcion_proveedor = str(info_proveedor_global.get("Objetivo", ""))
             productos_proveedor = str(info_proveedor_global.get("Productos o Servicios", ""))
@@ -1820,10 +1822,33 @@ Laura"
         </style>
     </head>
     <body>
-    <div style="display: flex; align-items: center; justify-content: flex-start; padding: 20px;">
-        <img src="https://recordsencrisis.com/wp-content/uploads/2025/05/LOGO-CLICKER-MATCH.png" alt="ClickerMatch" style="max-height: 80px; margin-right: 20px;" />
-        <h1 style="color: white; font-size: 30px; font-weight: normal;">IA que prospecta y agenda citas con tomadores de decisiones.</h1>
-    </div>   
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+
+    <div style="
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 30px 20px;
+        overflow: hidden;
+        background: linear-gradient(to right, #1E90FF 0%, transparent 100%);
+        border-radius: 0 0 20px 20px;
+        box-shadow: 0 4px 20px rgba(30, 144, 255, 0.3);
+    ">
+        <img src="https://recordsencrisis.com/wp-content/uploads/2025/05/LOGO-CLICKER-MATCH.png" alt="ClickerMatch"
+            style="max-height: 80px; margin-right: 20px;" />
+        <h1 style="
+            color: white;
+            font-size: 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 500;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.5);
+            letter-spacing: 1px;
+        ">
+            IA que prospecta y agenda citas con tomadores de decisiones.
+        </h1>
+    </div>
+  
     <div style="display: flex; gap: 20px; align-items: flex-start;">
     <div class="container">
         
@@ -1902,7 +1927,7 @@ Laura"
         </form>   
         <form method="POST">
             <input type="hidden" name="accion" value="scrap_urls_filtradas"/>
-            <button type="submit">Scrapping URLs Filtradas</button>
+            <!-- <button type="submit">Scrapping URLs Filtradas</button> -->
         </form> 
         <form method="POST">
             <input type="hidden" name="accion" value="extraer_redes_y_telefono"/>
@@ -1910,7 +1935,7 @@ Laura"
         </form>
         <form method="POST">
             <input type="hidden" name="accion" value="scrapear_linkedin_empresas"/>
-            <button type="submit">Srapp Linkedin (Próximamente)</button>
+            <!-- <button type="submit">Srapp Linkedin (Próximamente)</button> -->
         </form>  
         <form method="POST">
             <input type="hidden" name="accion" value="generar_desafios"/>
@@ -1942,6 +1967,9 @@ Laura"
 
             <p><strong>Mercado objetivo:</strong><br>
             <textarea rows="3" style="width: 100%;" readonly>{mercado_proveedor or '-'}</textarea></p>
+            
+            <p><strong>ICP:</strong><br>
+            <textarea rows="3" style="width: 100%;" readonly>{icp_proveedor or '-'}</textarea></p>
 
             <p><strong>Propuesta de Valor:</strong> {propuesta_valor or '-'}</p>
             <p><strong>Contexto:</strong> {contexto_prov or '-'}</p>
