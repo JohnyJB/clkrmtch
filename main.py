@@ -128,9 +128,18 @@ scraping_progress = {
 logs_urls_scrap = []
 
 #Campos industria y area
-industrias_interes = ""
-area_interes = ""
+propuesta_valor = ""
+contexto_prov = ""
+icp_prov = ""
 plan_estrategico = ""
+
+#Variables proveedor inicialización
+nombre_empresa_usuario = ""
+descripcion_proveedor = ""
+productos_proveedor = ""
+mercado_proveedor = ""
+icp_proveedor = ""
+
 
 # Catálogo de puestos cargado por el usuario
 catalogo_df = pd.DataFrame()
@@ -380,7 +389,7 @@ def generar_desafios_por_lead(row: pd.Series) -> dict:
 
     title = str(row.get("title", "-"))
     nivel = str(row.get("Nivel Jerarquico", "-"))
-    subarea = str(row.get("area_menor", "-"))
+    subarea = str(row.get("demartamento", "-"))
     area = str(row.get("Company Industry", "-"))
     municipio = str(row.get("Municipio", "-"))
     estado = str(row.get("Estado", "-"))
@@ -452,6 +461,7 @@ def analizar_proveedor_scraping_con_chatgpt(texto_scrapeado: str) -> dict:
     (3) Productos o Servicios
     (4) Industrias
     (5) Clientes o Casos de Exito
+    (6) ICP
     Retorna un dict con esas claves.
     """
     if client is None:
@@ -461,7 +471,8 @@ def analizar_proveedor_scraping_con_chatgpt(texto_scrapeado: str) -> dict:
             "Objetivo": "-",
             "Productos o Servicios": "-",
             "Industrias": "-",
-            "Clientes o Casos de Exito": "-"
+            "Clientes o Casos de Exito": "-",
+            "ICP": "-"
         }
 
     prompt = f"""
@@ -469,9 +480,10 @@ Eres un asistente que analiza la información de un sitio web de una empresa (te
 Devuélveme exactamente en formato JSON los siguientes campos:
 - Nombre de la Empresa
 - Objetivo (o misión o enfoque principal)
-- Productos o Servicios
+- Productos o Servicios (Si no dice el scrapp, infiere sobre que son)
 - Industrias (a qué industrias sirve o en cuáles se especializa)
 - Clientes o Casos de Exito (si aparecen referencias a clientes o casos)
+- ICP (Ideal Costumer Profile)
 
 Si no encuentras algo, simplemente pon "-".
 
@@ -502,13 +514,15 @@ Texto del sitio (Si a continuación no te doy info del sitio, pon - en todas):
             prod_serv = parsed.get("Productos o Servicios", "-")
             industrias = parsed.get("Industrias", "-")
             clientes = parsed.get("Clientes o Casos de Exito", "-")
+            icp = parsed.get("ICP", "-")
 
             return {
                 "Nombre de la Empresa": nombre,
                 "Objetivo": objetivo,
                 "Productos o Servicios": prod_serv,
                 "Industrias": industrias,
-                "Clientes o Casos de Exito": clientes
+                "Clientes o Casos de Exito": clientes,
+                "ICP": icp
             }
         except Exception as ex_json:
             print("[ERROR] No se pudo parsear la respuesta de ChatGPT como JSON:", ex_json)
@@ -517,7 +531,8 @@ Texto del sitio (Si a continuación no te doy info del sitio, pon - en todas):
                 "Objetivo": "-",
                 "Productos o Servicios": "-",
                 "Industrias": "-",
-                "Clientes o Casos de Exito": "-"
+                "Clientes o Casos de Exito": "-",
+                "ICP": "-"
             }
     except Exception as ex:
         print("[ERROR] Al invocar ChatGPT para analizar proveedor:", ex)
@@ -526,7 +541,8 @@ Texto del sitio (Si a continuación no te doy info del sitio, pon - en todas):
             "Objetivo": "-",
             "Productos o Servicios": "-",
             "Industrias": "-",
-            "Clientes o Casos de Exito": "-"
+            "Clientes o Casos de Exito": "-",
+            "ICP": "-"
         }
 
 #####################################
@@ -584,14 +600,19 @@ INSTRUCCIONES:
 Tenemos un cliente llamado {companyName}.
 Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
 
-Personalization: Es una introducción personalizada basada en un hecho reciente o logro dela empresa cliente, el objetivo es captar su atención de inmediato. Empresa Cliente → Se basa en su actividad, logros o contexto.
+
+Personalization: Es una introducción personalizada basada en un hecho reciente o logro de la empresa cliente, el objetivo es captar su atención de inmediato. Empresa Cliente → Se basa en su actividad, logros o contexto. 
+Se calcula del Contenido del sitio web del cliente de donde se generan las siguientes variables: (ClienteCompanyDescription), (ClienteCompanyProductsServices), (ClienteCompanyTargetIndustries) y del (Contexto) de Mi Info
 Your Value Prop. Es la propuesta de valor de tu empresa, lo que ofreces y cómo ayudas a resolver un problema específico. Proveedor → Es nuestro diferenciador y lo que podemos hacer por el cliente.
+Se calcula de ClickerMatch en Contenido del sitio web del cliente de donde se generan las siguientes variables: (ProveedorCompanyDescription), (ProveedorCompanyProductsServices)y si hay algo adicional que de contexto: Lanzamiento, Expo, etc
 Your Target Niche (Niche, Subsegment, Location). El segmento de mercado al que queremos llegar, definido por industria, subsegmento y ubicación. Proveedor → Es nuestra audiencia objetivo.
-Your Cliente Goal. La meta principal del puesto del cliente. ¿Qué quiere lograr con su negocio o estrategia?. Cliente → Es su necesidad o aspiración.
-Your Cliente Value Prop. La propuesta de valor del cliente. ¿Cómo se diferencian ellos en su mercado? ¿Qué buscan potenciar?. Cliente → Es cómo ellos se presentan en su industria.
+Se calcula de ClickerMatch en Define tu ICP del (AreaMenor), (AreaMayor), (NivelJerárquico), (Industry), (Industry Mayor), (CompanySize). Buscamos en la BD de Clicker los prospectos o salimos a scrapearlos con Phantombuster o Expandi
+Your Client Goal. La meta principal del puesto del cliente. ¿Qué quiere lograr con su negocio o estrategia?. Cliente → Es su necesidad o aspiración.
+Se calcula con base a Catálogo Área, Departamento y Objetivo 
+Your Client Value Prop. La propuesta de valor del cliente. ¿Cómo se diferencian ellos en su mercado? ¿Qué buscan potenciar?. Cliente → Es cómo ellos se presentan en su industria.
+Se calcula del scrap del (ClientWebsite) que genera las siguientes variables: (Scrap Empresa Website), (Scrap Empresa Website > Descripcion), (Scrap Empresa Website > Productos o Servicios), (Scrap Empresa Website > Industria / Áreas de Interés)
 Cliffhanger Value Prop. Una propuesta intrigante o gancho para motivar la conversación, generalmente una promesa de resultados o insights valiosos. Proveedor → Un beneficio atractivo para generar curiosidad.
 CTA (Call to Action). La acción concreta que queremos que tome el cliente, como agendar una reunión o responder al correo. Proveedor → Es nuestra invitación a la acción.
-
 
 Escríbelos de manera que conecten en un solo mensaje
 
@@ -601,8 +622,8 @@ Información del lead:
 - Contacto: {lead_name}
 - Puesto: {title}
 - Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
-- Área Mayor: {row.get("area_mayor", "-")}
-- Área Menor: {row.get("area_menor", "-")}
+- Área: {row.get("area", "-")}
+- Departamento: {row.get("departamento", "-")}
 - Industria: {industry}
 - Desafíos posibles:
     - {row.get("Desafio 1", "-")}
@@ -610,8 +631,9 @@ Información del lead:
     - {row.get("Desafio 3", "-")}
 
 Información del ICP (Ideal Customer Profile):
-- Industrias de Interés: {industrias_interes}
-- Área de Interés: {area_interes}
+- Propuesta de valor de nosotros:" {propuesta_valor} "
+- Contexto adicional de nosotros:" {contexto_prov} "
+- Nuestro Ideal Costumer Profile:" {icp_prov} "
 
 - Contenido del sitio web del cliente (scrapping del cliente): {scrap_clean}
 - Contenido adicional del sitio (scrapping común): {scrap_adicional_clean}
@@ -726,8 +748,8 @@ Resultados para adaptar:
 Con base en los datos anteriores, desarrolla los siguientes 6 correos personalizados según cada estrategia de prospección. Cada correo debe incluir:
 Información adicional del lead:
 - Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
-- Área Mayor: {row.get("area_mayor", "-")}
-- Área Menor: {row.get("area_menor", "-")}
+- Área Mayor: {row.get("area", "-")}
+- Área Menor: {row.get("demartamento", "-")}
 - Desafíos actuales: {row.get("Desafio 1", "-")}, {row.get("Desafio 2", "-")}, {row.get("Desafio 3", "-")}
 - Fragmentos del sitio web: {row.get("scrapping", "-")}
 - Texto adicional del sitio: {row.get("Scrapping Adicional", "-")}
@@ -816,8 +838,8 @@ Resultados para adaptar:
 - "CTA": {row.get("CTA", "-")}
 Información adicional del contacto:
 - Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
-- Área Mayor: {row.get("area_mayor", "-")}
-- Área Menor: {row.get("area_menor", "-")}
+- Área Mayor: {row.get("area", "-")}
+- Área Menor: {row.get("demartamento", "-")}
 - Desafíos:
     - {row.get("Desafio 1", "-")}
     - {row.get("Desafio 2", "-")}
@@ -868,8 +890,8 @@ Resultados para adaptar:
 - "CTA": {row.get("CTA", "-")}
 Información adicional del contacto:
 - Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
-- Área Mayor: {row.get("area_mayor", "-")}
-- Área Menor: {row.get("area_menor", "-")}
+- Área Mayor: {row.get("area", "-")}
+- Área Menor: {row.get("demartamento", "-")}
 - Desafíos:
     - {row.get("Desafio 1", "-")}
     - {row.get("Desafio 2", "-")}
@@ -1086,16 +1108,18 @@ def index():
     global info_proveedor_global
     global mapeo_nombre_contacto, mapeo_puesto, mapeo_empresa
     global mapeo_industria, mapeo_website, mapeo_location, mapeo_empleados
-    global industrias_interes, area_interes, plan_estrategico
+    global propuesta_valor, contexto_prov, plan_estrategico, icp_prov
     global logs_urls_scrap
+    global descripcion_proveedor, productos_proveedor, mercado_proveedor, icp_proveedor
     status_msg = ""
     
     url_proveedor_global = ""  # Moveremos esto a variable local
     accion = request.form.get("accion", "")
     if request.method == "POST":
         if accion == "guardar_custom_fields":
-            industrias_interes = request.form.get("industrias_interes", "").strip()
-            area_interes = request.form.get("area_interes", "").strip()
+            propuesta_valor = request.form.get("propuesta_valor", "").strip()
+            contexto_prov = request.form.get("contexto_prov", "").strip()
+            icp_prov = request.form.get("icp_prov", "").strip()
             plan_estrategico_input = request.form.get("plan_estrategico", "").strip()
 
             url_scrap_plan = request.form.get("url_scrap_plan", "").strip()
@@ -1284,7 +1308,8 @@ def index():
                             clave_words = set(clave.split())
 
                             if clave_words.issubset(t_words):  # todas las palabras clave están presentes
-                                return row["area_menor"], row["area_mayor"]
+                                return row["departamento"], row["area"]
+
 
                         # 2️⃣ Si no encontró exacto, buscar coincidencia con al menos UNA palabra
                         for _, row in catalogo_area.iterrows():
@@ -1292,18 +1317,19 @@ def index():
                             clave_words = set(clave.split())
 
                             if t_words & clave_words:  # al menos una palabra coincide
-                                return row["area_menor"], row["area_mayor"]
+                                return row["departamento"], row["area"]
+
 
                         return "", ""
 
 
 
                     if not df_leads.empty:
-                        df_leads["area_menor"], df_leads["area_mayor"] = zip(*df_leads[mapeo_puesto].map(asignar_areas))
-                        df_leads["area_menor"] = df_leads["area_menor"].fillna(df_leads.get("area_menor", "-"))
-                        df_leads["area_mayor"] = df_leads["area_mayor"].fillna(df_leads.get("area_mayor", "-"))
+                        df_leads["departamento"], df_leads["area"] = zip(*df_leads[mapeo_puesto].map(asignar_areas))
+                        df_leads["departamento"] = df_leads["demartamento"].fillna(df_leads.get("demartamento", "-"))
+                        df_leads["area"] = df_leads["area"].fillna(df_leads.get("area", "-"))
                         cols = list(df_leads.columns)
-                        for col in ["area_menor", "area_mayor"]:
+                        for col in ["departamento", "area"]:
                             if col in cols:
                                 cols.remove(col)
                                 insert_idx = cols.index(mapeo_puesto) + 1
@@ -1455,12 +1481,7 @@ def index():
             url_proveedor_global = new_urlp
             status_msg += f"URL Proveedor={url_proveedor_global}<br>"
 
-        #Guardar campo de especificación industria y area buscada
-        if accion == "guardar_custom_fields":
-            industrias_interes = request.form.get("industrias_interes", "").strip()
-            area_interes = request.form.get("area_interes", "").strip()
-            plan_estrategico = request.form.get("plan_estrategico", "").strip()
-            status_msg += f"Campos personalizados guardados.<br>"
+
                
 
         # Mapeo de columnas (por si el usuario quiere sobreescribir manualmente)
@@ -1484,6 +1505,16 @@ def index():
             # Analizamos con ChatGPT para extraer info
             info_proveedor_global = analizar_proveedor_scraping_con_chatgpt(sc)
 
+            descripcion_proveedor = str(info_proveedor_global.get("Objetivo", ""))
+            productos_proveedor = str(info_proveedor_global.get("Productos o Servicios", ""))
+            mercado_proveedor = info_proveedor_global.get("Industrias", "")
+            icp_proveedor = str(info_proveedor_global.get("ICP", ""))
+
+            if isinstance(mercado_proveedor, list):
+                mercado_proveedor = ", ".join(mercado_proveedor)
+            else:
+                mercado_proveedor = str(mercado_proveedor)
+          
             # En df_leads, guardamos el texto crudo (para que se use en la generación)
             if not df_leads.empty:
                 df_leads["scrapping_proveedor"] = sc
@@ -1610,7 +1641,7 @@ Laura"
         <title>ClickerMaker</title>
         <style>
             body {{
-                background: url('https://expomatch.com.mx/wp-content/uploads/2025/03/u9969268949_creame_una_pagina_web_que_muestre_unas_bases_de_d_4f30c12d-8f6a-4913-aa47-1d927038ce10_0-1.png') no-repeat center center fixed;
+                background: url('/static/background.png') no-repeat center center fixed;
                 background-size: cover;
                 color: #FFFFFF;
                 font-family: 'Segoe UI', Arial, sans-serif;
@@ -1839,6 +1870,11 @@ Laura"
         <!-- Sección: Clasificación de Puestos -->
     <details>
     <summary style="cursor: pointer; font-weight: bold;">➕ Clasificadores</summary>
+        <button type="button" onclick="clasificarTodo()" style="background-color: {color_puestos};">
+            Clasificar (Puestos + Áreas + Industrias)
+        </button>
+        <details>
+        <summary>Clasificadores Individualmente</summary>
         <form method="POST" enctype="multipart/form-data">
             <input type="hidden" name="accion" value="clasificar_puestos"/>
             <button type="submit" style="background-color: {color_puestos};">
@@ -1848,7 +1884,7 @@ Laura"
         <form method="POST">
             <input type="hidden" name="accion" value="clasificar_areas"/>
             <button type="submit" style="background-color: {color_areas};">
-                Clasificar Área Mayor y Menor
+                Clasificar Área y Departamento
             </button>
         </form>
         <form method="POST">
@@ -1857,6 +1893,7 @@ Laura"
                 Clasificar Industria Mayor
             </button>
         </form>
+        </details>
         <form method="POST">
             <input type="hidden" name="accion" value="super_scrap_leads"/>
             <button type="submit" style="background-color: {color_scrap};">
@@ -1888,47 +1925,58 @@ Laura"
         <hr>
     <details>
     <summary style="cursor: pointer; font-weight: bold;">➕ Mi Info</summary>
-        <form method="POST">
-            <label>Plan Estratégico:</label>
-            <details>
+
+    <form method="POST" enctype="multipart/form-data">
+        <label>Plan Estratégico:</label>
+        <textarea name="plan_estrategico" rows="3" style="width:100%;border-radius:10px;margin-top:8px;">{plan_estrategico or ''}</textarea>
+
+        <details>
             <summary style="cursor:pointer; font-weight: bold;">📄 Plan Estrategico</summary>
-            <textarea name="plan_estrategico" rows="3" style="width:100%;border-radius:10px;margin-top:8px;">{plan_estrategico or ''}</textarea>
-        
-            <p><strong>Actual:</strong><br>
-            Industrias: {industrias_interes}<br>
-            Área: {area_interes}</p>  
-            </details>
+            <h4>Información analizada desde el sitio del proveedor</h4>
 
-            <label>o Sube PDF para Plan Estratégico:</label>
-            <input type="file" name="pdf_plan_estrategico" id="pdf_plan_estrategico" accept="application/pdf" />
-            <!-- Botón para hacer scraping explícito del proveedor -->
-            <form method="POST">
-            <input type="text" name="url_proveedor" placeholder="https://miempresa.com/about" />
-            <input type="hidden" name="accion" value="scrap_proveedor" />
-            <button type="submit">🔍 Scraping del Proveedor</button>
-            </form>
+            <p><strong>Descripción:</strong><br>
+            <textarea rows="3" style="width: 100%;" readonly>{descripcion_proveedor or '-'}</textarea></p>
 
-            <label>Industrias de Interés:</label>
-            <input type="text" name="industrias_interes" value="{industrias_interes or ''}" placeholder="Ej: Automotriz, Manufactura"/>
+            <p><strong>Productos:</strong><br>
+            <textarea rows="3" style="width: 100%;" readonly>{productos_proveedor or '-'}</textarea></p>
 
-            <label>Área de Interés:</label>
-            <input type="text" name="area_interes" value="{area_interes or ''}" placeholder="Ej: Finanzas"/>
+            <p><strong>Mercado objetivo:</strong><br>
+            <textarea rows="3" style="width: 100%;" readonly>{mercado_proveedor or '-'}</textarea></p>
 
+            <p><strong>Propuesta de Valor:</strong> {propuesta_valor or '-'}</p>
+            <p><strong>Contexto:</strong> {contexto_prov or '-'}</p>
+        </details>
 
-            <input type="hidden" name="accion" value="guardar_custom_fields"/>
-            <button type="submit">Guardar Campos</button>     
-        </form>
-         
+        <label>Sube PDF para Plan Estratégico:</label>
+        <input type="file" name="pdf_plan_estrategico" id="pdf_plan_estrategico" accept="application/pdf" />
 
-        <hr>
-        <form method="POST">
-            <input type="hidden" name="accion" value="generar_tabla"/>
-            <button type="submit" style="background-color: {{ 'green' if acciones_realizadas['generar_tabla'] else '#1E90FF' }};">
-                Generar Mails con ChatGPT
-            </button>
-        </form>
-        <hr>
-    </details>    
+        <label>URL del proveedor para hacer scraping:</label>
+        <input type="text" name="url_proveedor" placeholder="https://miempresa.com/about" />
+
+        <label>Propuesta de Valor:</label>
+        <input type="text" name="propuesta_valor" value="{propuesta_valor or ''}" placeholder="Ej: Automatización B2B, eficiencia, etc."/>
+
+        <label>Contexto:</label>
+        <input type="text" name="contexto_prov" value="{contexto_prov or ''}" placeholder="Ej: Lanzamiento, Expo, etc."/>
+
+        <div style="display:flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+            <button type="submit" name="accion" value="guardar_custom_fields">💾 Guardar Campos</button>
+            <button type="submit" name="accion" value="scrap_proveedor">🔍 Scraping del Proveedor</button>
+        </div>
+    </form>
+
+    <hr>
+
+    <form method="POST">
+        <input type="hidden" name="accion" value="generar_tabla"/>
+        <button type="submit" style="background-color: {{ 'green' if acciones_realizadas['generar_tabla'] else '#1E90FF' }};">
+            Generar Mails con ChatGPT
+        </button>
+    </form>
+
+    <hr>
+    </details>
+  
     
     <details>
     <summary style="cursor: pointer; font-weight: bold;">➕ Exportar</summary>
@@ -1991,31 +2039,53 @@ Laura"
     </div>
     </div>
 
-<script>
-function actualizarProgresoScraping() {{
-fetch("/progreso_scrap")
-    .then(resp => resp.json())
-    .then(data => {{
-    if (data.total > 0) {{
-        document.getElementById("scrap-progress").style.display = "block";
-        document.getElementById("progress-bar").style.width = data.porcentaje + "%";
-        document.getElementById("progress-text").innerText = 
-        "Scraping: " + data.procesados + " de " + data.total + " (" + data.porcentaje + "%)";
-        
-        if (data.procesados < data.total) {{
-        setTimeout(actualizarProgresoScraping, 1000);
+    <script>
+    function actualizarProgresoScraping() {{
+    fetch("/progreso_scrap")
+        .then(resp => resp.json())
+        .then(data => {{
+        if (data.total > 0) {{
+            document.getElementById("scrap-progress").style.display = "block";
+            document.getElementById("progress-bar").style.width = data.porcentaje + "%";
+            document.getElementById("progress-text").innerText = 
+            "Scraping: " + data.procesados + " de " + data.total + " (" + data.porcentaje + "%)";
+            
+            if (data.procesados < data.total) {{
+            setTimeout(actualizarProgresoScraping, 1000);
+            }}
         }}
+        }});
     }}
-    }});
-}}
-document.addEventListener("DOMContentLoaded", () => {{
-    document.querySelectorAll(".cell-collapsible").forEach(cell => {{
-        cell.addEventListener("click", () => {{
-            cell.classList.toggle("expanded");
+    document.addEventListener("DOMContentLoaded", () => {{
+        document.querySelectorAll(".cell-collapsible").forEach(cell => {{
+            cell.addEventListener("click", () => {{
+                cell.classList.toggle("expanded");
+            }});
         }});
     }});
-}});
-</script>
+    function clasificarTodo() {{
+        const acciones = ["clasificar_puestos", "clasificar_areas", "clasificar_industrias"];
+
+        acciones.forEach(accion => {{
+            const formData = new FormData();
+            formData.append("accion", accion);
+
+            fetch("/", {{
+                method: "POST",
+                body: formData
+            }})
+            .then(resp => resp.text())
+            .then(data => {{
+                console.log(`✅ Acción completada: ${{accion}}`);
+            }})
+            .catch(err => {{
+                console.error(`❌ Error al ejecutar ${{accion}}:`, err);
+            }});
+        }});
+
+        alert("🛠️ Clasificación en proceso (ver consola para detalles)");
+    }}
+    </script>
 
 
     
@@ -2034,7 +2104,13 @@ document.addEventListener("DOMContentLoaded", () => {{
     """
     # Rellenar valores dinámicos para botones
     for clave, valor in acciones_realizadas.items():
-        page_html = page_html.replace(f"{{{{ acciones_realizadas['{clave}'] }}}}", str(valor).lower())        
+        page_html = page_html.replace(f"{{{{ acciones_realizadas['{clave}'] }}}}", str(valor).lower())
+    page_html = page_html.replace("{descripcion_proveedor}", str(descripcion_proveedor or ""))
+    page_html = page_html.replace("{productos_proveedor}", str(productos_proveedor or ""))
+    page_html = page_html.replace("{mercado_proveedor}", str(mercado_proveedor or ""))
+    page_html = page_html.replace("{icp_proveedor}", str(icp_proveedor or ""))
+
+
     return page_html
 
 
