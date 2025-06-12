@@ -1081,7 +1081,9 @@ def login():
             session["autenticado"] = True
             return redirect(url_for("index"))
         else:
+            session.clear() 
             error = "Contraseña incorrecta."
+
     
     return f"""
         <html>
