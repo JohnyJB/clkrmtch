@@ -1,4 +1,171 @@
-# -*- coding: utf-8 -*-
+# login.py
+from flask import Flask, request, redirect, url_for, session, render_template_string
+from sqlalchemy import create_engine, text
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import timedelta
+import uuid
+from cryptography.fernet import Fernet
+ENCRYPTION_KEY = b'yMybaWCe4meeb3v4LWNI4Sxz7oS54Gn0Fo9yJovqVN0='
+
+app = Flask(__name__)
+
+
+# Configuración Flask
+
+app.secret_key = "clave_ultra_segura_que_deberias_guardar_en_env"
+app.permanent_session_lifetime = timedelta(hours=1)
+
+#cargar db descifrada
+def load_db_config(file_path: str) -> dict:
+    """Desencripta y retorna los datos de conexión a la DB como diccionario."""
+    with open(file_path, "rb") as f:
+        encrypted = f.read()
+    fernet = Fernet(ENCRYPTION_KEY)
+    decrypted = fernet.decrypt(encrypted).decode("utf-8")
+
+    # Convertir el string a diccionario
+    lines = decrypted.strip().splitlines()
+    config = {}
+    for line in lines:
+        if "=" in line:
+            k, v = line.split("=", 1)
+            config[k.strip()] = v.strip()
+    return config
+
+# Conexión a PostgreSQL
+
+
+try:
+    db_conf = load_db_config("db.txt")
+    db_url = f"postgresql://{db_conf['username']}:{db_conf['password']}@{db_conf['host']}:{db_conf['port']}/{db_conf['database']}?sslmode={db_conf['sslmode']}"
+    engine = create_engine(db_url)
+except Exception as e:
+    print("[ERROR] No se pudo cargar la base de datos:", e)
+    engine = None
+
+
+# HTML embebido con estilos avanzados
+template_base = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ClickerMatch - {{ titulo }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: url('/static/background.png') no-repeat center center fixed;
+            background-size: cover;
+            color: #FFFFFF;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0; padding: 0;
+            text-align: center;
+        }
+        .container {
+            max-width: 300px;
+            margin: 60px auto;
+            background-color: #1F1F1F;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+        input[type="text"], input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #2A2A2A;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            color: #fff;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #1E90FF;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #00BFFF;
+        }
+        .msg {
+            color: #ff8080;
+            margin: 10px 0;
+        }
+        a { color: #1E90FF; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>{{ titulo }}</h2>
+    <form method="POST">
+        {% if register %}
+            <input type="text" name="nombre" placeholder="Nombre" required><br>
+        {% endif %}
+        <input type="email" name="correo" placeholder="Correo" required><br>
+        <input type="password" name="pass" placeholder="Contraseña" required><br>
+        <button type="submit">{{ 'Registrar' if register else 'Entrar' }}</button>
+    </form>
+    <div class="msg">{{ msg }}</div>
+    {% if register %}
+        <a href="/">Volver al login</a>
+    {% else %}
+        <a href="/register">Crear cuenta</a>
+    {% endif %}
+</div>
+</body>
+</html>
+'''
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    msg = ""
+    if request.method == "POST":
+        correo = request.form["correo"]
+        password = request.form["pass"]
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT * FROM usuarios WHERE correo = :correo"), {"correo": correo}).mappings().first()
+            if result and check_password_hash(result["pass"], password):
+                session.permanent = True
+                session["user"] = result["nombre"]
+                session["correo"] = correo
+                session["session_id"] = str(uuid.uuid4())
+                conn.execute(text("UPDATE usuarios SET session_id = :sid WHERE correo = :correo"), {
+                    "sid": session["session_id"], "correo": correo
+                })
+                return redirect("/")
+            else:
+                msg = "Correo o contraseña incorrecta."
+    return render_template_string(template_base, msg=msg, register=False, titulo="Iniciar Sesión")
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    msg = ""
+    if request.method == "POST":
+        nombre = request.form["nombre"]
+        correo = request.form["correo"]
+        password = generate_password_hash(request.form["pass"])
+        with engine.connect() as conn:
+            exists = conn.execute(text("SELECT 1 FROM usuarios WHERE correo = :correo"), {"correo": correo}).scalar()
+            if exists:
+                msg = "Este correo ya está registrado."
+            else:
+                conn.execute(text("""
+                    INSERT INTO usuarios (nombre, correo, pass, es_admin, creado_en)
+                    VALUES (:nombre, :correo, :pass, false, NOW())
+                """), {"nombre": nombre, "correo": correo, "pass": password})
+                msg = "Cuenta creada correctamente. Ahora puedes iniciar sesión."
+    return render_template_string(template_base, msg=msg, register=True, titulo="Crear Cuenta")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/")
+
+
+# plataforma.py
 import time
 import os
 import io
@@ -33,7 +200,7 @@ except ImportError:
 ###############################
 # 1) Hardcodear la API Key
 ###############################
-ENCRYPTION_KEY = b'yMybaWCe4meeb3v4LWNI4Sxz7oS54Gn0Fo9yJovqVN0='
+
 
 def decrypt_api_key(encrypted_data: bytes) -> str:
     """
@@ -84,6 +251,9 @@ def load_api_key_from_file(file_path: str) -> str:
     
     return decrypt_api_key(encrypted_data)
 
+
+
+
 # -------------------------------
 # Cargamos la clave descifrada
 # -------------------------------
@@ -115,7 +285,6 @@ acciones_realizadas = {
     "generar_tabla": False
 }
 
-app = Flask(__name__)
 app.secret_key = "CLAVE_SECRETA_PARA_SESSION"  # si deseas usar session
 
 # DataFrame principal
@@ -567,7 +736,7 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
             "CTA": "-"
         }
 
-    # Extraer datos-
+    # Extraer datos
     lead_name = str(row.get(mapeo_nombre_contacto, "-"))
     scrap_clean = str(row.get("scrapping", "-")).strip().replace("\n", " ")[:1500]
     scrap_adicional_clean = str(row.get("Scrapping Adicional", "-")).strip().replace("\n", " ")[:1500]
@@ -1073,37 +1242,14 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
 ##########################################
 # Rutas Flask
 ##########################################
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    error = ""
-    if request.method == "POST":
-        if request.form.get("password") == "clicker24":
-            session["autenticado"] = True
-            return redirect(url_for("index"))
-        else:
-            session.clear() 
-            error = "Contraseña incorrecta."
 
-    
-    return f"""
-        <html>
-        <head><title>Login</title></head>
-        <body style="background-color:#111; color:#fff; font-family:sans-serif; text-align:center; padding-top:100px;">
-            <h2>🔒 Ingreso a ClickerMatch</h2>
-            <form method="POST">
-                <input type="password" name="password" placeholder="Contraseña" style="padding:10px; border-radius:8px;" />
-                <br><br>
-                <button type="submit" style="padding:10px 20px;">Entrar</button>
-            </form>
-            <p style="color:red;">{error}</p>
-        </body>
-        </html>
-    """
 
 @app.route("/", methods=["GET","POST"])
 def index():
-    if not session.get("autenticado"):
-        return redirect(url_for("login"))    
+    if "user" not in session:
+        return redirect("/login")  # redirige al login principal
+    #if not session.get("autenticado"):
+        #return redirect(url_for("login"))    
     global df_leads
     global scrap_proveedor_text
     global info_proveedor_global
@@ -1690,7 +1836,7 @@ Laura"
     page_html = f"""
     <html>
     <head>
-        <title>Clicker Match</title>
+        <title>ClickerMaker</title>
         <style>
             body {{
                 background: url('/static/background.png') no-repeat center center fixed;
@@ -1887,6 +2033,20 @@ Laura"
     ">
         <img src="https://recordsencrisis.com/wp-content/uploads/2025/05/LOGO-CLICKER-MATCH.png" alt="ClickerMatch"
             style="max-height: 80px; margin-right: 20px;" />
+        <div style="position: absolute; top: 20px; right: 30px;">
+            <div style="position: relative; display: inline-block;">
+                <button onclick="toggleDropdown()" style="background: transparent; border: none; color: white; font-weight: bold; cursor: pointer;">
+                    👤 {{ session.get("user", "Usuario") }}
+                </button>
+                <div id="dropdownMenu" style="display: none; position: absolute; right: 0; background-color: #1F1F1F; min-width: 200px; box-shadow: 0px 8px 16px rgba(0,0,0,0.4); border-radius: 10px; z-index: 1000; padding: 10px;">
+                    <p style="margin: 0; color: white;"><strong>{{ session.get("user", "Usuario") }}</strong></p>
+                    <p style="margin: 0; font-size: 12px; color: #ccc;">{{ session.get("correo", "") }}</p>
+                    <hr style="border-color: #444;">
+                    <a href="/logout" style="color: #FF4C4C; text-decoration: none; display: block; margin-top: 5px;">Cerrar sesión</a>
+                </div>
+            </div>
+        </div>
+
         <h1 style="
             color: white;
             font-size: 30px;
@@ -2170,6 +2330,27 @@ Laura"
 
         alert("🛠️ Clasificación en proceso (ver consola para detalles)");
     }}
+    
+    function toggleDropdown() {{
+        const dropdown = document.getElementById("dropdownMenu");
+        dropdown.style.display = dropdown.style.display === "none" ? "block" : "none";
+    }}
+    function toggleDropdown() {{
+        const dropdown = document.getElementById("dropdownMenu");
+        const isVisible = dropdown.style.display === "block";
+        dropdown.style.display = isVisible ? "none" : "block";
+    }}
+
+    document.addEventListener("click", function(event) {{
+        const dropdown = document.getElementById("dropdownMenu");
+        const button = event.target.closest("button");
+
+        // Si haces clic fuera del menú y no fue en el botón, ciérralo
+        if (!event.target.closest("#dropdownMenu") && !button) {{
+            dropdown.style.display = "none";
+        }}
+    }});                                                                                                
+
     </script>
 
 
@@ -2188,12 +2369,12 @@ Laura"
     </html>
     """
     # Rellenar valores dinámicos para botones
-    for clave, valor in acciones_realizadas.items():
-        page_html = page_html.replace(f"{{{{ acciones_realizadas['{clave}'] }}}}", str(valor).lower())
-    page_html = page_html.replace("{descripcion_proveedor}", str(descripcion_proveedor or ""))
-    page_html = page_html.replace("{productos_proveedor}", str(productos_proveedor or ""))
-    page_html = page_html.replace("{mercado_proveedor}", str(mercado_proveedor or ""))
-    page_html = page_html.replace("{icp_proveedor}", str(icp_proveedor or ""))
+    #for clave, valor in acciones_realizadas.items():
+    #    page_html = page_html.replace(f"{{{{ acciones_realizadas['{clave}'] }}}}", str(valor).lower())
+    #page_html = page_html.replace("{descripcion_proveedor}", str(descripcion_proveedor or ""))
+    #page_html = page_html.replace("{productos_proveedor}", str(productos_proveedor or ""))
+    #page_html = page_html.replace("{mercado_proveedor}", str(mercado_proveedor or ""))
+    #page_html = page_html.replace("{icp_proveedor}", str(icp_proveedor or ""))
 
 
     return page_html
