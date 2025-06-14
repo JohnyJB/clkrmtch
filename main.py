@@ -109,7 +109,7 @@ template_base = '''
     {% if register %}
         <a href="/">Volver al login</a>
     {% else %}
-        <a href="/register">Crear cuenta</a>
+        <!-- <a href="/register">Crear cuenta</a> -->
     {% endif %}
 </div>
 </body>
