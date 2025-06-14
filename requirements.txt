@@ -11,3 +11,5 @@ pdfminer.six
 pillow
 pytesseract
 pdf2image
+sqlalchemy
+werkzeug
