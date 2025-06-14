@@ -13,3 +13,4 @@ pytesseract
 pdf2image
 sqlalchemy
 werkzeug
+psycopg2-binary
