@@ -5,25 +5,24 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import timedelta
 import uuid
 from cryptography.fernet import Fernet
+import os
+
+# 🔐 Clave para desencriptar db.txt
 ENCRYPTION_KEY = b'yMybaWCe4meeb3v4LWNI4Sxz7oS54Gn0Fo9yJovqVN0='
 
 app = Flask(__name__)
 
-
 # Configuración Flask
-
 app.secret_key = "clave_ultra_segura_que_deberias_guardar_en_env"
 app.permanent_session_lifetime = timedelta(hours=1)
 
-#cargar db descifrada
+# ✅ Cargar db.txt encriptado
 def load_db_config(file_path: str) -> dict:
-    """Desencripta y retorna los datos de conexión a la DB como diccionario."""
     with open(file_path, "rb") as f:
         encrypted = f.read()
     fernet = Fernet(ENCRYPTION_KEY)
     decrypted = fernet.decrypt(encrypted).decode("utf-8")
 
-    # Convertir el string a diccionario
     lines = decrypted.strip().splitlines()
     config = {}
     for line in lines:
@@ -32,19 +31,17 @@ def load_db_config(file_path: str) -> dict:
             config[k.strip()] = v.strip()
     return config
 
-# Conexión a PostgreSQL
-
-
+# 🔌 Conexión a PostgreSQL
 try:
     db_conf = load_db_config("db.txt")
     db_url = f"postgresql://{db_conf['username']}:{db_conf['password']}@{db_conf['host']}:{db_conf['port']}/{db_conf['database']}?sslmode={db_conf['sslmode']}"
     engine = create_engine(db_url)
+    print("[INFO] Conexión a DB configurada correctamente.")
 except Exception as e:
-    print("[ERROR] No se pudo cargar la base de datos:", e)
+    print("[ERROR] No se pudo conectar a la base de datos:", e)
     engine = None
 
-
-# HTML embebido con estilos avanzados
+# HTML embebido (igual que antes, intacto)
 template_base = '''
 <!DOCTYPE html>
 <html>
@@ -118,6 +115,7 @@ template_base = '''
 </body>
 </html>
 '''
+
 @app.route("/logout")
 def logout():
     session.clear()
@@ -126,42 +124,59 @@ def logout():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     msg = ""
-    if request.method == "POST":
+    if engine is None:
+        msg = "Base de datos no disponible."
+    elif request.method == "POST":
         correo = request.form["correo"]
         password = request.form["pass"]
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT * FROM usuarios WHERE correo = :correo"), {"correo": correo}).mappings().first()
-            if result and check_password_hash(result["pass"], password):
-                session.permanent = True
-                session["user"] = result["nombre"]
-                session["correo"] = correo
-                session["session_id"] = str(uuid.uuid4())
-                conn.execute(text("UPDATE usuarios SET session_id = :sid WHERE correo = :correo"), {
-                    "sid": session["session_id"], "correo": correo
-                })
-                return redirect("/")
-            else:
-                msg = "Correo o contraseña incorrecta."
+        try:
+            with engine.connect() as conn:
+                result = conn.execute(text("SELECT * FROM usuarios WHERE correo = :correo"), {"correo": correo}).mappings().first()
+                if result and check_password_hash(result["pass"], password):
+                    session.permanent = True
+                    session["user"] = result["nombre"]
+                    session["correo"] = correo
+                    session["session_id"] = str(uuid.uuid4())
+                    conn.execute(text("UPDATE usuarios SET session_id = :sid WHERE correo = :correo"), {
+                        "sid": session["session_id"], "correo": correo
+                    })
+                    return redirect("/")
+                else:
+                    msg = "Correo o contraseña incorrecta."
+        except Exception as e:
+            print("[ERROR en login]:", e)
+            msg = "Error interno en login."
     return render_template_string(template_base, msg=msg, register=False, titulo="Iniciar Sesión")
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
     msg = ""
-    if request.method == "POST":
+    if engine is None:
+        msg = "Base de datos no disponible."
+    elif request.method == "POST":
         nombre = request.form["nombre"]
         correo = request.form["correo"]
         password = generate_password_hash(request.form["pass"])
-        with engine.connect() as conn:
-            exists = conn.execute(text("SELECT 1 FROM usuarios WHERE correo = :correo"), {"correo": correo}).scalar()
-            if exists:
-                msg = "Este correo ya está registrado."
-            else:
-                conn.execute(text("""
-                    INSERT INTO usuarios (nombre, correo, pass, es_admin, creado_en)
-                    VALUES (:nombre, :correo, :pass, false, NOW())
-                """), {"nombre": nombre, "correo": correo, "pass": password})
-                msg = "Cuenta creada correctamente. Ahora puedes iniciar sesión."
+        try:
+            with engine.connect() as conn:
+                exists = conn.execute(text("SELECT 1 FROM usuarios WHERE correo = :correo"), {"correo": correo}).scalar()
+                if exists:
+                    msg = "Este correo ya está registrado."
+                else:
+                    conn.execute(text("""
+                        INSERT INTO usuarios (nombre, correo, pass, es_admin, creado_en)
+                        VALUES (:nombre, :correo, :pass, false, NOW())
+                    """), {"nombre": nombre, "correo": correo, "pass": password})
+                    msg = "Cuenta creada correctamente. Ahora puedes iniciar sesión."
+        except Exception as e:
+            print("[ERROR en registro]:", e)
+            msg = "Error interno al registrar usuario."
     return render_template_string(template_base, msg=msg, register=True, titulo="Crear Cuenta")
+
+# Si corres localmente
+if __name__ == "__main__":
+    print("[LOG] Inicia la app con la modificación para parsear JSON con llaves.")
+    app.run(debug=True, port=5000)
 
 
 
@@ -2395,3 +2410,6 @@ def progreso_scrap():
 if __name__ == "__main__":
     print("[LOG] Inicia la app con la modificación para parsear JSON con llaves.")
     app.run(debug=True, port=5000)
+
+    
+    
