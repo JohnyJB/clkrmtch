@@ -118,6 +118,10 @@ template_base = '''
 </body>
 </html>
 '''
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect("/")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -159,10 +163,7 @@ def register():
                 msg = "Cuenta creada correctamente. Ahora puedes iniciar sesión."
     return render_template_string(template_base, msg=msg, register=True, titulo="Crear Cuenta")
 
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect("/")
+
 
 
 # plataforma.py
@@ -2354,7 +2355,9 @@ Laura"
     </script>
 
 
-    
+    <a href="/logout" style="color: #FF4C4C; text-decoration: none; display: block; margin-top: 10px;">
+    🚪 Cerrar sesión
+    </a>
     </body>
     <div id="loader" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;text-align:center;padding-top:200px;">
     <div style="color:white;font-size:20px;">⏳ Cargando datos... por favor espera</div>
