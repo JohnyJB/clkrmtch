@@ -174,9 +174,7 @@ def register():
     return render_template_string(template_base, msg=msg, register=True, titulo="Crear Cuenta")
 
 # Si corres localmente
-if __name__ == "__main__":
-    print("[LOG] Inicia la app con la modificación para parsear JSON con llaves.")
-    app.run(debug=True, port=5000)
+
 
 
 
@@ -1227,7 +1225,10 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
 
     # Crear una copia solo para la visualización, eliminando las columnas ocultas
     #subset = df.drop(columns=["scrapping_proveedor", "scrapping"], errors="ignore").head(max_filas)
-    subset = df.head(max_filas)
+    # Forzar orden de columnas: Company Name, Name, Title primero
+    columnas_prioritarias = ["Company Name", "Name", "Title"]
+    otras = [col for col in df.columns if col not in columnas_prioritarias]
+    subset = df[columnas_prioritarias + otras] if all(c in df.columns for c in columnas_prioritarias) else df.head(max_filas)
     cols = list(subset.columns)
 
     anchas = [
@@ -1245,21 +1246,26 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
 
     rows_html = ""
     for _, row in subset.iterrows():
-        row_html = "".join(
-            f"<td class='col-ancha'><div class='cell-collapsible'>{str(row[col])}</div></td>" if col in anchas else f"<td><div class='cell-collapsible'>{str(row[col])}</div></td>"
-            for col in cols
-        )
+        row_html = ""
+        for col in cols:
+            valor = str(row[col])
+            if col == "Company Logo Url Secondary" and pd.notnull(row[col]) and valor.strip().lower().startswith("http"):
+                row_html += f"<td><img src='{valor}' alt='Logo' style='max-height:40px;'/></td>"
+            else:
+                row_html += (
+                    f"<td class='col-ancha'><div class='cell-collapsible'>{valor}</div></td>"
+                    if col in anchas else
+                    f"<td><div class='cell-collapsible'>{valor}</div></td>"
+                )
         rows_html += f"<tr>{row_html}</tr>"
 
-    return f"<table><tr>{thead}</tr>{rows_html}</table>"
 
+    return f"<p><strong>📊 Total Registros: {len(subset)}</strong></p>" + f"<table><tr>{thead}</tr>{rows_html}</table>"
 
 
 ##########################################
 # Rutas Flask
 ##########################################
-
-
 @app.route("/", methods=["GET","POST"])
 def index():
     if "user" not in session:
@@ -1442,6 +1448,89 @@ def index():
             else:
                 status_msg += "Cargue una base de leads primero.<br>"
                         
+        if accion == "cargar_contactos_db":
+            try:
+                id_inicio = request.form.get("id_inicio", "").strip()
+                id_fin = request.form.get("id_fin", "").strip()
+                filtro = request.form.get("filtro_busqueda", "").strip().lower()
+
+                condiciones = []
+                params = {}
+
+                if id_inicio.isdigit() and id_fin.isdigit():
+                    condiciones.append("c.id BETWEEN :start AND :end")
+                    params["start"] = int(id_inicio)
+                    params["end"] = int(id_fin)
+
+                if filtro:
+                    condiciones.append("""(
+                        LOWER(c.name) LIKE :filtro OR
+                        LOWER(c.first_name) LIKE :filtro OR
+                        LOWER(c.last_name) LIKE :filtro OR
+                        LOWER(e.company_name) LIKE :filtro OR
+                        LOWER(e.company_domain) LIKE :filtro OR
+                        LOWER(e.company_revenue_range) LIKE :filtro
+                    )""")
+                    params["filtro"] = f"%{filtro}%"
+
+                where_clause = "WHERE " + " AND ".join(condiciones) if condiciones else ""
+
+                query = text(f"""
+                    SELECT 
+                        e.company_name AS "Company Name",
+                        c.name AS "Name",
+                        c.title AS "Title",
+
+                        c.first_name AS "First name",
+                        c.last_name AS "Last name",
+                        c.email AS "Email",
+                        c.email_status AS "Email Status",
+                        c.linkedin AS "Linkedin",
+                        c.location AS "Location",
+                        c.added_on AS "Added On",
+
+                        e.company_domain AS "Company Domain",
+                        e.company_website AS "Company Website",
+                        e.company_employee_count AS "Company Employee Count",
+                        e.company_employee_count_range AS "Company Employee Count Range",
+                        e.company_founded AS "Company Founded",
+                        e.company_industry AS "Company Industry",
+                        e.company_type AS "Company Type",
+                        e.company_headquarters AS "Company Headquarters",
+                        e.company_revenue_range AS "Company Revenue Range",
+                        e.company_linkedin_url AS "Company Linkedin Url",
+                        e.company_crunchbase_url AS "Company Crunchbase Url",
+                        e.company_funding_rounds AS "Company Funding Rounds",
+                        e.company_last_funding_round_amount AS "Company Last Funding Round Amount",
+                        e.company_logo_url_primary AS "Company Logo Url, Primary",
+                        e.company_logo_url_secondary AS "Company Logo Url Secondary"
+                    FROM contactos c
+                    LEFT JOIN empresas e ON c.empresa_id = e.id
+                    {where_clause}
+                    ORDER BY c.id ASC
+                """)
+
+                with engine.connect() as conn:
+                    result = conn.execute(query, params).mappings().all()
+                    df_leads = pd.DataFrame(result)
+                    num_registros = len(df_leads)
+                    status_msg += f"✅ Se cargaron {num_registros} contactos desde la DB.<br>"
+                for k in acciones_realizadas:
+                    acciones_realizadas[k] = False
+
+                status_msg += f"✅ Se cargaron {len(df_leads)} contactos desde la DB.<br>"
+
+                # Auto mapeo (ajustado)
+                mapeo_nombre_contacto = 'Name'
+                mapeo_puesto = 'Title'
+                mapeo_empresa = 'Company Name'
+                mapeo_industria = 'Company Industry'
+                mapeo_website = 'Company Website'
+                mapeo_location = 'Location'
+                mapeo_empleados = 'Company Employee Count Range'
+
+            except Exception as e:
+                status_msg += f"❌ Error al cargar desde la base de datos: {e}<br>"
 
 
         if accion == "subir_pdf_plan":                                   
@@ -2077,7 +2166,26 @@ Laura"
   
     <div style="display: flex; gap: 20px; align-items: flex-start;">
     <div class="container">
-        
+    <!-- Sección 0: Cargar Base de datos de servidor-->    
+    <details>
+    <summary style="cursor: pointer; font-weight: bold;">📡 Buscar y cargar contactos desde DB</summary>
+    <form method="POST">
+        <input type="hidden" name="accion" value="cargar_contactos_db" />
+
+        <label>🔍 Buscar texto (en Nombre, Empresa, Dominio...):</label>
+        <input type="text" name="filtro_busqueda" placeholder="Ej. Acme, gmail, alto" style="margin-bottom:10px;" />
+
+        <label for="id_inicio">ID desde:</label>
+        <input type="number" name="id_inicio" min="1" placeholder="1" />
+
+        <label for="id_fin">hasta:</label>
+        <input type="number" name="id_fin" min="1" placeholder="100" />
+
+        <button type="submit">📥 Buscar y Cargar</button>
+    </form>
+    </details>
+
+
 
         <!-- Sección 1: Cargar CSV y Mapeo -->
     <details>

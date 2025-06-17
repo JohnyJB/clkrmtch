@@ -1,0 +1,728 @@
+Palabra Clave,Clasificacion Palabra Clave,Area,Departamento,Prioridad Area,Prioridad Depatamento
+"asesor, financiero",dos palabras,Comercial,Ventas,1,2
+"asesor, patrimonial",dos palabras,Comercial,Ventas,1,2
+cco,completa acronimo,Comercial,Ventas,1,2
+comercia,abrev,Comercial,Ventas,1,2
+comercial,completa,Comercial,Ventas,1,2
+commercial,completa,Comercial,Ventas,1,2
+"ejecutiv, financiero",dos palabras,Comercial,Ventas,1,2
+"ejecutiv, vent",dos palabras,Comercial,Ventas,1,2
+promotor,completa,Comercial,Ventas,1,2
+promotora,completa,Comercial,Ventas,1,2
+sales,completa,Comercial,Ventas,1,2
+vendedor,completa,Comercial,Ventas,1,2
+vendedora,completa,Comercial,Ventas,1,2
+venta,completa,Comercial,Ventas,1,2
+ventas,completa,Comercial,Ventas,1,2
+account executive,completa,Comercial,Cuentas,1,3
+account management,completa,Comercial,Cuentas,1,3
+account manager,completa,Comercial,Cuentas,1,3
+cuenta,completa,Comercial,Cuentas,1,3
+ejecutivo de cuen,abrev,Comercial,Cuentas,1,3
+"business, dev",dos palabras,Comercial,Desarrollo de Negocio,1,4
+"business, strat",dos palabras,Comercial,Desarrollo de Negocio,1,4
+"desarrollo, comer",dos palabras,Comercial,Desarrollo de Negocio,1,4
+"desarrollo, negocio",dos palabras,Comercial,Desarrollo de Negocio,1,4
+"estrategia, negocio",dos palabras,Comercial,Desarrollo de Negocio,1,4
+amazon,completa,Comercial,Ecommerce,1,5
+CATWEB,abrev,Comercial,Ecommerce,1,5
+comercio electronico,completa,Comercial,Ecommerce,1,5
+e-commerce,completa,Comercial,Ecommerce,1,5
+ecommerce,completa,Comercial,Ecommerce,1,5
+marketplace,completa,Comercial,Ecommerce,1,5
+Mercado Libre,completa,Comercial,Ecommerce,1,5
+comercializacion,completa,Comercial,Comercailización,1,6
+distribu,abrev,Comercial,Comercailización,1,6
+distribuidor,completa,Comercial,Comercailización,1,6
+distribuidora,completa,Comercial,Comercailización,1,6
+distributor,completa,Comercial,Comercailización,1,6
+merchandising,completa,Comercial,Comercailización,1,6
+branch,completa,Comercial,Retail,1,7
+expansi,abrev,Comercial,Retail,1,7
+"piso, venta",dos palabras,Comercial,Retail,1,7
+"punto, venta",dos palabras,Comercial,Retail,1,7
+Retail,completa,Comercial,Retail,1,7
+sucursal,completa,Comercial,Retail,1,7
+tienda,completa,Comercial,Retail,1,7
+"cuenta, clave",dos palabras,Comercial,KAM,1,8
+kam,completa,Comercial,KAM,1,8
+"key, acco",dos palabras,Comercial,KAM,1,8
+"key, manag",dos palabras,Comercial,KAM,1,8
+"cat, man",dos palabras,Comercial,Trade Marketing,1,9
+catego,abrev,Comercial,Trade Marketing,1,9
+marchand,abrev,Comercial,Trade Marketing,1,9
+trade,completa,Comercial,Trade Marketing,1,9
+trade marketing,completa,Comercial,Trade Marketing,1,9
+visual merchandising,completa,Comercial,Trade Marketing,1,9
+expansion,completa,Comercial,Expansión,1,10
+franch,abrev,Comercial,Expansión,1,10
+franquicia,completa,Comercial,Expansión,1,10
+"nuev, aper",dos palabras,Comercial,Expansión,1,10
+pricing,completa,Comercial,Revenue Management,1,11
+revenue,completa,Comercial,Revenue Management,1,11
+crm,completa,Comercial,CRM,1,12
+hubspot,completa,Comercial,CRM,1,12
+salesforce,completa,Comercial,CRM,1,12
+preventa,completa,Comercial,Preventa,1,13
+"sales, pre",dos palabras,Comercial,Preventa,1,13
+amway,completa,Comercial,Networker,1,14
+avon,completa,Comercial,Networker,1,14
+"distribui, independ",dos palabras,Comercial,Networker,1,14
+"emprende, indepen",dos palabras,Comercial,Networker,1,14
+"empresari, bronce",dos palabras,Comercial,Networker,1,14
+"empresari, gano",dos palabras,Comercial,Networker,1,14
+"empresari, independien",dos palabras,Comercial,Networker,1,14
+"empresari, junior",dos palabras,Comercial,Networker,1,14
+"empresari, lider",dos palabras,Comercial,Networker,1,14
+"empresari, oro",dos palabras,Comercial,Networker,1,14
+"empresari, platin",dos palabras,Comercial,Networker,1,14
+"empresari, siglo",dos palabras,Comercial,Networker,1,14
+"entrepeneur, independ",dos palabras,Comercial,Networker,1,14
+"entrepeneur, lifestyle",dos palabras,Comercial,Networker,1,14
+herbalife,completa,Comercial,Networker,1,14
+multinivel,completa,Comercial,Networker,1,14
+networ,abrev,Comercial,Networker,1,14
+network,completa,Comercial,Networker,1,14
+"network, market",dos palabras,Comercial,Networker,1,14
+networker,completa,Comercial,Networker,1,14
+omnilife,completa,Comercial,Networker,1,14
+organo,completa,Comercial,Networker,1,14
+oriflame,completa,Comercial,Networker,1,14
+"owner, indepen",dos palabras,Comercial,Networker,1,14
+travel,completa,Comercial,Agente de Viajes,1,15
+"agente, seguro",dos palabras,Comercial,Agente de Seguros,1,16
+"asesor, seguro",dos palabras,Comercial,Agente de Seguros,1,16
+"promotor, seguro",dos palabras,Comercial,Agente de Seguros,1,16
+"asesor, inmob",dos palabras,Comercial,Agente Inmobiliario,1,17
+inmobilia,abrev,Comercial,Agente Inmobiliario,1,17
+mayoreo,completa,Comercial,Ventas Mayoreo,1,18
+wholesale,completa,Comercial,Ventas Mayoreo,1,18
+district,completa,Comercial,Ventas regionales,1,19
+distrit,abrev,Comercial,Ventas regionales,1,19
+distrito,completa,Comercial,Ventas regionales,1,19
+region,completa,Comercial,Ventas regionales,1,19
+regional,completa,Comercial,Ventas regionales,1,19
+"sales, reg",dos palabras,Comercial,Ventas regionales,1,19
+"Vent, reg",dos palabras,Comercial,Ventas regionales,1,19
+zona,completa,Comercial,Ventas regionales,1,19
+zone,completa,Comercial,Ventas regionales,1,19
+"marketing, tele",dos palabras,Comercial,Ventas Telefónicas,1,20
+"tele, venta",dos palabras,Comercial,Ventas Telefónicas,1,20
+brand,completa,Marketing,Branding,2,1
+Branding,completa,Marketing,Branding,2,1
+marca,completa,Marketing,Branding,2,1
+growth,completa,Marketing,Growth Marketing,2,2
+marketing digital,completa,Marketing,Digital Marketing,2,3
+digital advertising,completa,Marketing,SEO / SEM / Medios Digitales,2,4
+digital marketing,completa,Marketing,SEO / SEM / Medios Digitales,2,4
+digital media,completa,Marketing,SEO / SEM / Medios Digitales,2,4
+Facebook Ads,completa,Marketing,SEO / SEM / Medios Digitales,2,4
+Google,completa,Marketing,SEO / SEM / Medios Digitales,2,4
+"marketing, performance",dos palabras,Marketing,SEO / SEM / Medios Digitales,2,4
+Medios Digitales,completa,Marketing,SEO / SEM / Medios Digitales,2,4
+Meta,completa,Marketing,SEO / SEM / Medios Digitales,2,4
+paid media,completa,Marketing,SEO / SEM / Medios Digitales,2,4
+performance,completa,Marketing,SEO / SEM / Medios Digitales,2,4
+search engine,completa,Marketing,SEO / SEM / Medios Digitales,2,4
+seo,completa acronimo,Marketing,SEO / SEM / Medios Digitales,2,4
+"web, mark",dos palabras,Marketing,SEO / SEM / Medios Digitales,2,4
+"web, posicion",dos palabras,Marketing,SEO / SEM / Medios Digitales,2,4
+"web, search",dos palabras,Marketing,SEO / SEM / Medios Digitales,2,4
+community Manager,completa,Marketing,Redes Sociales,2,5
+Facebook,completa,Marketing,Redes Sociales,2,5
+Instagram,completa,Marketing,Redes Sociales,2,5
+LinkedIn,completa,Marketing,Redes Sociales,2,5
+redes sociales,completa,Marketing,Redes Sociales,2,5
+animator,completa,Marketing,Creativo,2,6
+creativa,completa,Marketing,Creativo,2,6
+creative,completa,Marketing,Creativo,2,6
+creativo,completa,Marketing,Creativo,2,6
+"diseñ, grafi",dos palabras,Marketing,Creativo,2,6
+Gamer,completa,Marketing,Creativo,2,6
+graphic design,completa,Marketing,Creativo,2,6
+videogame,completa,Marketing,Creativo,2,6
+animación,completa,Marketing,Contenidos,2,7
+blog,abrev,Marketing,Contenidos,2,7
+contenido,completa,Marketing,Contenidos,2,7
+content,completa,Marketing,Contenidos,2,7
+"content, creator",dos palabras,Marketing,Contenidos,2,7
+"content, develop",dos palabras,Marketing,Contenidos,2,7
+"content, produc",dos palabras,Marketing,Contenidos,2,7
+copy,completa,Marketing,Contenidos,2,7
+copywriter,completa,Marketing,Contenidos,2,7
+edición,completa,Marketing,Contenidos,2,7
+edit,completa,Marketing,Contenidos,2,7
+editar,completa,Marketing,Contenidos,2,7
+editor,completa,Marketing,Contenidos,2,7
+editora,completa,Marketing,Contenidos,2,7
+productor web,completa,Marketing,Contenidos,2,7
+redac,abrev,Marketing,Contenidos,2,7
+redacción,completa,Marketing,Contenidos,2,7
+reportero,completa,Marketing,Contenidos,2,7
+video editor,completa,Marketing,Contenidos,2,7
+youtuber,completa,Marketing,Contenidos,2,7
+ad,completa acronimo,Marketing,Medios Publicitarios,2,8
+ad sales,completa,Marketing,Medios Publicitarios,2,8
+advertising,completa,Marketing,Medios Publicitarios,2,8
+advertising sales,completa,Marketing,Medios Publicitarios,2,8
+media,completa,Marketing,Medios Publicitarios,2,8
+Medios Publicitarios,completa,Marketing,Medios Publicitarios,2,8
+publicidad,completa,Marketing,Medios Publicitarios,2,8
+"investiga, mercad",dos palabras,Marketing,Investigación de Mercados,2,9
+market research,completa,Marketing,Investigación de Mercados,2,9
+public affairs,completa,Marketing,Relaciones Públicas,2,10
+public relations,completa,Marketing,Relaciones Públicas,2,10
+relaciones publicas,completa,Marketing,Relaciones Públicas,2,10
+event,completa,Marketing,Eventos y Patrocinios,2,11
+evento,completa,Marketing,Eventos y Patrocinios,2,11
+comunica,abrev,Marketing,Comunicación,2,12
+"comunica, digital",dos palabras,Marketing,Comunicación,2,12
+"comunica, social",dos palabras,Marketing,Comunicación,2,12
+Comunicacion,completa,Marketing,Comunicación,2,12
+comunicador,completa,Marketing,Comunicación,2,12
+comunicadora,completa,Marketing,Comunicación,2,12
+english,completa,Marketing,Comunicación,2,12
+Interprete,completa,Marketing,Comunicación,2,12
+medios,completa,Marketing,Comunicación,2,12
+cmo,completa acronimo,Marketing,Marketing,2,13
+global marketing,completa,Marketing,Marketing,2,13
+"global, market",dos palabras,Finanzas,Marketing,2,13
+marketing,completa,Marketing,Marketing,2,13
+merca,abrev,Marketing,Marketing,2,13
+"mercado, global",dos palabras,Marketing,Marketing,2,13
+mercadotecnia,completa,Marketing,Marketing,2,13
+accountant,completa,Finanzas,Contabilidad,3,1
+accounting,completa,Finanzas,Contabilidad,3,1
+contabilidad,completa,Finanzas,Contabilidad,3,1
+contable,completa,Finanzas,Contabilidad,3,1
+contador,completa,Finanzas,Contabilidad,3,1
+contadora,completa,Finanzas,Contabilidad,3,1
+fiscal,completa,Finanzas,Contabilidad,3,1
+impuesto,completa,Finanzas,Contabilidad,3,1
+tax,completa,Finanzas,Contabilidad,3,1
+financia,abrev,Finanzas,Tesorería,3,2
+tesorera,completa,Finanzas,Tesorería,3,2
+tesoreria,completa,Finanzas,Tesorería,3,2
+tesorero,completa,Finanzas,Tesorería,3,2
+treasure,completa,Finanzas,Tesorería,3,2
+treasury,completa,Finanzas,Tesorería,3,2
+inversion,completa,Finanzas,Inversiones,3,3
+investement,abrev,Finanzas,Inversiones,3,3
+Investment,completa,Finanzas,Inversiones,3,3
+investor,completa,Finanzas,Inversiones,3,3
+asset management,completa,Finanzas,Finanzas Corporativas,3,4
+capital market,completa,Finanzas,Finanzas Corporativas,3,4
+"finance, corpo",dos palabras,Finanzas,Finanzas Corporativas,3,4
+Finanzas Corporativas,completa,Finanzas,Finanzas Corporativas,3,4
+private equity,completa,Finanzas,Finanzas Corporativas,3,4
+audit,abrev,Finanzas,Contraloría,3,5
+auditor,completa,Finanzas,Contraloría,3,5
+auditora,completa,Finanzas,Contraloría,3,5
+contralor,completa,Finanzas,Contraloría,3,5
+Contraloria,completa,Finanzas,Contraloría,3,5
+control interno,completa,Finanzas,Contraloría,3,5
+controlador,completa,Finanzas,Contraloría,3,5
+controler,completa,Finanzas,Contraloría,3,5
+Controller,completa,Finanzas,Contraloría,3,5
+Controlling,completa,Finanzas,Contraloría,3,5
+"financ, control",dos palabras,Finanzas,Contraloría,3,5
+"finan, plan",dos palabras,Finanzas,Planeacion Financiera,3,6
+caja,completa,Finanzas,Caja,3,7
+cajera,completa,Finanzas,Caja,3,7
+cajero,completa,Finanzas,Caja,3,7
+cashier,completa,Finanzas,Caja,3,7
+credit,completa,Finanzas,Crédito,3,8
+credito,completa,Finanzas,Crédito,3,8
+accounts recivable,completa,Finanzas,Cobranza,3,9
+cobrador,completa,Finanzas,Cobranza,3,9
+cobradora,completa,Finanzas,Cobranza,3,9
+cobranza,completa,Finanzas,Cobranza,3,9
+Cobranzas,completa,Finanzas,Cobranza,3,9
+cobrar,completa,Finanzas,Cobranza,3,9
+collect,abrev,Finanzas,Cobranza,3,9
+collection,completa,Finanzas,Cobranza,3,9
+"Cuent, Cobra",dos palabras,Finanzas,Cobranza,3,9
+receivable,completa,Finanzas,Cobranza,3,9
+"recup, cartera",dos palabras,Finanzas,Cobranza,3,9
+"control, riesgo",dos palabras,Finanzas,Control de Riesgos,3,10
+fraud,completa,Finanzas,Control de Riesgos,3,10
+fraude,completa,Finanzas,Control de Riesgos,3,10
+risk,completa,Finanzas,Control de Riesgos,3,10
+risk management,completa,Finanzas,Control de Riesgos,3,10
+"risk, control",dos palabras,Finanzas,Control de Riesgos,3,10
+account payable,completa,Finanzas,Cuentas por Pagar,3,11
+"cuent, paga",dos palabras,Finanzas,Cuentas por Pagar,3,11
+Corporate Trust,completa,Finanzas,Fiduciario,3,12
+fiduciar,abrev,Finanzas,Fiduciario,3,12
+fiduciario,completa,Finanzas,Fiduciario,3,12
+Trustee,completa,Finanzas,Fiduciario,3,12
+cfo,completa acronimo,Finanzas,Finanzas,3,13
+finance,completa,Finanzas,Finanzas,3,13
+"finance, operation",dos palabras,Finanzas,Finanzas,3,13
+financial,completa,Finanzas,Finanzas,3,13
+financiera,completa,Finanzas,Finanzas,3,13
+financiero,completa,Finanzas,Finanzas,3,13
+finanzas,completa,Finanzas,Finanzas,3,13
+arquitecto soluciones,completa,Tecnología,Desarrollo de Software,4,1
+desarrollador,completa,Tecnología,Desarrollo de Software,4,1
+desarrolladora,completa,Tecnología,Desarrollo de Software,4,1
+Desarrollo de Software,completa,Tecnología,Desarrollo de Software,4,1
+developer,completa,Tecnología,Desarrollo de Software,4,1
+engineer,completa,Tecnología,Desarrollo de Software,4,1
+engineering,completa,Tecnología,Desarrollo de Software,4,1
+"full, stack",dos palabras,Tecnología,Desarrollo de Software,4,1
+"ing, sist",dos palabras,Tecnología,Desarrollo de Software,4,1
+ingeniería,completa,Tecnología,Desarrollo de Software,4,1
+programador,completa,Tecnología,Desarrollo de Software,4,1
+programadora,completa,Tecnología,Desarrollo de Software,4,1
+programmer,completa,Tecnología,Desarrollo de Software,4,1
+project management,completa,Tecnología,Desarrollo de Software,4,1
+software,completa,Tecnología,Desarrollo de Software,4,1
+"soluti, arch",dos palabras,Tecnología,Desarrollo de Software,4,1
+Solution Arquitect,completa,Tecnología,Desarrollo de Software,4,1
+"tec, innova",dos palabras,Tecnología,Desarrollo de Software,4,1
+technical solutions,completa,Tecnología,Desarrollo de Software,4,1
+technology architect,completa,Tecnología,Desarrollo de Software,4,1
+information technology,completa,Tecnología,Tecnología de la Infromacion,4,2
+IT,completa acronimo,Tecnología,Tecnología de la Infromacion,4,2
+"tec, informa",dos palabras,Tecnología,Tecnología de la Infromacion,4,2
+"tech , informa",dos palabras,Tecnología,Tecnología de la Infromacion,4,2
+TI,completa acronimo,Tecnología,Tecnología de la Infromacion,4,2
+cloud,completa,Tecnología,Infraestructura TI,4,3
+Infraestructura Tecnologica,completa,Tecnología,Infraestructura TI,4,3
+"infraestructura, it",dos palabras,Tecnología,Infraestructura TI,4,3
+"infraestructura, ti",dos palabras,Tecnología,Infraestructura TI,4,3
+"infrastructure, it",dos palabras,Tecnología,Infraestructura TI,4,3
+"infrastructure, system",dos palabras,Tecnología,Infraestructura TI,4,3
+"infrastructure, ti",dos palabras,Tecnología,Infraestructura TI,4,3
+it infrastructure,completa,Tecnología,Infraestructura TI,4,3
+"it, infrastructure",dos palabras,Tecnología,Infraestructura TI,4,3
+sap,completa acronimo,Tecnología,Infraestructura TI,4,3
+server,completa,Tecnología,Infraestructura TI,4,3
+cybersecurity,completa,Tecnología,Seguridad de la Informacion,4,4
+Seguridad de la Informacion,completa,Tecnología,Seguridad de la Informacion,4,4
+"seguridad, informa",dos palabras,Tecnología,Seguridad de la Informacion,4,4
+"seguridad, infraes",dos palabras,Tecnología,Seguridad de la Informacion,4,4
+"seguridad, ti",dos palabras,Tecnología,Seguridad de la Informacion,4,4
+"tech, securi",dos palabras,Tecnología,Seguridad de la Informacion,4,4
+"tecnolo, seguri",dos palabras,Tecnología,Seguridad de la Informacion,4,4
+base de datos,completa,Tecnología,Base de Datos,4,5
+data warehouse,completa,Tecnología,Base de Datos,4,5
+database,completa,Tecnología,Base de Datos,4,5
+soporte tecnico,completa,Tecnología,Soporte Técnico,4,6
+back end,completa,Tecnología,Desarrollo Web,4,7
+"diseñ, ui",dos palabras,Tecnología,Desarrollo Web,4,7
+"front, end",dos palabras,Tecnología,Desarrollo Web,4,7
+web,abrev,Tecnología,Desarrollo Web,4,7
+"web, desarroll",dos palabras,Tecnología,Desarrollo Web,4,7
+"web, develop",dos palabras,Tecnología,Desarrollo web,4,7
+"web, master",dos palabras,Tecnología,Desarrollo Web,4,7
+"web, programa",dos palabras,Tecnología,Desarrollo Web,4,7
+diseñador web,completa,Tecnología,Diseño Web,4,8
+"web, design",dos palabras,Tecnología,Diseño Web,4,8
+"web, diseñ",dos palabras,Tecnología,Diseño Web,4,8
+automation,completa,Tecnología,Transformación Digital,4,9
+digital transformation,completa,Tecnología,Transformación Digital,4,9
+"innova, digital",dos palabras,Tecnología,Transformación Digital,4,9
+robot,completa,Tecnología,Transformación Digital,4,9
+transformación digital,completa,Tecnología,Transformación Digital,4,9
+agile,completa,Tecnología,Project Management,4,10
+pmo,completa acronimo,Tecnología,Project Management,4,10
+scrum,completa,Tecnología,Project Management,4,10
+cio,completa acronimo,Tecnología,Tecnología,4,11
+cto,completa acronimo,Tecnología,Tecnología,4,11
+tech,abrev,Tecnología,Tecnología,4,11
+technical services,completa,Tecnología,Tecnología,4,11
+tecnología,completa,Tecnología,Tecnología,4,11
+"atracci, talent",dos palabras,Recursos Humanos,Reclutamiento y Selección,5,1
+recluta,abrev,Recursos Humanos,Reclutamiento y Selección,5,1
+reclutador,completa,Recursos Humanos,Reclutamiento y Selección,5,1
+reclutadora,completa,Recursos Humanos,Reclutamiento y Selección,5,1
+reclutamiento,completa,Recursos Humanos,Reclutamiento y Selección,5,1
+Recruiter,completa,Recursos Humanos,Reclutamiento y Selección,5,1
+recruitment,completa,Recursos Humanos,Reclutamiento y Selección,5,1
+talent acquisition,completa,Recursos Humanos,Reclutamiento y Selección,5,1
+"talent, recru",dos palabras,Recursos Humanos,Reclutamiento y Selección,5,1
+capacita,abrev,Recursos Humanos,Desarrollo de Personal,5,2
+capacitacion,completa,Recursos Humanos,Desarrollo de Personal,5,2
+capacitador,completa,Recursos Humanos,Desarrollo de Personal,5,2
+capacitadora,completa,Recursos Humanos,Desarrollo de Personal,5,2
+desarrollo de personal,completa,Recursos Humanos,Desarrollo de Personal,5,2
+"desarrollo, habilidades",dos palabras,Recursos Humanos,Desarrollo de Personal,5,2
+"talent, develop",dos palabras,Recursos Humanos,Desarrollo de Personal,5,2
+training,completa,Recursos Humanos,Desarrollo de Personal,5,2
+nomina,completa,Recursos Humanos,Nómina,5,3
+payroll,completa,Recursos Humanos,Nómina,5,3
+beneficios,completa,Recursos Humanos,Compensaciones,5,4
+compensacion,completa,Recursos Humanos,Compensaciones,5,4
+compensation,completa,Recursos Humanos,Compensaciones,5,4
+prestaciones,completa,Recursos Humanos,Compensaciones,5,4
+"safety, health",dos palabras,Recursos Humanos,Seguridad e Higiene,5,5
+"seguridad, ambient",dos palabras,Recursos Humanos,Seguridad e Higiene,5,5
+"seguridad, higiene",dos palabras,Recursos Humanos,Seguridad e Higiene,5,5
+"seguridad, salud",dos palabras,Recursos Humanos,Seguridad e Higiene,5,5
+alumno,completa,Recursos Humanos,Practicas Profesionales,5,6
+Becaria,completa,Recursos Humanos,Practicas Profesionales,5,6
+becario,completa,Recursos Humanos,Practicas Profesionales,5,6
+estudia,completa,Recursos Humanos,Practicas Profesionales,5,6
+intern,abrev,Recursos Humanos,Practicas Profesionales,5,6
+Internship,completa,Recursos Humanos,Practicas Profesionales,5,6
+pasante,completa,Recursos Humanos,Practicas Profesionales,5,6
+Practicante,completa,Recursos Humanos,Practicas Profesionales,5,6
+prácticas,completa,Recursos Humanos,Practicas Profesionales,5,6
+student,completa,Recursos Humanos,Practicas Profesionales,5,6
+Trainee,completa,Recursos Humanos,Practicas Profesionales,5,6
+capital humano,completa,Recursos Humanos,Recursos Humanos,5,7
+hr,completa acronimo,Recursos Humanos,Recursos Humanos,5,7
+"hr, business",dos palabras,Recursos Humanos,Recursos Humanos,5,7
+hrbp,completa,Recursos Humanos,Recursos Humanos,5,7
+human resources,completa,Recursos Humanos,Recursos Humanos,5,7
+personal,completa,Recursos Humanos,Recursos Humanos,5,7
+recursos humanos,completa,Recursos Humanos,Recursos Humanos,5,7
+relaciones laborales,completa,Recursos Humanos,Recursos Humanos,5,7
+rh,completa acronimo,Recursos Humanos,Recursos Humanos,5,7
+talent,completa,Recursos Humanos,Recursos Humanos,5,7
+"talent, man",dos palabras,Recursos Humanos,Recursos Humanos,5,7
+"talent, cultur",dos palabras,Recursos Humanos,Recursos Humanos,5,7
+workforce,completa,Recursos Humanos,Recursos Humanos,5,7
+desarrollo de producto,completa,Producto,Desarrollo de Producto,6,1
+gerente de producto,completa,Producto,Desarrollo de Producto,6,1
+product development,completa,Producto,Desarrollo de Producto,6,1
+product owner,completa,Producto,Desarrollo de Producto,6,1
+"product, manag",dos palabras,Producto,Desarrollo de Producto,6,1
+invest,abrev,Producto,Investigación y Desarrollo,6,2
+"investiga, desarrollo",dos palabras,Producto,Investigación y Desarrollo,6,2
+"research, develop",dos palabras,Producto,Investigación y Desarrollo,6,2
+Business Intelligence,completa,Producto,Business Intelligence,6,3
+data,completa,Producto,Business Intelligence,6,3
+data analytics,completa,Producto,Business Intelligence,6,3
+data science,completa,Producto,Business Intelligence,6,3
+inteligencia comercial,completa,Producto,Business Intelligence,6,3
+Innova,abrev,Producto,Innovación,6,4
+ux,completa acronimo,Producto,UX / UI,6,5
+"ux, ui",dos palabras,Producto,UX / UI,6,5
+aboga,abrev,Jurídico,Contratos y Litigios,7,1
+abogada,completa,Jurídico,Contratos y Litigios,7,1
+abogado,completa,Jurídico,Contratos y Litigios,7,1
+attorney,completa,Jurídico,Contratos y Litigios,7,1
+contrato,completa,Jurídico,Contratos y Litigios,7,1
+juridic,abrev,Jurídico,Contratos y Litigios,7,1
+jurídico,completa,Jurídico,Contratos y Litigios,7,1
+law,completa,Jurídico,Contratos y Litigios,7,1
+lawyer,completa,Jurídico,Contratos y Litigios,7,1
+legal,completa,Jurídico,Contratos y Litigios,7,1
+compliace,completa,Jurídico,Regulatorio y Cumplimiento,7,2
+compliance,completa,Jurídico,Regulatorio y Cumplimiento,7,2
+cumplimiento,completa,Jurídico,Regulatorio y Cumplimiento,7,2
+normat,abrev,Jurídico,Regulatorio y Cumplimiento,7,2
+normatividad,completa,Jurídico,Regulatorio y Cumplimiento,7,2
+Regulator,completa,Jurídico,Regulatorio y Cumplimiento,7,2
+datos personales,completa,Jurídico,Protección de Datos,7,3
+Privacy,completa,Jurídico,Protección de Datos,7,3
+atencion al cliente,completa,Operaciones,Servicio al Cliente,8,1
+"call, cent",dos palabras,Operaciones,Servicio al cliente,8,1
+"capit, banq",dos palabras,Operaciones,Servicio al Cliente,8,1
+capitan,completa,Operaciones,Servicio al Cliente,8,1
+captain,completa,Operaciones,Servicio al Cliente,8,1
+client support,completa,Operaciones,Servicio al Cliente,8,1
+"contact, cent",dos palabras,Operaciones,Servicio al Cliente,8,1
+customer experience,completa,Operaciones,Servicio al Cliente,8,1
+customer service,completa,Operaciones,Servicio al Cliente,8,1
+customer success,completa,Operaciones,Servicio al Cliente,8,1
+cx,completa acronimo,Operaciones,Servicio al Cliente,8,1
+"help, desk",dos palabras,Operaciones,Servicio al cliente,8,1
+mesera,completa,Operaciones,Servicio al Cliente,8,1
+mesero,completa,Operaciones,Servicio al Cliente,8,1
+"serv, cliente",dos palabras,Operaciones,Servicio al Cliente,8,1
+telefonic,abrev,Operaciones,Servicio al Cliente,8,1
+waiter,abrev,Operaciones,Servicio al Cliente,8,1
+manufactura,completa,Operaciones,Produccion,8,2
+manufacturing,completa,Operaciones,Produccion,8,2
+producc,abrev,Operaciones,Produccion,8,2
+Produccion,completa,Operaciones,Produccion,8,2
+production,completa,Operaciones,Produccion,8,2
+Calidad,completa,Operaciones,Calidad,8,3
+"calidad, aseguramiento",dos palabras,Operaciones,Calidad,8,3
+"calidad, cumplimiento",dos palabras,Operaciones,Calidad,8,3
+"calidad, producto",dos palabras,Operaciones,Calidad,8,3
+"control, calidad",dos palabras,Operaciones,Calidad,8,3
+qa,completa acronimo,Operaciones,Calidad,8,3
+Quality,completa,Operaciones,Calidad,8,3
+quality assurance,completa,Operaciones,Calidad,8,3
+abastec,abrev,Operaciones,Compras,8,4
+acheteur,completa,Operaciones,Compras,8,4
+adquisicion,abrev,Operaciones,Compras,8,4
+approvision,completa,Operaciones,Compras,8,4
+buyer,completa,Operaciones,Compras,8,4
+buying,completa,Operaciones,Compras,8,4
+compra,completa,Operaciones,Compras,8,4
+comprador,completa,Operaciones,Compras,8,4
+compradora,completa,Operaciones,Compras,8,4
+Compras,completa,Operaciones,Compras,8,4
+"plan, buyer",dos palabras,Operaciones,Compras,8,4
+"plan, demand",dos palabras,Operaciones,Compras,8,4
+"plan, material",dos palabras,Operaciones,Compras,8,4
+procura,abrev,Operaciones,Compras,8,4
+procurement,completa,Operaciones,Compras,8,4
+purcha,abrev,Operaciones,Compras,8,4
+purchase,completa,Operaciones,Compras,8,4
+purchaser,completa,Operaciones,Compras,8,4
+recursos materiales,completa,Operaciones,Compras,8,4
+shopper,completa,Operaciones,Compras,8,4
+Source,completa,Operaciones,Compras,8,4
+Sourcing,completa,Operaciones,Compras,8,4
+maintenance,completa,Operaciones,Mantenimiento,8,5
+mantenimiento,completa,Operaciones,Mantenimiento,8,5
+mto,abrev,Operaciones,Mantenimiento,8,5
+almac,abrev,Operaciones,Almacén,8,6
+almacen,completa,Operaciones,Almacén,8,6
+bodega,completa,Operaciones,Almacén,8,6
+Cedis,completa,Operaciones,Almacén,8,6
+inventario,completa,Operaciones,Almacén,8,6
+inventory,completa,Operaciones,Almacén,8,6
+warehous,abrev,Operaciones,Almacén,8,6
+Warehouse,completa,Operaciones,Almacén,8,6
+cadena de suministro,completa,Operaciones,Logística,8,7
+logistic,abrev,Operaciones,Logística,8,7
+logistica,completa,Operaciones,Logística,8,7
+logistics,completa,Operaciones,Logística,8,7
+relaciones internacionales,completa,Operaciones,Logística,8,7
+supply chain,completa,Operaciones,Logística,8,7
+transport,abrev,Operaciones,Distribución y Transporte,8,8
+transportation,completa,Operaciones,Distribución y Transporte,8,8
+transporte,completa,Operaciones,Distribución y Transporte,8,8
+loss,completa,Operaciones,Pérdidas y Mermas,8,9
+merma,completa,Operaciones,Pérdidas y Mermas,8,9
+perdidas,completa,Operaciones,Pérdidas y Mermas,8,9
+security,completa,Operaciones,Seguridad,8,10
+seguridad,completa,Operaciones,Seguridad,8,10
+seguridad patrimonial,completa,Operaciones,Seguridad,8,10
+"bell, boy",dos palabras,Operaciones,Recepción,8,11
+botones,completa,Operaciones,Recepción,8,11
+concierge,completa,Operaciones,Recepción,8,11
+front desk,completa,Operaciones,Recepción,8,11
+hoste,abrev,Operaciones,Recepción,8,11
+mayordomo,completa,Operaciones,Recepción,8,11
+recepcion,completa,Operaciones,Recepción,8,11
+"capit, 1",dos palabras,Operaciones,Operaciones Aéreas,8,12
+"capit, 3",dos palabras,Operaciones,Operaciones Aéreas,8,12
+"capit, 4",dos palabras,Operaciones,Operaciones Aéreas,8,12
+"capit, 7",dos palabras,Operaciones,Operaciones Aéreas,8,12
+"capit, air",dos palabras,Operaciones,Operaciones Aéreas,8,12
+"capit, gru",dos palabras,Operaciones,Operaciones Aéreas,8,12
+"capit, jet",dos palabras,Operaciones,Operaciones Aéreas,8,12
+"capitan, 1",dos palabras,Operaciones,Operaciones Aéreas,8,12
+"captain, 1",dos palabras,Operaciones,Operaciones Aéreas,8,12
+"captain, 2",dos palabras,Operaciones,Operaciones Aéreas,8,12
+"captain, 3",dos palabras,Operaciones,Operaciones Aéreas,8,12
+"captain, 7",dos palabras,Operaciones,Operaciones Aéreas,8,12
+"captain, air",dos palabras,Operaciones,Operaciones Aéreas,8,12
+"captain, jet",dos palabras,Operaciones,Operaciones Aéreas,8,12
+Control Aereo,completa,Operaciones,Operaciones Aéreas,8,12
+"controlador, aerea",dos palabras,Operaciones,Operaciones Aéreas,8,12
+Flight,completa,Operaciones,Operaciones Aéreas,8,12
+pilot,completa,Operaciones,Operaciones Aéreas,8,12
+sobrecargo,completa,Operaciones,Operaciones Aéreas,8,12
+mesa de control,completa,Operaciones,Mesa de Control,8,13
+"socio, conduct",dos palabras,Operaciones,Chofer,8,14
+"socio, uber",dos palabras,Operaciones,Chofer,8,14
+"bar, man",dos palabras,Operaciones,Cocina,8,15
+barista,completa,Operaciones,Cocina,8,15
+bartender,completa,Operaciones,Cocina,8,15
+cantina,completa,Operaciones,Cocina,8,15
+cantinero,completa,Operaciones,Cocina,8,15
+chef,completa,Operaciones,Cocina,8,15
+cocin,abrev,Operaciones,Cocina,8,15
+cook,abrev,Operaciones,Cocina,8,15
+coo,completa acronimo,Operaciones,Operaciones,8,16
+opera,abrev,Operaciones,Operaciones,8,16
+"opera, zona",dos palabras,Operaciones,Operaciones,8,16
+operaciones,completa,Operaciones,Operaciones,8,16
+operador,completa,Operaciones,Operaciones,8,16
+operadora,completa,Operaciones,Operaciones,8,16
+operation,completa,Operaciones,Operaciones,8,16
+operativ,abrev,Operaciones,Operaciones,8,16
+operator,completa,Operaciones,Operaciones,8,16
+cirujan,abrev,Salud,Médico,9,1
+clinic,abrev,Salud,Médico,9,1
+clinica,completa,Salud,Médico,9,1
+clinico,completa,Salud,Médico,9,1
+doctor,completa,Salud,Médico,9,1
+doctora,completa,Salud,Médico,9,1
+internis,abrev,Salud,Médico,9,1
+MD,completa acronimo,Salud,Médico,9,1
+medic,abrev,Salud,Médico,9,1
+medico,completa,Salud,Médico,9,1
+salud,completa,Salud,Médico,9,1
+farma,abrev,Salud,Farmacia,9,2
+pharma,abrev,Salud,Farmacia,9,2
+nutri,abrev,Salud,Nutrición,9,3
+psic,abrev,Salud,Psicología,9,4
+psico,abrev,Salud,Psicología,9,4
+wellness,completa,Salud,Wellness,9,5
+audio,completa,Operaciones,Producción Audiovisual,10,1
+dj,completa acronimo,Operaciones,Producción Audiovisual,10,1
+music,completa,Operaciones,Producción Audiovisual,10,1
+"post, produc",dos palabras,Operaciones,Producción Audiovisual,10,1
+producer,completa,Operaciones,Producción Audiovisual,10,1
+TV,completa acronimo,Operaciones,Producción Audiovisual,10,1
+video,completa,Operaciones,Producción Audiovisual,10,1
+actor,completa,Producción Artistica,Actuación,10,2
+actriz,completa,Producción Artistica,Actuación,10,2
+"ingeniero, civil",dos palabras,Construcción,Ingeniería,11,1
+construc,abrev,Construcción,Construcción,11,2
+academ,abrev,Académica,Profesores,12,1
+academica,completa,Académica,Profesores,12,1
+academico,completa,Académica,Profesores,12,1
+catedratica,completa,Académica,Profesores,12,1
+catedratico,completa,Académica,Profesores,12,1
+Docencia,completa,Académica,Profesores,12,1
+docente,completa,Académica,Profesores,12,1
+instructor,completa,Académica,Profesores,12,1
+instructora,completa,Académica,Profesores,12,1
+lecturer,completa,Académica,Profesores,12,1
+maestra,completa,Académica,Profesores,12,1
+maestro,completa,Académica,Profesores,12,1
+profesor,completa,Académica,Profesores,12,1
+profesora,completa,Académica,Profesores,12,1
+professor,completa,Académica,Profesores,12,1
+Teach,abrev,Académica,Profesores,12,1
+teacher,completa,Académica,Profesores,12,1
+"catedra, investi",dos palabras,Académica,Investigación,12,2
+"docent, investi",dos palabras,Académica,Investigación,12,2
+Investigación,completa,Académica,Investigación,12,2
+"prof, investi",dos palabras,Académica,Investigación,12,2
+"prof, research",dos palabras,Académica,Investigación,12,2
+dean,completa,Académica,Profesor Decano,12,3
+decano,completa,Académica,Profesor Decano,12,3
+doctorado,completa,Académica,Doctorado,12,4
+phd,completa,Académica,Doctorado,12,4
+rector,completa,Dirección General,Rectoria,12,5
+alcalde,completa,Municipio,Presidencia Municipal,13,1
+"presidente, municip",dos palabras,Municipio,Presidencia Municipal,13,1
+admin,abrev,Administración,Administración,14,1
+administracion,completa,Administración,Administración,14,1
+administrador,completa,Administración,Administración,14,1
+administradora,completa,Administración,Administración,14,1
+administration,completa,Administración,Administración,14,1
+administrativa,completa,Administración,Administración,14,1
+administrativo,completa,Administración,Administración,14,1
+administrator,completa,Administración,Administración,14,1
+dueña,completa,Dirección General,Presidencia,15,1
+dueño,completa,Dirección General,Presidencia,15,1
+founder,completa,Dirección General,Presidencia,15,1
+"founder, cpo",dos palabras,Dirección General,Presidencia,15,1
+fundador,completa,Dirección General,Presidencia,15,1
+fundadora,completa,Dirección General,Presidencia,15,1
+owner,completa,Dirección General,Presidencia,15,1
+president,completa,Dirección General,Presidencia,15,1
+"president, consejo",dos palabras,Dirección General,Presidencia,15,1
+presidente,completa,Dirección General,Presidencia,15,1
+propietari,abrev,Dirección General,Presidencia,15,1
+proprietaria,completa,Dirección General,Presidencia,15,1
+proprietario,completa,Dirección General,Presidencia,15,1
+accionista,completa,Dirección General,Consejo de Administración,15,2
+board,completa,Dirección General,Consejo de Administración,15,2
+"board, chairman",dos palabras,Dirección General,Consejo de Administración,15,2
+"board, member",dos palabras,Dirección General,Consejo de Administración,15,2
+consej,abrev,Dirección General,Consejo de Administración,15,2
+Socia,completa,Dirección General,Consejo de Administración,15,2
+socio,completa,Dirección General,Consejo de Administración,15,2
+arbeidsgiver,completa,Dirección General,Dirección General,15,3
+ceo,completa acronimo,Dirección General,Dirección General,15,3
+chariman,completa,Dirección General,Dirección General,15,3
+chief executive officer,completa,Dirección General,Dirección General,15,3
+country manager,completa,Dirección General,Dirección General,15,3
+dir general,abrev,Dirección General,Dirección General,15,3
+dirección general,completa,Dirección General,Dirección General,15,3
+director general,completa,Dirección General,Dirección General,15,3
+directora general,completa,Dirección General,Dirección General,15,3
+employer,completa,Dirección General,Dirección General,15,3
+"emprende, consulto",dos palabras,Dirección General,Dirección General,15,3
+emprendedor,completa,Dirección General,Dirección General,15,3
+emprendedora,completa,Dirección General,Dirección General,15,3
+empresaria,completa,Dirección General,Dirección General,15,3
+empresario,completa,Dirección General,Dirección General,15,3
+entrepeneur,completa,Dirección General,Dirección General,15,3
+general manager,completa,Dirección General,Dirección General,15,3
+managing director,completa,Dirección General,Dirección General,15,3
+principal,completa,Dirección General,Dirección General,15,3
+"manag, partner",dos palabras,Dirección General,Dirección General Adjunta,15,4
+"director general, planea",dos palabras,Dirección General,Planeación Estratégica,15,5
+"planeaci, estrat",dos palabras,Dirección General,Planeación Estratégica,15,5
+"strateg, pla",dos palabras,Dirección General,Planeación Estratégica,15,5
+"Alianz, Estrat",dos palabras,Dirección General,Alianzas Estratégicas,15,6
+Strategic Alliance,completa,Dirección General,Alianzas Estratégicas,15,6
+ESG,abrev,Dirección General,Sustentabilidad,15,7
+sustainabil,abrev,Dirección General,Sustentabilidad,15,7
+Sustentabilidad,completa,Dirección General,Sustentabilidad,15,7
+Desemplead,abrev sin area,,,,
+directiv,abrev sin area,,,,
+Diretor,abrev sin area,,,,
+encargad,abrev sin area,,,,
+Gte,abrev sin area,,,,
+Mentor,abrev sin area,,,,
+specialist,abrev sin area,,,,
+supervis,abrev sin area,,,,
+analista,completa sin area,,,,
+Analyst,completa sin area,,,,
+Asistente Ejecutiva,completa sin area,,,,
+Asociada,completa sin area,,,,
+Asociado,completa sin area,,,,
+Assistant,completa sin area,,,,
+Assistant Consultant,completa sin area,,,,
+Associate,completa sin area,,,,
+Associate Consultant,completa sin area,,,,
+Auxiliar,completa sin area,,,,
+Colaborador,completa sin area,,,,
+colaboradora,completa sin area,,,,
+Consulente,completa sin area,,,,
+Consultant,completa sin area,,,,
+Consultor,completa sin area,,,,
+Consultor independiente,completa sin area,,,,
+consultora,completa sin area,,,,
+Coordinador,completa sin area,,,,
+coordinadora,completa sin area,,,,
+cordinator,completa sin area,,,,
+director,completa sin area,,,,
+directora,completa sin area,,,,
+Ejecutiva,completa sin area,,,,
+ejecutivo,completa sin area,,,,
+empleada,completa sin area,,,,
+Empleado,completa sin area,,,,
+Especialista,completa sin area,,,,
+Freelance,completa sin area,,,,
+Gerencia,completa sin area,,,,
+gestor,completa sin area,,,,
+gestora,completa sin area,,,,
+Independent Consultant,completa sin area,,,,
+Independiente,completa sin area,,,,
+Inspector,completa sin area,,,,
+inspectora,completa sin area,,,,
+jefa,completa sin area,,,,
+jefe,completa sin area,,,,
+Jubilado,completa sin area,,,,
+Lider,completa sin area,,,,
+Member,completa sin area,,,,
+Miembro,completa sin area,,,,
+Secretaria,completa sin area,,,,
+Secretario,completa sin area,,,,
+Senior,completa sin area,,,,
+Senior Analyst,completa sin area,,,,
+Senior Associate,completa sin area,,,,
+Senior Consultant,completa sin area,,,,
+Staff,completa sin area,,,,
+subdirector,completa sin area,,,,
+subdirectora,completa sin area,,,,
+Subgerente,completa sin area,,,,
+Superintendente,completa sin area,,,,
+supervisor,completa sin area,,,,
+supervisora,completa sin area,,,,
+Suplente,completa sin area,,,,
+Team Lead,completa sin area,,,,
+Team Leader,completa sin area,,,,
+Tutor,completa sin area,,,,
+tutora,completa sin area,,,,
+Unemployed,completa sin area,,,,
+"vice, president",dos palabras sin area,,,,
+VP,completa sin area,,,,
