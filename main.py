@@ -1018,7 +1018,6 @@ def generar_emails_estrategia(row: pd.Series) -> dict:
     companyName = str(row.get(mapeo_empresa, "-"))
     employee_range = str(row.get(mapeo_empleados, "-"))
     location = str(row.get(mapeo_location, "-"))
-    lead_name = str(row.get(mapeo_nombre_contacto, "-"))  # Esto ya está definido arriba
     
     base_context = f"""
 Nombre del contacto: {lead_name}
@@ -1107,8 +1106,9 @@ Estructuras:
         ]}
 
 def generar_emails_bloque_1(row: pd.Series) -> dict:
+    lead_name = str(row.get(mapeo_nombre_contacto, "-"))
     prompt = f"""
-Nombre del contacto: {row.get(mapeo_nombre_contacto, "-")}
+Nombre del contacto: {lead_name}
 
 Resultados para adaptar:
 - "Personalization": {row.get("Personalization", "-")}
@@ -1117,32 +1117,40 @@ Resultados para adaptar:
 - "Your Client Goal": {row.get("Your Targets Goal", "-")}
 - "Your Client Value Prop": {row.get("Your Targets Value Prop", "-")}
 - "Cliffhanger Value Prop": {row.get("Cliffhanger Value Prop", "-")}
-- "CTA": {row.get("CTA", "-")}
-Información adicional del contacto:
+- "CTA": Call To Action {row.get("CTA", "-")}
+
+Con base en los datos anteriores, desarrolla los siguientes 6 correos personalizados según cada estrategia de prospección. Cada correo debe incluir:
+Información adicional del lead:
 - Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
-- Área Mayor: {row.get("area", "-")}
-- Área Menor: {row.get("departamento", "-")}
-- Desafíos:
-    - {row.get("Desafio 1", "-")}
-    - {row.get("Desafio 2", "-")}
-    - {row.get("Desafio 3", "-")}
-- Fragmentos del sitio web: {row.get("scrapping", "-")}
-- Fragmentos adicionales: {row.get("Scrapping Adicional", "-")}
+- Área: {row.get("area", "-")}
+- Departamento: {row.get("departamento", "-")}
 
-Desarrolla los siguientes correos con estructura completa de email:
-- Strategy - 25% Reply Rate Email
-- Strategy - One Sentence Email
-- Strategy - Asking for an Introduction
+- Saludo personalizado (Ej. Hola [Nombre del contacto])
+- Cuerpo dividido en párrafos claros, según la estructura indicada
+- Despedida cordial
 
-Incluye: Asunto, saludo personalizado, cuerpo dividido en párrafos, despedida y firma como 'Equipo de ClickerMatch'.  
-NO uses la palabra "vender", mejor usa "llegar".
+Importante:
+- No uses la palabra "vender" en ninguno de los correos.
 
-Devuelve solo este JSON:
+
+Devuelve tu respuesta en formato JSON (sin explicaciones ni comentarios, solo el JSON):
+
 {{
-  "Strategy - 25% Reply Rate Email": "...",
-  "Strategy - One Sentence Email": "...",
-  "Strategy - Asking for an Introduction": "..."
+  "Strategy - 25% Reply Rate Email": "Asunto: ...\\nHola [nombre]...\\n\\n[Párrafo 1]...\\n[Párrafo 2]...\\n,\\n",
+  "Strategy - One Sentence Email": "Asunto: ...\\nHola [nombre]...\\n\\n[Frase breve]...\\n,\\n",
+  "Strategy - Asking for an Introduction": "Asunto: ...\\nHola [nombre]...\\n\\n[Mensaje para pedir introducción]...\\nGracias,\\n",
 }}
+
+Estructuras:
+
+- Strategy: 25% Reply Rate Email  
+  Parrafo 1 (Personalization) Parrafo 2 (Your Value Prop | Target Niche | Your Targets Goal | Your Targets Value Prop) Parrafo 3 (Cliffhanger Value Prop) Parrafo 4 (CTA)
+
+- Strategy: One Sentence Email  
+  Parrafo 1 (Personalization) Parrafo 2 (Your Value Prop | Target Niche) Parrafo 3 (CTA)
+
+- Strategy: Asking for an Introduction  
+  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Value Prop) Parrafo 3 (CTA)
 """
     response = client.chat.completions.create(
         model=OPENAI_MODEL,
@@ -1159,8 +1167,9 @@ Devuelve solo este JSON:
     return json.loads(content)
 
 def generar_emails_bloque_2(row: pd.Series) -> dict:
+    lead_name = str(row.get(mapeo_nombre_contacto, "-"))
     prompt = f"""
-Nombre del contacto: {row.get(mapeo_nombre_contacto, "-")}
+Nombre del contacto: {lead_name}
 
 Resultados para adaptar:
 - "Personalization": {row.get("Personalization", "-")}
@@ -1169,33 +1178,39 @@ Resultados para adaptar:
 - "Your Client Goal": {row.get("Your Targets Goal", "-")}
 - "Your Client Value Prop": {row.get("Your Targets Value Prop", "-")}
 - "Cliffhanger Value Prop": {row.get("Cliffhanger Value Prop", "-")}
-- "CTA": {row.get("CTA", "-")}
-Información adicional del contacto:
+- "CTA": Call To Action {row.get("CTA", "-")}
+
+Con base en los datos anteriores, desarrolla los siguientes 6 correos personalizados según cada estrategia de prospección. Cada correo debe incluir:
+Información adicional del lead:
 - Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
-- Área Mayor: {row.get("area", "-")}
-- Área Menor: {row.get("departamento", "-")}
-- Desafíos:
-    - {row.get("Desafio 1", "-")}
-    - {row.get("Desafio 2", "-")}
-    - {row.get("Desafio 3", "-")}
-- Fragmentos del sitio web: {row.get("scrapping", "-")}
-- Fragmentos adicionales: {row.get("Scrapping Adicional", "-")}
+- Área: {row.get("area", "-")}
+- Departamento: {row.get("departamento", "-")}
 
-Desarrolla los siguientes correos con estructura completa de email:
-- Strategy - Ask for Permission
-- Strategy - Loom Video
-- Strategy - Free Sample List
+- Saludo personalizado (Ej. Hola [Nombre del contacto])
+- Cuerpo dividido en párrafos claros, según la estructura indicada
+- Despedida cordial
+
+Importante:
+- No uses la palabra "vender" en ninguno de los correos.
 
 
-Incluye: Asunto, saludo personalizado, cuerpo dividido en párrafos, despedida y firma como 'Equipo de ClickerMatch'.  
-NO uses la palabra "vender", mejor usa "llegar".
+Devuelve tu respuesta en formato JSON (sin explicaciones ni comentarios, solo el JSON):
 
-Devuelve solo este JSON:
 {{
   "Strategy - Ask for Permission": "...",
   "Strategy - Loom Video": "...",
   "Strategy - Free Sample List": "..."
 }}
+
+Estructuras:
+- Strategy: Ask for Permission  
+  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Value Prop) Parrafo 3 (Cliffhanger Value Prop) Parrafo 4 (CTA)
+
+- Strategy: Loom Video  
+  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Value Prop | Your Value Prop) Parrafo 3 (CTA)
+
+- Strategy: Free Sample List  
+  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Goal | Your Value Prop) Parrafo 3 (CTA)
 """
     response = client.chat.completions.create(
         model=OPENAI_MODEL,
@@ -1369,8 +1384,8 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
 ##########################################
 @app.route("/", methods=["GET","POST"])
 def index():
-    #if "user" not in session:
-    #    return redirect("/login")  # redirige al login principal
+    if "user" not in session:
+        return redirect("/login")  # redirige al login principal
    
     global df_leads
     global scrap_proveedor_text
