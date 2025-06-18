@@ -881,7 +881,7 @@ Información de nosotros:
 
 Basado en esta información del cliente y de nosotros, genera los siguientes campos en español:
 
-Personalization: Una introducción personalizada basada en un hecho reciente o logro de la empresa, el objetivo es captar su atención de inmediato. 
+Personalization: Un mensaje de introducción personalizada de mi hacia el proveedor, basada en un hecho reciente o logro de {companyName}, el objetivo es captar su atención de inmediato. 
 Como calculara: Puesto, empresa, descripción
 Metodo:
 Analiza Puesto del contacto para destacar algo que esté enfrentando o liderando.
@@ -890,7 +890,7 @@ Analiza Empresa, Descripcion o Industria de la Empresa para conectar el mensaje 
 Your Value Prop. Es la propuesta de valor de nuestra empresa, lo que ofrecemos y cómo ayudo a resolver un problema específico. 
 Nuestro diferenciador y lo que podemos hacer por el cliente.
 Cómo calcularla: Descripcion, Producto o Servicio, 
-Método: Usa reglas según el área o industria del contacto para insertar una versión relevante de tu propuesta.
+Método: Usa reglas según el área o industria del contacto para insertar una versión relevante de lo que hacemos, no invites a junta ni cita.
 
 Your Target Niche (Area, Departamento, Ubicación e industria de la empresa). 
 Es nuestra audiencia objetivo.
