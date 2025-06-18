@@ -882,8 +882,8 @@ Información de nosotros:
 Basado en esta información del cliente y de nosotros, genera los siguientes campos en español:
 
 Personalization: Una introducción personalizada basada en un hecho reciente o logro de la empresa, el objetivo es captar su atención de inmediato. 
-Empresa Cliente → Se basa en su actividad, logros o contexto, productos o servicios. Contacto → toma en cuenta puesto, departamento y área
-Método:
+Como calculara: Puesto, empresa, descripción
+Metodo:
 Analiza Puesto del contacto para destacar algo que esté enfrentando o liderando.
 Analiza Empresa, Descripcion o Industria de la Empresa para conectar el mensaje al contexto.
 
@@ -909,14 +909,15 @@ Método:
 Detectar cómo se presentan o qué comunican como ventaja competitiva.
 Si no está explícito, se puede inferir de Descripción.
 
-Cliffhanger Value Prop. Una propuesta intrigante o gancho para motivar la conversación, generalmente una promesa de resultados o insights valiosos. Proveedor → Un beneficio atractivo para generar curiosidad.
-Cómo calcularla: Interna (propuesta de nosotros) + contexto del cliente
+Cliffhanger Value Prop. Crear una propuesta provocadora o altamente atractiva que intrigue al prospecto y haga que reunirse contigo sea una decisión obvia.
+Proveedor → Un beneficio atractivo para generar curiosidad.
+Cómo calcularla: (propuesta de nosotros que impacta el client goal de ellos) 
 Método:
 Usa la lógica: "¿Qué podría interesarle resolver y que nosotros sabemos resolver mejor?"
 Genera versiones por segmento.
 
-CTA (Call to Action). La acción concreta que queremos que tome el cliente, como agendar una reunión o responder al correo. Proveedor → Es nuestra invitación a la acción.
-
+CTA (Call to Action). La acción concreta que queremos que tome el cliente, responder al correo por si quiere platicar más a profundidad. 
+Proveedor → Es nuestra invitación a la acción.
 Cómo calcularla:
 Fuente
 No depende de la tabla, se define por estrategia comercial
@@ -1029,33 +1030,28 @@ Resultados para adaptar:
 - "Your Client Goal": {row.get("Your Targets Goal", "-")}
 - "Your Client Value Prop": {row.get("Your Targets Value Prop", "-")}
 - "Cliffhanger Value Prop": {row.get("Cliffhanger Value Prop", "-")}
-- "CTA": {row.get("CTA", "-")}
+- "CTA": Call To Action {row.get("CTA", "-")}
 
 Con base en los datos anteriores, desarrolla los siguientes 6 correos personalizados según cada estrategia de prospección. Cada correo debe incluir:
 Información adicional del lead:
 - Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
-- Área Mayor: {row.get("area", "-")}
-- Área Menor: {row.get("departamento", "-")}
-- Desafíos actuales: {row.get("Desafio 1", "-")}, {row.get("Desafio 2", "-")}, {row.get("Desafio 3", "-")}
-- Fragmentos del sitio web: {row.get("scrapping", "-")}
-- Texto adicional del sitio: {row.get("Scrapping Adicional", "-")}
+- Área: {row.get("area", "-")}
+- Departamento: {row.get("departamento", "-")}
 
-- Asunto (subject)
 - Saludo personalizado (Ej. Hola [Nombre del contacto])
 - Cuerpo dividido en párrafos claros, según la estructura indicada
 - Despedida cordial
-- Firma con nombre de empresa ficticia o genérica ("Equipo de ClickerMatch")
 
 Importante:
 - No uses la palabra "vender" en ninguno de los correos.
-- Usa alternativas como "llegar a más clientes", "acercar tu solución", "posicionar tu propuesta", etc.
+
 
 Devuelve tu respuesta en formato JSON (sin explicaciones ni comentarios, solo el JSON):
 
 {{
-  "Strategy - 25% Reply Rate Email": "Asunto: ...\\nHola [nombre]...\\n\\n[Párrafo 1]...\\n[Párrafo 2]...\\nSaludos,\\nEquipo de ClickerMatch",
-  "Strategy - One Sentence Email": "Asunto: ...\\nHola [nombre]...\\n\\n[Frase breve]...\\nSaludos,\\nEquipo de ClickerMatch",
-  "Strategy - Asking for an Introduction": "Asunto: ...\\nHola [nombre]...\\n\\n[Mensaje para pedir introducción]...\\nGracias,\\nEquipo de ClickerMatch",
+  "Strategy - 25% Reply Rate Email": "Asunto: ...\\nHola [nombre]...\\n\\n[Párrafo 1]...\\n[Párrafo 2]...\\n,\\n",
+  "Strategy - One Sentence Email": "Asunto: ...\\nHola [nombre]...\\n\\n[Frase breve]...\\n,\\n",
+  "Strategy - Asking for an Introduction": "Asunto: ...\\nHola [nombre]...\\n\\n[Mensaje para pedir introducción]...\\nGracias,\\n",
   "Strategy - Ask for Permission": "...",
   "Strategy - Loom Video": "...",
   "Strategy - Free Sample List": "..."
@@ -1064,22 +1060,22 @@ Devuelve tu respuesta en formato JSON (sin explicaciones ni comentarios, solo el
 Estructuras:
 
 - Strategy: 25% Reply Rate Email  
-  Personalization | Your Value Prop | Target Niche | Your Targets Goal | Your Targets Value Prop | Cliffhanger Value Prop | CTA
+  Parrafo 1 (Personalization) Parrafo 2 (Your Value Prop | Target Niche | Your Targets Goal | Your Targets Value Prop) Parrafo 3 (Cliffhanger Value Prop) Parrafo 4 (CTA)
 
 - Strategy: One Sentence Email  
-  Personalization | Your Value Prop | Target Niche | CTA
+  Parrafo 1 (Personalization) Parrafo 2 (Your Value Prop | Target Niche) Parrafo 3 (CTA)
 
 - Strategy: Asking for an Introduction  
-  Personalization | Your Targets Value Prop | CTA
+  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Value Prop) Parrafo 3 (CTA)
 
 - Strategy: Ask for Permission  
-  Personalization | Your Targets Value Prop | Cliffhanger Value Prop | CTA
+  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Value Prop) Parrafo 3 (Cliffhanger Value Prop) Parrafo 4 (CTA)
 
 - Strategy: Loom Video  
-  Personalization | Your Targets Value Prop | Your Value Prop | CTA
+  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Value Prop | Your Value Prop) Parrafo 3 (CTA)
 
 - Strategy: Free Sample List  
-  Personalization | Your Targets Goal | Your Value Prop | CTA
+  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Goal | Your Value Prop) Parrafo 3 (CTA)
 """
     #print(base_context)
     try:
