@@ -409,15 +409,13 @@ def generar_info_empresa_chatgpt(row: pd.Series) -> dict:
 
     texto_scrap = (str(row.get("scrapping", "")) + "\n" + str(row.get("Scrapping Adicional", ""))).strip()
     prompt = f"""
-Eres un analista de datos empresariales. A partir de este texto sacado del sitio web de una empresa, genera lo siguiente en formato JSON:
+Eres un analista de datos empresariales. A partir de este texto sacado del sitio web de una empresa, genera lo siguiente y dame solo de respuesta en formato JSON:
 
-{{
-  "EMPRESA_DESCRIPCION": "Resumen general de lo que hace la empresa.Si no tiene pon -",
-  "EMPRESA_PRODUCTOS_SERVICIOS": "Lista o resumen de los productos o servicios que ofrece.Si no tiene pon -",
-  "EMPRESA_INDUSTRIAS_TARGET": "Industrias a las que atiende o está enfocado.Si no tiene pon -"
-}}
+  "EMPRESA_DESCRIPCION": Resumen general de lo que hace la empresa.Si no tiene pon -,
+  "EMPRESA_PRODUCTOS_SERVICIOS": Lista o resumen de los productos o servicios que ofrece.Si no tiene pon -,
+  "EMPRESA_INDUSTRIAS_TARGET": Industrias a las que atiende o está enfocado. Si no tiene pon -
 
-Texto de la empresa:
+Scrapping del sitio de la empresa:
 {texto_scrap or "-"}
     """
 
@@ -858,102 +856,65 @@ INSTRUCCIONES:
   "Your Client Goal",
   "Your Client Value Prop",
   "Cliffhanger Value Prop",
-  "CTA".
+  "CTA"
 
-Tenemos un cliente llamado {companyName}.
+Tenemos un cliente, {companyName}.
+Ideal Costumer Profile y Perfil del Cliente:
+- Contacto: {lead_name}
+- Puesto: {title}
+- Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
+- Área: {row.get("area", "-")}
+- Departamento: {row.get("departamento", "-")}
+- Industria: {industry}
+
+Más info de empresa del cliente:
 Descripción: {row.get("EMPRESA_DESCRIPCION", "-")}
-Productos y servicios: {row.get("EMPRESA_PRODUCTOS_SERVICIOS	", "-")}
+Productos y servicios: {row.get("EMPRESA_PRODUCTOS_SERVICIOS", "-")}
 Industria Objetivo: {row.get("EMPRESA_INDUSTRIAS_TARGET", "-")}
-Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
+- Contenido del sitio web del cliente (scrapping del cliente): {scrap_clean} 
+- Contenido adicional del sitio (scrapping común): {scrap_adicional_clean}
 
-Personalization: Es una introducción personalizada basada en un hecho reciente o logro de la empresa cliente, el objetivo es captar su atención de inmediato. Empresa Cliente → Se basa en su actividad, logros o contexto. 
- Cómo calcularla:
-Fuente
-Campo(s) utilizados
-Tabla Contactos
-Title, Departamento, Área, Desafíos
-Tabla Empresas
-Company Website, Productos / Servicios, Objetivo
+Información de nosotros:
+- Propuesta de valor de nosotros:" {descripcion_proveedor} "
+- Contexto adicional de nosotros:" {productos_proveedor} "
+- Mercado de nosotros:" {mercado_proveedor}"
 
+Basado en esta información del cliente y de nosotros, genera los siguientes campos en español:
+
+Personalization: Una introducción personalizada basada en un hecho reciente o logro de la empresa, el objetivo es captar su atención de inmediato. 
+Empresa Cliente → Se basa en su actividad, logros o contexto, productos o servicios. Contacto → toma en cuenta puesto, departamento y área
 Método:
-Analiza Title, Desafíos del contacto para destacar algo que esté enfrentando o liderando.
+Analiza Puesto del contacto para destacar algo que esté enfrentando o liderando.
+Analiza Empresa, Descripcion o Industria de la Empresa para conectar el mensaje al contexto.
 
+Your Value Prop. Es la propuesta de valor de nuestra empresa, lo que ofrecemos y cómo ayudo a resolver un problema específico. 
+Nuestro diferenciador y lo que podemos hacer por el cliente.
+Cómo calcularla: Descripcion, Producto o Servicio, 
+Método: Usa reglas según el área o industria del contacto para insertar una versión relevante de tu propuesta.
 
-Analiza Empresa, Objetivo o Industria de la Empresa para conectar el mensaje al contexto.
-
-
-Your Value Prop. Es la propuesta de valor de tu empresa, lo que ofreces y cómo ayudas a resolver un problema específico. Proveedor → Es nuestro diferenciador y lo que podemos hacer por el cliente.
- Cómo calcularla:
-Fuente
-Interna (no viene en las tablas)
-Mi Info
-Descripcion, Producto o Servicio, 
-
-Método:
-Usa reglas según el área o industria del contacto para insertar una versión relevante de tu propuesta.
-
-Ejemplo:
-“Ayudamos a líderes de marketing educativo a aumentar sus leads calificados usando automatización de datos.”
-
-Your Target Niche (Niche, Subsegment, Location). El segmento de mercado al que queremos llegar, definido por industria, subsegmento y ubicación. Proveedor → Es nuestra audiencia objetivo.
-
- Cómo calcularla:
-Fuente
-Campo(s) utilizados
-Tabla Contactos
-Area, Departamento, Nivel Jerarquico
-Tabla Empresas
-Company Industry, Estado, País
-
-Método:
-Concatenar:
-
-python
-CopiarEditar
+Your Target Niche (Area, Departamento, Ubicación e industria de la empresa). 
+Es nuestra audiencia objetivo.
+Cómo calcularla: Area, Departamento, Nivel Jerarquico
 Target_Niche = f"{row.get("area", "-")}, {row.get("departamento", "-")}, {row.get("Nivel Jerarquico", "-")}, {row.get("Company Industry", "-")}, {row.get("Nivel Jerarquico", "-")}, {row.get("Nivel Jerarquico", "-")}"
 
-Ejemplo:
-Retail – Ciudad de México, México
 Your Client Goal. La meta principal del puesto del cliente. ¿Qué quiere lograr con su negocio o estrategia?. Cliente → Es su necesidad o aspiración.
 Cómo calcularla:
-Fuente
-Campo(s) utilizados
-Tabla Contactos
-Title, Departamento, Área, Nivel Jerarquico, Desafíos
-Tabla Empresas
-Company Industria, Website, Objetivo, Productos / Servicios, Industrias Target
-
+Del contácto: Puesto, Departamento, Área, Nivel Jerarquico y de su empresa: Industria, Descripción, Productos / Servicios, Industrias Target
 Método:
-Analiza Departamento, Área, Nivel Jerarquico, Company Industria y propone retos de relacionados a mas ingresos o reducción de costos, productividad / eficiencia en función de Objetivo
-Ejemplo:
-Reducir el ciclo de venta mediante mayor personalización y automatización.
-Your Client Value Prop. La propuesta de valor del cliente. ¿Cómo se diferencian ellos en su mercado? ¿Qué buscan potenciar?. Cliente → Es cómo ellos se presentan en su industria.
-Cómo calcularla:
-Fuente
-Campo(s) utilizados
-Tabla Empresas
-Objetivo, Productos / Servicios, Industria Target, Website
+Analiza Departamento, Área, Nivel Jerarquico, Company Industria y propone retos de relacionados a mas ingresos o reducción de costos, productividad / eficiencia
 
+Your Client Value Prop. La propuesta de valor del cliente. ¿Cómo se diferencian ellos en su mercado? ¿Qué buscan potenciar?. Cliente → Es cómo ellos se presentan en su industria.
+Cómo calcularla: De la empresa: Descripción, Productos / Servicios, Industria Target
 Método:
 Detectar cómo se presentan o qué comunican como ventaja competitiva.
+Si no está explícito, se puede inferir de Descripción.
 
-Si no está explícito, se puede inferir de Objetivo.
-
-Ejemplo:
-“[Empresa] ayuda a organizaciones educativas a formar líderes con visión global.”
 Cliffhanger Value Prop. Una propuesta intrigante o gancho para motivar la conversación, generalmente una promesa de resultados o insights valiosos. Proveedor → Un beneficio atractivo para generar curiosidad.
-
-Cómo calcularla:
-Fuente
-Interna (propuesta del proveedor) + contexto del cliente
-
+Cómo calcularla: Interna (propuesta de nosotros) + contexto del cliente
 Método:
 Usa la lógica: "¿Qué podría interesarle resolver y que nosotros sabemos resolver mejor?"
-
 Genera versiones por segmento.
 
-Ejemplo:
-“¿Te gustaría ver cómo otras universidades han triplicado su conversión en 30 días?”
 CTA (Call to Action). La acción concreta que queremos que tome el cliente, como agendar una reunión o responder al correo. Proveedor → Es nuestra invitación a la acción.
 
 Cómo calcularla:
@@ -962,40 +923,11 @@ No depende de la tabla, se define por estrategia comercial
 Personalizable
 Según nivel jerárquico y tipo de conversación
 
-Ejemplos de CTA:
-“¿Te muestro un ejemplo la próxima semana?”
 
-“¿Tienes 15 minutos esta semana para verlo?”
-
-“¿Te interesa conocer como lo hacemos?”
-
-Escríbelos de manera que conecten en un solo mensaje
-
-Información del lead:
-- Empresa: {companyName}
-- Contacto: {lead_name}
-- Puesto: {title}
-- Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
-- Área: {row.get("area", "-")}
-- Departamento: {row.get("departamento", "-")}
-- Industria: {industry}
-- Desafíos posibles:
-    - {row.get("Desafio 1", "-")}
-    - {row.get("Desafio 2", "-")}
-    - {row.get("Desafio 3", "-")}
-
-Información del ICP (Ideal Customer Profile):
-- Propuesta de valor de nosotros:" {propuesta_valor} "
-- Contexto adicional de nosotros:" {contexto_prov} "
-- Nuestro Ideal Costumer Profile:" {icp_prov} "
-
-- Contenido del sitio web del cliente (scrapping del cliente): {scrap_clean} 
-- Contenido adicional del sitio (scrapping común): {scrap_adicional_clean}
-
-- La ubicación de la empresa es: (si no te doy una ubicación, ignóralo)
+Escríbelos de manera que conecten en un solo mensaje 
 
 Información del proveedor:
-- Contenido extraído del sitio web del proveedor: 
+- Contenido extraído del sitio web de nosotros: 
 {plan_estrategico}
 SOLICITUD:
 Genera cada uno de estos campos en español y de forma breve:
@@ -1441,8 +1373,8 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
 ##########################################
 @app.route("/", methods=["GET","POST"])
 def index():
-    if "user" not in session:
-        return redirect("/login")  # redirige al login principal
+    #if "user" not in session:
+    #    return redirect("/login")  # redirige al login principal
    
     global df_leads
     global scrap_proveedor_text
@@ -2451,11 +2383,11 @@ Laura"
         <!-- Sección: Clasificación de Puestos -->
     <details>
     <summary style="cursor: pointer; font-weight: bold;">➕ Clasificadores</summary>
-        <button type="button" onclick="clasificarTodo()" style="background-color: {color_puestos};">
+        <!-- <button type="button" onclick="clasificarTodo()" style="background-color: {color_puestos};">
             Clasificar (Puestos + Áreas + Industrias)
-        </button>
-        <details>
-        <summary>Clasificadores Individualmente</summary>
+        </button> -->
+        <!-- <details>
+        <summary>Clasificadores Individualmente</summary> -->
         <form method="POST" enctype="multipart/form-data">
             <input type="hidden" name="accion" value="clasificar_puestos"/>
             <button type="submit" style="background-color: {color_puestos};">
@@ -2474,7 +2406,7 @@ Laura"
                 Clasificar Industria Mayor
             </button>
         </form>
-        </details>
+        <!-- </details> -->
         <form method="POST">
             <input type="hidden" name="accion" value="super_scrap_leads"/>
             <button type="submit" style="background-color: {color_scrap};">
@@ -2502,53 +2434,20 @@ Laura"
         </form>  
         <form method="POST">
             <input type="hidden" name="accion" value="generar_desafios"/>
-            <button type="submit" style="background-color: {color_desafios};">
+            <!-- <button type="submit" style="background-color: {color_desafios};">
                 Determinar Desafíos con IA
+            </button> -->
+        </form>
+        <form method="POST">
+            <input type="hidden" name="accion" value="generar_info_empresa"/>
+            <button type="submit" style="background-color:#1E90FF;">
+                🧠 Generar Info Empresa con ChatGPT
             </button>
         </form>
-
                  
-    </details>            
-    <details>
-    <summary style="cursor: pointer; font-weight: bold;">🧠 Prompt Value</summary>
-    <form method="POST" style="margin-bottom: 10px;" onsubmit="guardarContenidoEditor()">
-        <button type="button" onclick="resaltarVariables()">🎨 Resaltar variables</button>
-        <input type="hidden" name="accion" value="guardar_prompt_chatgpt"/>
-        <div id="editor" class="editor" contenteditable="true">
-            {prompt_actual}
-        </div>
-        <input type="hidden" name="prompt_chatgpt" id="prompt_oculto">
-        <button type="submit">💾 Guardar Prompt</button>
-    </form>
-
-    <form method="POST">
-        <input type="hidden" name="accion" value="reiniciar_prompt_chatgpt"/>
-        <button type="submit">♻️ Reiniciar desde archivo .txt</button>
-    </form>
-    </details>
-    <details>
-    <summary style="cursor: pointer; font-weight: bold;">🧠 Prompt Mails Estrategia</summary>
-    <form method="POST" style="margin-bottom: 10px;" onsubmit="guardarContenidoEditorMails()">
-        <button type="button" onclick="resaltarVariablesMails()">🎨 Resaltar variables</button>
-        <input type="hidden" name="accion" value="guardar_prompt_mails"/>
-        <div id="editor_mails" class="editor" contenteditable="true">
-        {prompt_mails}
-        </div>
-        <input type="hidden" name="prompt_mails" id="prompt_mails_oculto">
-        <button type="submit">💾 Guardar Prompt Mails</button>
-    </form>
-    <form method="POST">
-        <input type="hidden" name="accion" value="reiniciar_prompt_mails"/>
-        <button type="submit">♻️ Reiniciar desde archivo .txt</button>
-    </form>
-    </details>             
-    <form method="POST">
-        <input type="hidden" name="accion" value="generar_info_empresa"/>
-        <button type="submit" style="background-color:#1E90FF;">
-            🧠 Generar Info Empresa con ChatGPT
-        </button>
-    </form>
-
+    </details> 
+    
+    
     <hr>
     <details>
 
@@ -2607,6 +2506,44 @@ Laura"
 
     <hr>
     </details>
+    <!--
+    <details>
+    <summary style="cursor: pointer; font-weight: bold;">🧠 Edición de IA Prompts</summary>           
+    <details>
+    <summary style="cursor: pointer; font-weight: bold;">🧠 Prompt Value</summary>
+    <form method="POST" style="margin-bottom: 10px;" onsubmit="guardarContenidoEditor()">
+        <button type="button" onclick="resaltarVariables()">🎨 Resaltar variables</button>
+        <input type="hidden" name="accion" value="guardar_prompt_chatgpt"/>
+        <div id="editor" class="editor" contenteditable="true">
+            {prompt_actual}
+        </div>
+        <input type="hidden" name="prompt_chatgpt" id="prompt_oculto">
+        <button type="submit">💾 Guardar Prompt</button>
+    </form>
+
+    <form method="POST">
+        <input type="hidden" name="accion" value="reiniciar_prompt_chatgpt"/>
+        <button type="submit">♻️ Reiniciar desde archivo .txt</button>
+    </form>
+    </details>
+    <details>
+    <summary style="cursor: pointer; font-weight: bold;">🧠 Prompt Mails Estrategia</summary>
+    <form method="POST" style="margin-bottom: 10px;" onsubmit="guardarContenidoEditorMails()">
+        <button type="button" onclick="resaltarVariablesMails()">🎨 Resaltar variables</button>
+        <input type="hidden" name="accion" value="guardar_prompt_mails"/>
+        <div id="editor_mails" class="editor" contenteditable="true">
+        {prompt_mails}
+        </div>
+        <input type="hidden" name="prompt_mails" id="prompt_mails_oculto">
+        <button type="submit">💾 Guardar Prompt Mails</button>
+    </form>
+    <form method="POST">
+        <input type="hidden" name="accion" value="reiniciar_prompt_mails"/>
+        <button type="submit">♻️ Reiniciar desde archivo .txt</button>
+    </form>
+    </details>
+    </details>
+    -->
   
     
     <details>
@@ -2622,7 +2559,10 @@ Laura"
         <button type="submit">Exportar</button>
         </form>
     </div>
+
     </details>
+   
+
     <div class="container-wide">
         <h2>Base de datos (primeros 50 registros)</h2>
         {tabla_html(df_leads,50)}
