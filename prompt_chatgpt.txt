@@ -1,0 +1,71 @@
+INSTRUCCIONES 1:
+- Devuelve la respuesta SOLO como un objeto JSON (usando llaves)
+- No incluyas texto adicional antes o después del JSON
+- Utiliza únicamente estas claves:
+  "Personalization",
+  "Your Value Prop",
+  "Your Target Niche",
+  "Your Client Goal",
+  "Your Client Value Prop",
+  "Cliffhanger Value Prop",
+  "CTA".
+
+Tenemos un cliente llamado {companyName}.
+Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
+
+
+Personalization: Es una introducción personalizada basada en un hecho reciente o logro de la empresa cliente, el objetivo es captar su atención de inmediato. Empresa Cliente → Se basa en su actividad, logros o contexto. 
+Se calcula del Contenido del sitio web del cliente de donde se generan las siguientes variables: (ClienteCompanyDescription), (ClienteCompanyProductsServices), (ClienteCompanyTargetIndustries) y del (Contexto) de Mi Info
+Your Value Prop. Es la propuesta de valor de tu empresa, lo que ofreces y cómo ayudas a resolver un problema específico. Proveedor → Es nuestro diferenciador y lo que podemos hacer por el cliente.
+Se calcula de ClickerMatch en Contenido del sitio web del cliente de donde se generan las siguientes variables: (ProveedorCompanyDescription), (ProveedorCompanyProductsServices)y si hay algo adicional que de contexto: Lanzamiento, Expo, etc
+Your Target Niche (Niche, Subsegment, Location). El segmento de mercado al que queremos llegar, definido por industria, subsegmento y ubicación. Proveedor → Es nuestra audiencia objetivo.
+Se calcula de ClickerMatch en Define tu ICP del (AreaMenor), (AreaMayor), (NivelJerárquico), (Industry), (Industry Mayor), (CompanySize). Buscamos en la BD de Clicker los prospectos o salimos a scrapearlos con Phantombuster o Expandi
+Your Client Goal. La meta principal del puesto del cliente. ¿Qué quiere lograr con su negocio o estrategia?. Cliente → Es su necesidad o aspiración.
+Se calcula con base a Catálogo Área, Departamento y Objetivo 
+Your Client Value Prop. La propuesta de valor del cliente. ¿Cómo se diferencian ellos en su mercado? ¿Qué buscan potenciar?. Cliente → Es cómo ellos se presentan en su industria.
+Se calcula del scrap del (ClientWebsite) que genera las siguientes variables: (Scrap Empresa Website), (Scrap Empresa Website > Descripcion), (Scrap Empresa Website > Productos o Servicios), (Scrap Empresa Website > Industria / Áreas de Interés)
+Cliffhanger Value Prop. Una propuesta intrigante o gancho para motivar la conversación, generalmente una promesa de resultados o insights valiosos. Proveedor → Un beneficio atractivo para generar curiosidad.
+CTA (Call to Action). La acción concreta que queremos que tome el cliente, como agendar una reunión o responder al correo. Proveedor → Es nuestra invitación a la acción.
+
+Escríbelos de manera que conecten en un solo mensaje
+
+
+Información del lead:
+- Empresa: {companyName}
+- Contacto: {lead_name}
+- Puesto: {title}
+- Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
+- Área: {row.get("area", "-")}
+- Departamento: {row.get("departamento", "-")}
+- Industria: {industry}
+- Desafíos posibles:
+    - {row.get("Desafio 1", "-")}
+    - {row.get("Desafio 2", "-")}
+    - {row.get("Desafio 3", "-")}
+
+Información del ICP (Ideal Customer Profile):
+- Propuesta de valor de nosotros:" {propuesta_valor} "
+- Contexto adicional de nosotros:" {contexto_prov} "
+- Nuestro Ideal Costumer Profile:" {icp_prov} "
+
+- Contenido del sitio web del cliente (scrapping del cliente): {scrap_clean}
+- Contenido adicional del sitio (scrapping común): {scrap_adicional_clean}
+
+- La ubicación de la empresa es: (si no te doy una ubicación, ignóralo)
+
+Información del proveedor:
+- Contenido extraído del sitio web del proveedor: 
+{plan_estrategico}
+SOLICITUD:
+Genera cada uno de estos campos en español y de forma breve:
+1) Personalization
+2) Your Value Prop
+3) Your Target Niche
+4) Your Client Goal
+5) Your Client Value Prop
+6) Cliffhanger Value Prop
+7) CTA
+
+
+Recuerda: la respuesta debe ser válido JSON con llaves y comillas en cada clave-valor, sin texto adicional.
+"""

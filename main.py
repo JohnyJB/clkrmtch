@@ -7,6 +7,45 @@ import uuid
 from cryptography.fernet import Fernet
 import os
 
+global prompt_actual
+PROMPT_FILE = "prompt_chatgpt.txt"
+prompt_actual = ""  # se sobreescribe al inicio de la app
+# ───────── Prompt de Estrategia de Mails ─────────
+PROMPT_MAILS_FILE = "prompt_mails_estrategia.txt"
+prompt_mails = ""  # se sobreescribe al inicio de la app
+
+def cargar_prompt_mails_original() -> str:
+    if not os.path.exists(PROMPT_MAILS_FILE):
+        return ""
+    with open(PROMPT_MAILS_FILE, "r", encoding="utf-8") as f:
+        return f.read()
+
+def guardar_prompt_mails_en_archivo(prompt: str):
+    with open(PROMPT_MAILS_FILE, "w", encoding="utf-8") as f:
+        f.write(prompt.strip())
+
+# al iniciar la app
+prompt_mails = cargar_prompt_mails_original()
+
+def cargar_prompt_original():
+    if not os.path.exists(PROMPT_FILE):
+        return ""
+    with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+        return f.read()
+
+prompt_actual = cargar_prompt_original()
+
+def cargar_prompt_desde_archivo() -> str:
+    if not os.path.exists(PROMPT_FILE):
+        return ""
+    with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+        return f.read()
+
+def guardar_prompt_en_archivo(prompt: str):
+    with open(PROMPT_FILE, "w", encoding="utf-8") as f:
+        f.write(prompt.strip())
+
+
 # 🔐 Clave para desencriptar db.txt
 ENCRYPTION_KEY = b'yMybaWCe4meeb3v4LWNI4Sxz7oS54Gn0Fo9yJovqVN0='
 
@@ -360,6 +399,51 @@ OPENAI_MAX_TOKENS = 1000
 ###############################
 # Funciones auxiliares
 ###############################
+def generar_info_empresa_chatgpt(row: pd.Series) -> dict:
+    if client is None:
+        return {
+            "EMPRESA_DESCRIPCION": "-",
+            "EMPRESA_PRODUCTOS_SERVICIOS": "-",
+            "EMPRESA_INDUSTRIAS_TARGET": "-"
+        }
+
+    texto_scrap = (str(row.get("scrapping", "")) + "\n" + str(row.get("Scrapping Adicional", ""))).strip()
+    prompt = f"""
+Eres un analista de datos empresariales. A partir de este texto sacado del sitio web de una empresa, genera lo siguiente en formato JSON:
+
+{{
+  "EMPRESA_DESCRIPCION": "Resumen general de lo que hace la empresa.Si no tiene pon -",
+  "EMPRESA_PRODUCTOS_SERVICIOS": "Lista o resumen de los productos o servicios que ofrece.Si no tiene pon -",
+  "EMPRESA_INDUSTRIAS_TARGET": "Industrias a las que atiende o está enfocado.Si no tiene pon -"
+}}
+
+Texto de la empresa:
+{texto_scrap or "-"}
+    """
+
+    try:
+        respuesta = client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[{"role": "user", "content": _limpiar_caracteres_raros(prompt)}],
+            max_tokens=500,
+            temperature=0.0,
+            timeout=30
+        )
+        content = respuesta.choices[0].message.content.strip()
+        if content.startswith("```json"):
+            content = content.replace("```json", "").strip()
+        if content.endswith("```"):
+            content = content[:-3].strip()
+        return json.loads(content)
+    except Exception as e:
+        print("[ERROR] al generar info empresa:", e)
+        return {
+            "EMPRESA_DESCRIPCION": "-",
+            "EMPRESA_PRODUCTOS_SERVICIOS": "-",
+            "EMPRESA_INDUSTRIAS_TARGET": "-"
+        }
+
+
 def guardar_prompt_log(prompt: str, lead_name: str = "", idx: int = -1):
     """
     Guarda el prompt en un archivo de texto. Usa el nombre del contacto o índice para identificarlo.
@@ -759,13 +843,10 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
     companyName = str(row.get(mapeo_empresa, "-"))
     employee_range = str(row.get(mapeo_empleados, "-"))
     location = str(row.get(mapeo_location, "-"))
-    
-    
-
     scrapping_lead = str(row.get("scrapping", "-"))
     scrapping_proveedor = str(row.get("scrapping_proveedor", "-"))
 
-    # PROMPT: asegurarse de que ChatGPT devuelva un JSON con llaves
+    # PROMPT: Claves con ChatGPT 
     prompt = f"""
 INSTRUCCIONES:
 - Devuelve la respuesta SOLO como un objeto JSON (usando llaves)
@@ -780,24 +861,115 @@ INSTRUCCIONES:
   "CTA".
 
 Tenemos un cliente llamado {companyName}.
+Descripción: {row.get("EMPRESA_DESCRIPCION", "-")}
+Productos y servicios: {row.get("EMPRESA_PRODUCTOS_SERVICIOS	", "-")}
+Industria Objetivo: {row.get("EMPRESA_INDUSTRIAS_TARGET", "-")}
 Basado en esta información del cliente y del proveedor, genera los siguientes campos en español:
 
-
 Personalization: Es una introducción personalizada basada en un hecho reciente o logro de la empresa cliente, el objetivo es captar su atención de inmediato. Empresa Cliente → Se basa en su actividad, logros o contexto. 
-Se calcula del Contenido del sitio web del cliente de donde se generan las siguientes variables: (ClienteCompanyDescription), (ClienteCompanyProductsServices), (ClienteCompanyTargetIndustries) y del (Contexto) de Mi Info
+ Cómo calcularla:
+Fuente
+Campo(s) utilizados
+Tabla Contactos
+Title, Departamento, Área, Desafíos
+Tabla Empresas
+Company Website, Productos / Servicios, Objetivo
+
+Método:
+Analiza Title, Desafíos del contacto para destacar algo que esté enfrentando o liderando.
+
+
+Analiza Empresa, Objetivo o Industria de la Empresa para conectar el mensaje al contexto.
+
+
 Your Value Prop. Es la propuesta de valor de tu empresa, lo que ofreces y cómo ayudas a resolver un problema específico. Proveedor → Es nuestro diferenciador y lo que podemos hacer por el cliente.
-Se calcula de ClickerMatch en Contenido del sitio web del cliente de donde se generan las siguientes variables: (ProveedorCompanyDescription), (ProveedorCompanyProductsServices)y si hay algo adicional que de contexto: Lanzamiento, Expo, etc
+ Cómo calcularla:
+Fuente
+Interna (no viene en las tablas)
+Mi Info
+Descripcion, Producto o Servicio, 
+
+Método:
+Usa reglas según el área o industria del contacto para insertar una versión relevante de tu propuesta.
+
+Ejemplo:
+“Ayudamos a líderes de marketing educativo a aumentar sus leads calificados usando automatización de datos.”
+
 Your Target Niche (Niche, Subsegment, Location). El segmento de mercado al que queremos llegar, definido por industria, subsegmento y ubicación. Proveedor → Es nuestra audiencia objetivo.
-Se calcula de ClickerMatch en Define tu ICP del (AreaMenor), (AreaMayor), (NivelJerárquico), (Industry), (Industry Mayor), (CompanySize). Buscamos en la BD de Clicker los prospectos o salimos a scrapearlos con Phantombuster o Expandi
+
+ Cómo calcularla:
+Fuente
+Campo(s) utilizados
+Tabla Contactos
+Area, Departamento, Nivel Jerarquico
+Tabla Empresas
+Company Industry, Estado, País
+
+Método:
+Concatenar:
+
+python
+CopiarEditar
+Target_Niche = f"{row.get("area", "-")}, {row.get("departamento", "-")}, {row.get("Nivel Jerarquico", "-")}, {row.get("Company Industry", "-")}, {row.get("Nivel Jerarquico", "-")}, {row.get("Nivel Jerarquico", "-")}"
+
+Ejemplo:
+Retail – Ciudad de México, México
 Your Client Goal. La meta principal del puesto del cliente. ¿Qué quiere lograr con su negocio o estrategia?. Cliente → Es su necesidad o aspiración.
-Se calcula con base a Catálogo Área, Departamento y Objetivo 
+Cómo calcularla:
+Fuente
+Campo(s) utilizados
+Tabla Contactos
+Title, Departamento, Área, Nivel Jerarquico, Desafíos
+Tabla Empresas
+Company Industria, Website, Objetivo, Productos / Servicios, Industrias Target
+
+Método:
+Analiza Departamento, Área, Nivel Jerarquico, Company Industria y propone retos de relacionados a mas ingresos o reducción de costos, productividad / eficiencia en función de Objetivo
+Ejemplo:
+Reducir el ciclo de venta mediante mayor personalización y automatización.
 Your Client Value Prop. La propuesta de valor del cliente. ¿Cómo se diferencian ellos en su mercado? ¿Qué buscan potenciar?. Cliente → Es cómo ellos se presentan en su industria.
-Se calcula del scrap del (ClientWebsite) que genera las siguientes variables: (Scrap Empresa Website), (Scrap Empresa Website > Descripcion), (Scrap Empresa Website > Productos o Servicios), (Scrap Empresa Website > Industria / Áreas de Interés)
+Cómo calcularla:
+Fuente
+Campo(s) utilizados
+Tabla Empresas
+Objetivo, Productos / Servicios, Industria Target, Website
+
+Método:
+Detectar cómo se presentan o qué comunican como ventaja competitiva.
+
+Si no está explícito, se puede inferir de Objetivo.
+
+Ejemplo:
+“[Empresa] ayuda a organizaciones educativas a formar líderes con visión global.”
 Cliffhanger Value Prop. Una propuesta intrigante o gancho para motivar la conversación, generalmente una promesa de resultados o insights valiosos. Proveedor → Un beneficio atractivo para generar curiosidad.
+
+Cómo calcularla:
+Fuente
+Interna (propuesta del proveedor) + contexto del cliente
+
+Método:
+Usa la lógica: "¿Qué podría interesarle resolver y que nosotros sabemos resolver mejor?"
+
+Genera versiones por segmento.
+
+Ejemplo:
+“¿Te gustaría ver cómo otras universidades han triplicado su conversión en 30 días?”
 CTA (Call to Action). La acción concreta que queremos que tome el cliente, como agendar una reunión o responder al correo. Proveedor → Es nuestra invitación a la acción.
 
-Escríbelos de manera que conecten en un solo mensaje
+Cómo calcularla:
+Fuente
+No depende de la tabla, se define por estrategia comercial
+Personalizable
+Según nivel jerárquico y tipo de conversación
 
+Ejemplos de CTA:
+“¿Te muestro un ejemplo la próxima semana?”
+
+“¿Tienes 15 minutos esta semana para verlo?”
+
+“¿Te interesa conocer como lo hacemos?”
+
+Escríbelos de manera que conecten en un solo mensaje
 
 Información del lead:
 - Empresa: {companyName}
@@ -817,7 +989,7 @@ Información del ICP (Ideal Customer Profile):
 - Contexto adicional de nosotros:" {contexto_prov} "
 - Nuestro Ideal Costumer Profile:" {icp_prov} "
 
-- Contenido del sitio web del cliente (scrapping del cliente): {scrap_clean}
+- Contenido del sitio web del cliente (scrapping del cliente): {scrap_clean} 
 - Contenido adicional del sitio (scrapping común): {scrap_adicional_clean}
 
 - La ubicación de la empresa es: (si no te doy una ubicación, ignóralo)
@@ -1086,6 +1258,7 @@ Desarrolla los siguientes correos con estructura completa de email:
 - Strategy - Loom Video
 - Strategy - Free Sample List
 
+
 Incluye: Asunto, saludo personalizado, cuerpo dividido en párrafos, despedida y firma como 'Equipo de ClickerMatch'.  
 NO uses la palabra "vender", mejor usa "llegar".
 
@@ -1270,8 +1443,7 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
 def index():
     if "user" not in session:
         return redirect("/login")  # redirige al login principal
-    #if not session.get("autenticado"):
-        #return redirect(url_for("login"))    
+   
     global df_leads
     global scrap_proveedor_text
     global info_proveedor_global
@@ -1280,11 +1452,47 @@ def index():
     global propuesta_valor, contexto_prov, plan_estrategico, icp_prov
     global logs_urls_scrap
     global descripcion_proveedor, productos_proveedor, mercado_proveedor, icp_proveedor
+    global prompt_actual
+    global prompt_mails
     status_msg = ""
     
     url_proveedor_global = ""  # Moveremos esto a variable local
     accion = request.form.get("accion", "")
     if request.method == "POST":
+
+        if accion == "generar_info_empresa":
+            if not df_leads.empty:
+                for col in ["EMPRESA_DESCRIPCION", "EMPRESA_PRODUCTOS_SERVICIOS", "EMPRESA_INDUSTRIAS_TARGET"]:
+                    if col not in df_leads.columns:
+                        df_leads[col] = "-"
+
+                for idx, row in df_leads.iterrows():
+                    result = generar_info_empresa_chatgpt(row)
+                    for key, val in result.items():
+                        df_leads.at[idx, key] = val
+                status_msg += "Información de la empresa generada con éxito con ChatGPT.<br>"
+            else:
+                status_msg += "Primero debes cargar una base de leads.<br>"
+            
+        if accion == "guardar_prompt_chatgpt":
+            nuevo_prompt = request.form.get("prompt_chatgpt", "").strip()
+            prompt_actual = nuevo_prompt
+            status_msg += "✅ Prompt actualizado en memoria.<br>"
+
+        elif accion == "reiniciar_prompt_chatgpt":
+            prompt_actual = cargar_prompt_original()
+            status_msg += "♻️ Prompt reiniciado desde el archivo original.<br>"
+        elif accion == "guardar_prompt_mails":
+            nuevo = request.form.get("prompt_mails", "").strip()
+            prompt_mails = nuevo
+            guardar_prompt_mails_en_archivo(nuevo)
+            status_msg += "✅ Prompt de mails de estrategia actualizado.<br>"
+
+        elif accion == "reiniciar_prompt_mails":
+            prompt_mails = cargar_prompt_mails_original()
+            status_msg += "♻️ Prompt de mails de estrategia reiniciado.<br>"
+
+
         if accion == "guardar_custom_fields":
             propuesta_valor = request.form.get("propuesta_valor", "").strip()
             contexto_prov = request.form.get("contexto_prov", "").strip()
@@ -1936,7 +2144,9 @@ Laura"
     color_scrap = "green" if acciones_realizadas["super_scrap_leads"] else "#1E90FF"
     color_desafios = "green" if acciones_realizadas["generar_desafios"] else "#1E90FF"
     color_tabla = "green" if acciones_realizadas["generar_tabla"] else "#1E90FF"
-        
+     
+    #Creación prompt
+    prompt_chatgpt = cargar_prompt_desde_archivo()   
         
     page_html = f"""
     <html>
@@ -2118,8 +2328,20 @@ Laura"
                     flex-direction: column;
                 }}
             }}
-            
-            
+            .editor {{
+                background-color: #222;
+                color: white;
+                border: 1px solid #333;
+                border-radius: 10px;
+                padding: 10px;
+                min-height: 200px;
+                white-space: pre-wrap;
+                font-family: monospace;
+            }}
+            .editor .var {{
+                color: #00aaff;
+                font-weight: bold;
+            }}     
         </style>
     </head>
     <body>
@@ -2287,9 +2509,49 @@ Laura"
 
                  
     </details>            
-        
-        <hr>
     <details>
+    <summary style="cursor: pointer; font-weight: bold;">🧠 Prompt Value</summary>
+    <form method="POST" style="margin-bottom: 10px;" onsubmit="guardarContenidoEditor()">
+        <button type="button" onclick="resaltarVariables()">🎨 Resaltar variables</button>
+        <input type="hidden" name="accion" value="guardar_prompt_chatgpt"/>
+        <div id="editor" class="editor" contenteditable="true">
+            {prompt_actual}
+        </div>
+        <input type="hidden" name="prompt_chatgpt" id="prompt_oculto">
+        <button type="submit">💾 Guardar Prompt</button>
+    </form>
+
+    <form method="POST">
+        <input type="hidden" name="accion" value="reiniciar_prompt_chatgpt"/>
+        <button type="submit">♻️ Reiniciar desde archivo .txt</button>
+    </form>
+    </details>
+    <details>
+    <summary style="cursor: pointer; font-weight: bold;">🧠 Prompt Mails Estrategia</summary>
+    <form method="POST" style="margin-bottom: 10px;" onsubmit="guardarContenidoEditorMails()">
+        <button type="button" onclick="resaltarVariablesMails()">🎨 Resaltar variables</button>
+        <input type="hidden" name="accion" value="guardar_prompt_mails"/>
+        <div id="editor_mails" class="editor" contenteditable="true">
+        {prompt_mails}
+        </div>
+        <input type="hidden" name="prompt_mails" id="prompt_mails_oculto">
+        <button type="submit">💾 Guardar Prompt Mails</button>
+    </form>
+    <form method="POST">
+        <input type="hidden" name="accion" value="reiniciar_prompt_mails"/>
+        <button type="submit">♻️ Reiniciar desde archivo .txt</button>
+    </form>
+    </details>             
+    <form method="POST">
+        <input type="hidden" name="accion" value="generar_info_empresa"/>
+        <button type="submit" style="background-color:#1E90FF;">
+            🧠 Generar Info Empresa con ChatGPT
+        </button>
+    </form>
+
+    <hr>
+    <details>
+
     <summary style="cursor: pointer; font-weight: bold;">➕ Mi Info</summary>
 
     <form method="POST" enctype="multipart/form-data">
@@ -2399,6 +2661,31 @@ Laura"
             console.error("Error al subir el PDF:", error);
         }});
     }});
+    
+    function resaltarVariables() {{
+        const editor = document.getElementById("editor");
+        const textoPlano = editor.innerText;
+        const conHTML = textoPlano.replace(/{{(.*?)}}/g, "<span class='var'>{{$1}}</span>")
+                                .replace(/{{/g, "{{")  // Escapa por si acaso
+                                .replace(/}}/g, "}}");
+        editor.innerHTML = conHTML;
+        colocarCursorAlFinal(editor);
+    }}
+
+    function colocarCursorAlFinal(element) {{
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(element);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }}
+
+    function guardarContenidoEditor() {{
+        const editor = document.getElementById("editor");
+        const contenido = editor.innerText;
+        document.getElementById("prompt_oculto").value = contenido;
+    }}  
     </script>
     
     <div id="scrap-progress" style="margin-top:20px; text-align:center; display:none;">
@@ -2474,7 +2761,20 @@ Laura"
             dropdown.style.display = "none";
         }}
     }});                                                                                                
+    function resaltarVariablesMails() {{
+    const editor = document.getElementById("editor_mails");
+    const textoPlano = editor.innerText;
+    const conHTML = textoPlano.replace(/{{{{(.*?)}}}}/g,
+        '<span class="var">{{{{$1}}}}</span>');
+    editor.innerHTML = conHTML;
+    colocarCursorAlFinal(editor);
+    }}
 
+    function guardarContenidoEditorMails() {{
+    const editor = document.getElementById("editor_mails");
+    const contenido = editor.innerText;
+    document.getElementById("prompt_mails_oculto").value = contenido;
+    }}
     </script>
 
 
@@ -2501,8 +2801,11 @@ Laura"
     #page_html = page_html.replace("{productos_proveedor}", str(productos_proveedor or ""))
     #page_html = page_html.replace("{mercado_proveedor}", str(mercado_proveedor or ""))
     #page_html = page_html.replace("{icp_proveedor}", str(icp_proveedor or ""))
+    
+    prompt_chatgpt = cargar_prompt_desde_archivo()
+    prompt_mails = cargar_prompt_mails_original()
 
-
+    page_html = page_html.replace("{ prompt_chatgpt }", prompt_chatgpt or "")
     return page_html
 
 
