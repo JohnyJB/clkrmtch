@@ -402,20 +402,24 @@ OPENAI_MAX_TOKENS = 1000
 def generar_info_empresa_chatgpt(row: pd.Series) -> dict:
     if client is None:
         return {
-            "EMPRESA_DESCRIPCION": "-",
-            "EMPRESA_PRODUCTOS_SERVICIOS": "-",
-            "EMPRESA_INDUSTRIAS_TARGET": "-"
+            "EMPRESA_DESCRIPCION": "ND",
+            "EMPRESA_PRODUCTOS_SERVICIOS": "ND",
+            "EMPRESA_INDUSTRIAS_TARGET": "ND"
         }
 
     texto_scrap = (str(row.get("scrapping", "")) + "\n" + str(row.get("Scrapping Adicional", ""))).strip()
     prompt = f"""
-Eres un analista de datos empresariales. A partir de este texto sacado del sitio web de una empresa, genera lo siguiente y dame solo de respuesta en formato JSON:
+Eres un analista experto en inteligencia de negocios. Tu tarea es analizar el siguiente texto extraído del sitio web de una empresa y devolver un resumen de alta calidad en formato JSON, sin explicaciones adicionales. Extrae únicamente lo que se pueda inferir del texto, evitando suposiciones.
 
-  "EMPRESA_DESCRIPCION": Resumen general de lo que hace la empresa.Si no tiene pon -,
-  "EMPRESA_PRODUCTOS_SERVICIOS": Lista o resumen de los productos o servicios que ofrece.Si no tiene pon -,
-  "EMPRESA_INDUSTRIAS_TARGET": Industrias a las que atiende o está enfocado. Si no tiene pon -
+El formato de salida debe ser exactamente el siguiente:
 
-Scrapping del sitio de la empresa:
+{{
+  "EMPRESA_DESCRIPCION": "Resumen claro y conciso sobre a qué se dedica la empresa. Si no se puede determinar, responde con 'ND'",
+  "EMPRESA_PRODUCTOS_SERVICIOS": "Lista breve o resumen de los productos y/o servicios ofrecidos. Si no se puede determinar, responde con 'ND'",
+  "EMPRESA_INDUSTRIAS_TARGET": "Industrias o sectores a los que sirve o está orientada la empresa. Si no se puede determinar, responde con 'ND'"
+}}
+
+Texto a analizar (scrapping del sitio web de la empresa):
 {texto_scrap or "-"}
     """
 
@@ -647,69 +651,6 @@ def extraer_contactos_redes(url: str) -> dict:
         print(f"[ERROR] al extraer redes/teléfono de {url}:", e)
 
     return resultado
-#Generar desafíos
-def generar_desafios_por_lead(row: pd.Series) -> dict:
-    if client is None:
-        return {"Desafio 1": "-", "Desafio 2": "-", "Desafio 3": "-"}
-
-    title = str(row.get("title", "-"))
-    nivel = str(row.get("Nivel Jerarquico", "-"))
-    subarea = str(row.get("departamento", "-"))
-    area = str(row.get("Company Industry", "-"))
-    municipio = str(row.get("Municipio", "-"))
-    estado = str(row.get("Estado", "-"))
-    pais = str(row.get("Pais", "-"))
-    objetivo = str(row.get("Objetivo", "-"))
-    productos = str(row.get("Productos o Servicios", "-"))
-    industria = str(row.get("Industria Mayor", "-"))
-    emp_count = str(row.get("Company Employee Count Range", "-"))
-    founded = str(row.get("Company Founded", "-"))
-    descripcion = str(row.get("linkedin_description", "-"))
-    scrap_basico = str(row.get("scrapping", "-"))
-    scrap_adicional = str(row.get("Scrapping Adicional", "-"))
-
-    prompt = f"""
-Eres un analista de negocio B2B. Con base en esta información de un lead, genera 3 desafíos específicos que esta persona podría estar enfrentando en su empresa.
-
-Devuelve la respuesta en este JSON:
-{{
-  "Desafio 1": "...",
-  "Desafio 2": "...",
-  "Desafio 3": "..."
-}}
-
-Datos del lead:
-- Puesto: {title}
-- Nivel Jerárquico: {nivel}
-- Área Mayor: {area}
-- Industria: {industria}
-
-"""
-
-    try:
-        respuesta = client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=800,
-            temperature=0.7,
-            timeout=30
-        )
-        content = respuesta.choices[0].message.content.strip()
-
-        if content.startswith("```json"):
-            content = content.replace("```json", "").strip()
-        if content.endswith("```"):
-            content = content[:-3].strip()
-
-        parsed = json.loads(content)
-        return {
-            "Desafio 1": parsed.get("Desafio 1", "-"),
-            "Desafio 2": parsed.get("Desafio 2", "-"),
-            "Desafio 3": parsed.get("Desafio 3", "-")
-        }
-    except Exception as e:
-        print("[ERROR] al generar desafíos:", e)
-        return {"Desafio 1": "-", "Desafio 2": "-", "Desafio 3": "-"}
 
 
 
@@ -719,16 +660,7 @@ Datos del lead:
 #    extraer la info solicitada
 #####################################
 def analizar_proveedor_scraping_con_chatgpt(texto_scrapeado: str) -> dict:
-    """
-    Envía a ChatGPT el texto scrapeado del proveedor para obtener:
-    (1) Nombre de la Empresa
-    (2) Objetivo
-    (3) Productos o Servicios
-    (4) Industrias
-    (5) Clientes o Casos de Exito
-    (6) ICP
-    Retorna un dict con esas claves.
-    """
+
     if client is None:
         print("[ERROR] Cliente ChatGPT es None. Retorno info vacía.")
         return {
@@ -741,18 +673,26 @@ def analizar_proveedor_scraping_con_chatgpt(texto_scrapeado: str) -> dict:
         }
 
     prompt = f"""
-Eres un asistente que analiza la información de un sitio web de una empresa (texto crudo).
-Devuélveme exactamente en formato JSON los siguientes campos:
-- "Nombre de la Empresa"
-- Objetivo (o misión o enfoque principal)
-- "Productos o Servicios" (Si no dice el scrapp, infiere sobre que son)
-- "Industrias" (a qué industrias sirve o en cuáles se especializa)
-- "Clientes o Casos de Exito" (si aparecen referencias a clientes o casos)
-- "ICP" (Ideal Costumer Profile, de industria, puesto)
 
-Si no encuentras algo, simplemente pon "-".
+Eres un analista experto en inteligencia comercial. A partir del siguiente texto obtenido del sitio web de una empresa (scrapeado sin formato), tu tarea es identificar y sintetizar información clave del negocio. Devuelve la respuesta exclusivamente en **formato JSON**, sin explicaciones adicionales ni texto extra.
 
-Texto del sitio (Si a continuación no te doy info del sitio, pon - en todas):
+Instrucciones:
+- Si algún dato no puede determinarse con claridad, devuelve "-" en ese campo.
+- Si puedes inferir información relevante (como industrias o ICP), hazlo con base en los productos, servicios, lenguaje del texto o clientes mencionados.
+- Mantén los textos concisos y profesionales.
+
+Formato de salida esperado:
+
+{{
+  "Nombre de la Empresa": "Nombre tal como aparece en el texto (si aplica). Si no aparece, pon '-'",
+  "Objetivo": "Propósito, misión o enfoque principal de la empresa. Qué hace",
+  "Productos o Servicios": "Resumen o listado de lo que ofrece la empresa.",
+  "Industrias": "Industrias o sectores a los que sirve. a quienes",
+  "Clientes o Casos de Exito": "Empresas mencionadas como clientes o ejemplos de casos.",
+  "ICP": "-"
+}}
+
+Texto extraído del sitio web:
 {texto_scrapeado}
     """
 
@@ -815,21 +755,11 @@ Texto del sitio (Si a continuación no te doy info del sitio, pon - en todas):
 
 
 def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
-    """
-    Genera las columnas definidas: Personalization, Your Value Prop, etc.
-    usando la API de ChatGPT.
-    Devuelve un dict con esas claves separadas.
-    """
+    """"""
     if client is None:
         print("[ERROR] 'client' es None, no se puede llamar la API.")
         return {
-            "Personalization": "-",
-            "Your Value Prop": "-",
-            "Target Niche": "-",
-            "Your Targets Goal": "-",
-            "Your Targets Value Prop": "-",
-            "Cliffhanger Value Prop": "-",
-            "CTA": "-"
+
         }
 
     # Extraer datos
@@ -845,104 +775,7 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
     scrapping_proveedor = str(row.get("scrapping_proveedor", "-"))
 
     # PROMPT: Claves con ChatGPT 
-    prompt = f"""
-INSTRUCCIONES:
-- Devuelve la respuesta SOLO como un objeto JSON (usando llaves)
-- No incluyas texto adicional antes o después del JSON
-- Utiliza únicamente estas claves:
-  "Personalization",
-  "Your Value Prop",
-  "Your Target Niche",
-  "Your Client Goal",
-  "Your Client Value Prop",
-  "Cliffhanger Value Prop",
-  "CTA"
-
-Tenemos un cliente, {companyName}.
-Ideal Costumer Profile y Perfil del Cliente:
-- Contacto: {lead_name}
-- Puesto: {title}
-- Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
-- Área: {row.get("area", "-")}
-- Departamento: {row.get("departamento", "-")}
-- Industria: {industry}
-
-Más info de empresa del cliente:
-Descripción: {row.get("EMPRESA_DESCRIPCION", "-")}
-Productos y servicios: {row.get("EMPRESA_PRODUCTOS_SERVICIOS", "-")}
-Industria Objetivo: {row.get("EMPRESA_INDUSTRIAS_TARGET", "-")}
-- Contenido del sitio web del cliente (scrapping del cliente): {scrap_clean} 
-- Contenido adicional del sitio (scrapping común): {scrap_adicional_clean}
-
-Información de nosotros:
-- Propuesta de valor de nosotros:" {descripcion_proveedor} "
-- Contexto adicional de nosotros:" {productos_proveedor} "
-- Mercado de nosotros:" {mercado_proveedor}"
-
-Basado en esta información del cliente y de nosotros, genera los siguientes campos en español:
-
-Personalization: Un mensaje de introducción personalizada de mi hacia el proveedor, basada en un hecho reciente o logro de {companyName}, el objetivo es captar su atención de inmediato. 
-Como calculara: Puesto, empresa, descripción
-Metodo:
-Analiza Puesto del contacto para destacar algo que esté enfrentando o liderando.
-Analiza Empresa, Descripcion o Industria de la Empresa para conectar el mensaje al contexto.
-
-Your Value Prop. Es la propuesta de valor de nuestra empresa, lo que ofrecemos y cómo ayudo a resolver un problema específico. 
-Nuestro diferenciador y lo que podemos hacer por el cliente.
-Cómo calcularla: Descripcion, Producto o Servicio, 
-Método: Usa reglas según el área o industria del contacto para insertar una versión relevante de lo que hacemos, no invites a junta ni cita.
-
-Your Target Niche (Area, Departamento, Ubicación e industria de la empresa). 
-Es nuestra audiencia objetivo.
-Cómo calcularla: Area, Departamento, Nivel Jerarquico
-Target_Niche = f"{row.get("area", "-")}, {row.get("departamento", "-")}, {row.get("Nivel Jerarquico", "-")}, {row.get("Company Industry", "-")}, {row.get("Nivel Jerarquico", "-")}, {row.get("Nivel Jerarquico", "-")}"
-
-Your Client Goal. La meta principal del puesto del cliente. ¿Qué quiere lograr con su negocio o estrategia?. Cliente → Es su necesidad o aspiración.
-Cómo calcularla:
-Del contácto: Puesto, Departamento, Área, Nivel Jerarquico y de su empresa: Industria, Descripción, Productos / Servicios, Industrias Target
-Método:
-Analiza Departamento, Área, Nivel Jerarquico, Company Industria y propone retos de relacionados a mas ingresos o reducción de costos, productividad / eficiencia
-
-Your Client Value Prop. La propuesta de valor del cliente. ¿Cómo se diferencian ellos en su mercado? ¿Qué buscan potenciar?. Cliente → Es cómo ellos se presentan en su industria.
-Cómo calcularla: De la empresa: Descripción, Productos / Servicios, Industria Target
-Método:
-Detectar cómo se presentan o qué comunican como ventaja competitiva.
-Si no está explícito, se puede inferir de Descripción.
-
-Cliffhanger Value Prop. Crear una propuesta provocadora o altamente atractiva que intrigue al prospecto y haga que reunirse contigo sea una decisión obvia.
-Proveedor → Un beneficio atractivo para generar curiosidad.
-Cómo calcularla: (propuesta de nosotros que impacta el client goal de ellos) 
-Método:
-Usa la lógica: "¿Qué podría interesarle resolver y que nosotros sabemos resolver mejor?"
-Genera versiones por segmento.
-
-CTA (Call to Action). La acción concreta que queremos que tome el cliente, responder al correo por si quiere platicar más a profundidad. 
-Proveedor → Es nuestra invitación a la acción.
-Cómo calcularla:
-Fuente
-No depende de la tabla, se define por estrategia comercial
-Personalizable
-Según nivel jerárquico y tipo de conversación
-
-
-Escríbelos de manera que conecten en un solo mensaje 
-
-Información del proveedor:
-- Contenido extraído del sitio web de nosotros: 
-{plan_estrategico}
-SOLICITUD:
-Genera cada uno de estos campos en español y de forma breve:
-1) Personalization
-2) Your Value Prop
-3) Your Target Niche
-4) Your Client Goal
-5) Your Client Value Prop
-6) Cliffhanger Value Prop
-7) CTA
-
-
-Recuerda: la respuesta debe ser válido JSON con llaves y comillas en cada clave-valor, sin texto adicional.
-"""
+    prompt = f""""""
 
     prompt = _limpiar_caracteres_raros(prompt)
     #guardar_prompt_log(prompt, lead_name=lead_name, idx=row.name)
@@ -963,269 +796,96 @@ Recuerda: la respuesta debe ser válido JSON con llaves y comillas en cada clave
         # Intentar parsear JSON
         try:
             parsed = json.loads(content)
-            personalization = parsed.get("Personalization", "-")
-            value_prop = parsed.get("Your Value Prop", "-")
-            target_niche = parsed.get("Your Target Niche", "-")
-            targets_goal = parsed.get("Your Client Goal", "-")
-            targets_value_prop = parsed.get("Your Client Value Prop", "-")
-            cliffhanger = parsed.get("Cliffhanger Value Prop", "-")
-            cta = parsed.get("CTA", "-")
+
         except Exception as ex:
             print("[ERROR] No se pudo parsear JSON en leads:")
             print("Contenido recibido:", content)
             print("Excepción:", ex)
             # Fallback: poner todo en "Personalization" si falla
-            personalization = content
-            value_prop = "-"
-            target_niche = "-"
-            targets_goal = "-"
-            targets_value_prop = "-"
-            cliffhanger = "-"
-            cta = "-"
+
 
         return {
-            "Personalization": personalization,
-            "Your Value Prop": value_prop,
-            "Target Niche": target_niche,
-            "Your Targets Goal": targets_goal,
-            "Your Targets Value Prop": targets_value_prop,
-            "Cliffhanger Value Prop": cliffhanger,
-            "CTA": cta
+
         }
     except Exception as e:
         print("[ERROR] Al invocar ChatGPT (leads):", e)
         return {
-            "Personalization": "-",
-            "Your Value Prop": "-",
-            "Target Niche": "-",
-            "Your Targets Goal": "-",
-            "Your Targets Value Prop": "-",
-            "Cliffhanger Value Prop": "-",
-            "CTA": "-"
+
         }
+#Prompts individuales
+def prompt_reply_rate_email(row: pd.Series) -> str:
+    return f"""
+Quiero que redactes un correo frío B2B en español, de entre 90 y 130 palabras, que inicie con un saludo, luego una observación llamativa, concreta o positiva sobre la empresa del prospecto, y que continúe de forma estratégica y conversacional sin sonar a venta. 
 
-def generar_emails_estrategia(row: pd.Series) -> dict:
-    if client is None:
-        print("[ERROR] Cliente ChatGPT no disponible.")
-        return {k: "-" for k in [
-            "Strategy - 25% Reply Rate Email", "Strategy - One Sentence Email",
-            "Strategy - Asking for an Introduction", "Strategy - Ask for Permission",
-            "Strategy - Loom Video", "Strategy - Free Sample List"
-        ]}
-    lead_name = str(row.get(mapeo_nombre_contacto, "-"))
-    title = str(row.get(mapeo_puesto, "-"))
-    industry = str(row.get(mapeo_industria, "-"))
-    companyName = str(row.get(mapeo_empresa, "-"))
-    employee_range = str(row.get(mapeo_empleados, "-"))
-    location = str(row.get(mapeo_location, "-"))
-    
-    base_context = f"""
-Nombre del contacto: {lead_name}
+📌 REGLAS IMPORTANTES:
+- No incluyas el nombre ni la empresa del remitente.
+- No firmes el correo.
+- No hables directamente de “nosotros”, ni uses frases como “ofrecemos”, “te ayudamos”, “MARKETPRO”.
+- No menciones el asunto.
+- No intentes vender ni enlistar servicios.
+- El objetivo del correo es despertar interés y abrir conversación para una llamada.
+- Si no hay datos suficientes para alguna sección, omítela de forma natural.
+- No incluyas nombre del remitente
+Párrafo 1 máximo 120 caracteres
+Párrafo 2 máximo 280 caracteres
+Párrafo 3 máximo 160 caracteres
+Párrafo 4 máximo 60 caracteres
 
-Resultados para adaptar:
-- "Personalization": {row.get("Personalization", "-")}
-- "Your Value Prop": {row.get("Your Value Prop", "-")}
-- "Target Niche": {row.get("Target Niche", "-")}
-- "Your Client Goal": {row.get("Your Targets Goal", "-")}
-- "Your Client Value Prop": {row.get("Your Targets Value Prop", "-")}
-- "Cliffhanger Value Prop": {row.get("Cliffhanger Value Prop", "-")}
-- "CTA": Call To Action {row.get("CTA", "-")}
+🧑‍💼 Información del prospecto:
+- Nombre: {row.get("First name", "-")} {row.get("Last name", "-")}
+- Puesto: {row.get("Title", "-")}
+- Empresa: {row.get("Company Name", "-")}
+- Industria: {row.get("Company Industry", "-")}
+- Ubicación: {row.get("Location", "-")}
 
-Con base en los datos anteriores, desarrolla los siguientes 6 correos personalizados según cada estrategia de prospección. Cada correo debe incluir:
-Información adicional del lead:
-- Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
-- Área: {row.get("area", "-")}
-- Departamento: {row.get("departamento", "-")}
+🏢 Información contextual de su empresa:
+- Descripción: {row.get("EMPRESA_DESCRIPCION", "-")}
+- Productos / servicios: {row.get("EMPRESA_PRODUCTOS_SERVICIOS", "-")}
+- Industrias objetivo: {row.get("EMPRESA_INDUSTRIAS_TARGET", "-")}
+- Scraping web: {row.get("scrapping", "-")} {row.get("Scrapping Adicional", "-")}
 
-- Saludo personalizado (Ej. Hola [Nombre del contacto])
-- Cuerpo dividido en párrafos claros, según la estructura indicada
-- Despedida cordial
+🎯 ESTRUCTURA A RESPETAR:
+1. **[Saludo]**
+2. **[Personalización / observación positiva]** sobre la empresa del prospecto
+3. **[Target Niche + Goal]**: qué tipo de empresa es y qué seguramente busca lograr
+4. **[Cliffhanger]**: tienes algo preparado que puede interesarle (no vendas, no expliques, solo sugiere)
+5. **[CTA]**: pregunta sencilla para abrir conversación, sin presión ni cierre duro
 
-Importante:
-- No uses la palabra "vender" en ninguno de los correos.
-
-
-Devuelve tu respuesta en formato JSON (sin explicaciones ni comentarios, solo el JSON):
-
-{{
-  "Strategy - 25% Reply Rate Email": "Asunto: ...\\nHola [nombre]...\\n\\n[Párrafo 1]...\\n[Párrafo 2]...\\n,\\n",
-  "Strategy - One Sentence Email": "Asunto: ...\\nHola [nombre]...\\n\\n[Frase breve]...\\n,\\n",
-  "Strategy - Asking for an Introduction": "Asunto: ...\\nHola [nombre]...\\n\\n[Mensaje para pedir introducción]...\\nGracias,\\n",
-  "Strategy - Ask for Permission": "...",
-  "Strategy - Loom Video": "...",
-  "Strategy - Free Sample List": "..."
-}}
-
-Estructuras:
-
-- Strategy: 25% Reply Rate Email  
-  Parrafo 1 (Personalization) Parrafo 2 (Your Value Prop | Target Niche | Your Targets Goal | Your Targets Value Prop) Parrafo 3 (Cliffhanger Value Prop) Parrafo 4 (CTA)
-
-- Strategy: One Sentence Email  
-  Parrafo 1 (Personalization) Parrafo 2 (Your Value Prop | Target Niche) Parrafo 3 (CTA)
-
-- Strategy: Asking for an Introduction  
-  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Value Prop) Parrafo 3 (CTA)
-
-- Strategy: Ask for Permission  
-  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Value Prop) Parrafo 3 (Cliffhanger Value Prop) Parrafo 4 (CTA)
-
-- Strategy: Loom Video  
-  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Value Prop | Your Value Prop) Parrafo 3 (CTA)
-
-- Strategy: Free Sample List  
-  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Goal | Your Value Prop) Parrafo 3 (CTA)
+📩 RESPUESTA ESPERADA:
+Solo el cuerpo del correo, en español, en tono profesional y conversacional. Nada más.
 """
-    #print(base_context)
+
+def prompt_one_sentence_email(row: pd.Series) -> str:
+    return f"""creame un mail de one_sentence_email""" 
+def prompt_asking_for_introduction(row: pd.Series) -> str:
+    return f"""creame un mail de asking_for_introduction""" 
+def prompt_ask_for_permission(row: pd.Series) -> str:
+    return f"""creame un mail de ask_for_permission""" 
+def prompt_loom_video(row: pd.Series) -> str:
+    return f"""creame un mail de loom_video""" 
+def prompt_free_sample_list(row: pd.Series) -> str:
+    return f"""creame un mail de loom_video""" 
+
+def generar_email_por_estrategia(row: pd.Series, prompt_func, col_name: str) -> str:
+    prompt = prompt_func(row)
+    # 🖨️ Imprimir en el log
+    print(f"\n\n[LOG - PROMPT para {col_name}]")
+    print(f"Contacto: {row.get('First name', '-') or '-'} {row.get('Last name', '-') or '-'}")
+    print(prompt)
+    print("-" * 60)
     try:
         response = client.chat.completions.create(
             model=OPENAI_MODEL,
-            messages=[{"role": "user", "content": base_context}],
+            messages=[{"role": "user", "content": prompt}],
             max_tokens=1000,
             temperature=0.7,
             timeout=30
         )
         content = response.choices[0].message.content.strip()
-        #print("[RAW RESPONSE EMAILS STRATEGY]:", content)
-
-        # 🔥 FIX para quitar ```json y ```
-        if content.startswith("```json"):
-            content = content.replace("```json", "").strip()
-        if content.endswith("```"):
-            content = content[:-3].strip()
-
-        parsed = json.loads(content)
-        return parsed
-
+        return content
     except Exception as e:
-        print("[ERROR] Fallo al generar emails por estrategia:", e)
-        return {k: "-" for k in [
-            "Strategy - 25% Reply Rate Email", "Strategy - One Sentence Email",
-            "Strategy - Asking for an Introduction", "Strategy - Ask for Permission",
-            "Strategy - Loom Video", "Strategy - Free Sample List"
-        ]}
-
-def generar_emails_bloque_1(row: pd.Series) -> dict:
-    lead_name = str(row.get(mapeo_nombre_contacto, "-"))
-    prompt = f"""
-Nombre del contacto: {lead_name}
-
-Resultados para adaptar:
-- "Personalization": {row.get("Personalization", "-")}
-- "Your Value Prop": {row.get("Your Value Prop", "-")}
-- "Target Niche": {row.get("Target Niche", "-")}
-- "Your Client Goal": {row.get("Your Targets Goal", "-")}
-- "Your Client Value Prop": {row.get("Your Targets Value Prop", "-")}
-- "Cliffhanger Value Prop": {row.get("Cliffhanger Value Prop", "-")}
-- "CTA": Call To Action {row.get("CTA", "-")}
-
-Con base en los datos anteriores, desarrolla los siguientes 6 correos personalizados según cada estrategia de prospección. Cada correo debe incluir:
-Información adicional del lead:
-- Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
-- Área: {row.get("area", "-")}
-- Departamento: {row.get("departamento", "-")}
-
-- Saludo personalizado (Ej. Hola [Nombre del contacto])
-- Cuerpo dividido en párrafos claros, según la estructura indicada
-- Despedida cordial
-
-Importante:
-- No uses la palabra "vender" en ninguno de los correos.
-
-
-Devuelve tu respuesta en formato JSON (sin explicaciones ni comentarios, solo el JSON):
-
-{{
-  "Strategy - 25% Reply Rate Email": "Asunto: ...\\nHola [nombre]...\\n\\n[Párrafo 1]...\\n[Párrafo 2]...\\n,\\n",
-  "Strategy - One Sentence Email": "Asunto: ...\\nHola [nombre]...\\n\\n[Frase breve]...\\n,\\n",
-  "Strategy - Asking for an Introduction": "Asunto: ...\\nHola [nombre]...\\n\\n[Mensaje para pedir introducción]...\\nGracias,\\n",
-}}
-
-Estructuras:
-
-- Strategy: 25% Reply Rate Email  
-  Parrafo 1 (Personalization) Parrafo 2 (Your Value Prop | Target Niche | Your Targets Goal | Your Targets Value Prop) Parrafo 3 (Cliffhanger Value Prop) Parrafo 4 (CTA)
-
-- Strategy: One Sentence Email  
-  Parrafo 1 (Personalization) Parrafo 2 (Your Value Prop | Target Niche) Parrafo 3 (CTA)
-
-- Strategy: Asking for an Introduction  
-  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Value Prop) Parrafo 3 (CTA)
-"""
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=1000,
-        temperature=0.7,
-        timeout=30
-    )
-    content = response.choices[0].message.content.strip()
-    if content.startswith("```json"):
-        content = content.replace("```json", "").strip()
-    if content.endswith("```"):
-        content = content[:-3].strip()
-    return json.loads(content)
-
-def generar_emails_bloque_2(row: pd.Series) -> dict:
-    lead_name = str(row.get(mapeo_nombre_contacto, "-"))
-    prompt = f"""
-Nombre del contacto: {lead_name}
-
-Resultados para adaptar:
-- "Personalization": {row.get("Personalization", "-")}
-- "Your Value Prop": {row.get("Your Value Prop", "-")}
-- "Target Niche": {row.get("Target Niche", "-")}
-- "Your Client Goal": {row.get("Your Targets Goal", "-")}
-- "Your Client Value Prop": {row.get("Your Targets Value Prop", "-")}
-- "Cliffhanger Value Prop": {row.get("Cliffhanger Value Prop", "-")}
-- "CTA": Call To Action {row.get("CTA", "-")}
-
-Con base en los datos anteriores, desarrolla los siguientes 6 correos personalizados según cada estrategia de prospección. Cada correo debe incluir:
-Información adicional del lead:
-- Nivel Jerárquico: {row.get("Nivel Jerarquico", "-")}
-- Área: {row.get("area", "-")}
-- Departamento: {row.get("departamento", "-")}
-
-- Saludo personalizado (Ej. Hola [Nombre del contacto])
-- Cuerpo dividido en párrafos claros, según la estructura indicada
-- Despedida cordial
-
-Importante:
-- No uses la palabra "vender" en ninguno de los correos.
-
-
-Devuelve tu respuesta en formato JSON (sin explicaciones ni comentarios, solo el JSON):
-
-{{
-  "Strategy - Ask for Permission": "...",
-  "Strategy - Loom Video": "...",
-  "Strategy - Free Sample List": "..."
-}}
-
-Estructuras:
-- Strategy: Ask for Permission  
-  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Value Prop) Parrafo 3 (Cliffhanger Value Prop) Parrafo 4 (CTA)
-
-- Strategy: Loom Video  
-  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Value Prop | Your Value Prop) Parrafo 3 (CTA)
-
-- Strategy: Free Sample List  
-  Parrafo 1 (Personalization) Parrafo 2 (Your Targets Goal | Your Value Prop) Parrafo 3 (CTA)
-"""
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        max_tokens=1000,
-        temperature=0.7,
-        timeout=30
-    )
-    content = response.choices[0].message.content.strip()
-    if content.startswith("```json"):
-        content = content.replace("```json", "").strip()
-    if content.endswith("```"):
-        content = content[:-3].strip()
-    return json.loads(content)
-
+        print(f"[ERROR] Falló generación de '{col_name}': {e}")
+        return "-"
 
 def procesar_leads():
     """Scrapea website de cada lead y rellena df_leads con el texto."""
@@ -1235,16 +895,12 @@ def procesar_leads():
         return
 
     needed_cols = [
-        "scrapping_proveedor", "scrapping", "Personalization",
-        "Your Value Prop", "Target Niche", "Your Targets Goal",
-        "Your Targets Value Prop", "Cliffhanger Value Prop", "CTA"
     ]
     for c in needed_cols:
         if c not in df_leads.columns:
             df_leads[c] = ""
-
     estrategias_cols = [
-        "Strategy - 25% Reply Rate Email",
+        "Strategy - Reply Rate Email",
         "Strategy - One Sentence Email",
         "Strategy - Asking for an Introduction",
         "Strategy - Ask for Permission",
@@ -1254,7 +910,6 @@ def procesar_leads():
     for col in estrategias_cols:
         if col not in df_leads.columns:
             df_leads[col] = "-"
-
 
     for idx, row in df_leads.iterrows():
         website = str(row.get(mapeo_website, "")).strip()
@@ -1285,28 +940,20 @@ def generar_contenido_para_todos():
     for idx, row in df_leads.iterrows():
         try:
             print(f"[LOG] Generando contenido ChatGPT para lead idx={idx}...")
-            result = generar_contenido_chatgpt_por_fila(row)
-
-            df_leads.at[idx, "Personalization"] = result["Personalization"]
-            df_leads.at[idx, "Your Value Prop"] = result["Your Value Prop"]
-            df_leads.at[idx, "Target Niche"] = result["Target Niche"]
-            df_leads.at[idx, "Your Targets Goal"] = result["Your Targets Goal"]
-            df_leads.at[idx, "Your Targets Value Prop"] = result["Your Targets Value Prop"]
-            df_leads.at[idx, "Cliffhanger Value Prop"] = result["Cliffhanger Value Prop"]
-            df_leads.at[idx, "CTA"] = result["CTA"]
-            row.update(result)  # <- ACTUALIZA los valores en la variable row
-            emails_1 = generar_emails_bloque_1(row)
-            emails_2 = generar_emails_bloque_2(row)
-
-            for col, val in {**emails_1, **emails_2}.items():
-                df_leads.at[idx, col] = val
-
-
-
+            estrategias = [
+                ("Strategy - Reply Rate Email", prompt_reply_rate_email),
+                ("Strategy - One Sentence Email", prompt_one_sentence_email),
+                ("Strategy - Asking for an Introduction", prompt_asking_for_introduction),
+                ("Strategy - Ask for Permission", prompt_ask_for_permission),
+                ("Strategy - Loom Video", prompt_loom_video),
+                ("Strategy - Free Sample List", prompt_free_sample_list),
+            ]
+            for col_name, prompt_func in estrategias:
+                df_leads.at[idx, col_name] = generar_email_por_estrategia(row, prompt_func, col_name)
         except Exception as e:
             print(f"[ERROR] Error inesperado en lead idx={idx}: {e}")
 
-    # Limpieza final
+    # Limpieza final quita NAN de
     cleanup_leads()
 
 def cleanup_leads():
@@ -1315,10 +962,7 @@ def cleanup_leads():
     if df_leads.empty:
         return
     cols_to_clean = [
-        "Personalization", "Your Value Prop", "Target Niche",
-        "Your Targets Goal", "Your Targets Value Prop",
-        "Cliffhanger Value Prop", "CTA",
-        "Strategy - 25% Reply Rate Email", "Strategy - One Sentence Email",
+        "Strategy - Reply Rate Email", "Strategy - One Sentence Email",
         "Strategy - Asking for an Introduction", "Strategy - Ask for Permission",
         "Strategy - Loom Video", "Strategy - Free Sample List"
     ]
@@ -1350,7 +994,7 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
     anchas = [
         "Personalization", "Your Value Prop", "Target Niche", "Your Targets Goal",
         "Your Targets Value Prop", "Cliffhanger Value Prop", "CTA",
-        "Strategy - 25% Reply Rate Email", "Strategy - One Sentence Email",
+        "Strategy - Reply Rate Email", "Strategy - One Sentence Email",
         "Strategy - Asking for an Introduction", "Strategy - Ask for Permission",
         "Strategy - Loom Video", "Strategy - Free Sample List", "super_scrapping",
         "scrapping", "URLs on WEB", "Scrapping Adicional"
@@ -1465,22 +1109,7 @@ def index():
             except Exception as e:
                 status_msg += f"Error al hacer scraping de {url_scrap_plan}: {e}<br>"
         
-        if accion == "generar_desafios":
-            if not df_leads.empty:
-                for col in ["Desafio 1", "Desafio 2", "Desafio 3"]:
-                    if col not in df_leads.columns:
-                        df_leads[col] = "-"
-
-                for idx, row in df_leads.iterrows():
-                    if all(df_leads.at[idx, col] in ["-", "", None] for col in ["Desafio 1", "Desafio 2", "Desafio 3"]):
-                        resultado = generar_desafios_por_lead(row)
-                        df_leads.at[idx, "Desafio 1"] = resultado.get("Desafio 1", "-")
-                        df_leads.at[idx, "Desafio 2"] = resultado.get("Desafio 2", "-")
-                        df_leads.at[idx, "Desafio 3"] = resultado.get("Desafio 3", "-")
-                acciones_realizadas["generar_desafios"] = True
-                status_msg += "Desafíos generados con éxito.<br>"
-            else:
-                status_msg += "Primero debes cargar una base de leads.<br>"
+        
         if accion == "scrapear_linkedin_empresas":
             if not df_leads.empty and "Company Linkedin Url" in df_leads.columns:
                 if "linkedin_description" not in df_leads.columns:
@@ -2010,64 +1639,7 @@ def index():
 
     # Bloque informativo (en español)
 
-    block_text_es = """
-<h2>Cold Email Strategy</h2>
-<p>Ejemplo de estructura para tu email:</p>
-<p><strong>Personalization</strong> | <strong>Your Value Prop</strong> | <strong>Target Niche</strong> | <strong>Your Targets Goal</strong> | <strong>Your Targets Value Prop</strong> | <strong>Cliffhanger Value Prop</strong> | <strong>CTA</strong></p>
-<pre>Ejemplo:
-"Hey Carla,
-¡Vi que lanzaste una nueva colección de playeras y han tenido bastante popularidad!
-Quería escribirte porque ayudamos a marcas de ropa enfocadas en diseño urbano (como la tuya) a conectarse con grandes minoristas de e-commerce que buscan expandir su catálogo.
-Me encantaría mostrarte nuestra propuesta, enfocada en duplicar la distribución de tu marca en los próximos 3 meses.
-¿Tienes tiempo esta semana para una breve llamada?
-¡Quedo atenta!
-Laura"
-</pre>
-
-<h2>Definición de Variables y Diferencias (Proveedor vs. Cliente)</h2>
-<table border="1" style="background:#fff; color:#000; margin:15px auto; max-width:1000px;">
-  <tr>
-    <th>Variable</th>
-    <th>Descripción</th>
-    <th>¿Pertenece a nosotros (Proveedor) o al Cliente?</th>
-  </tr>
-  <tr>
-    <td>Personalization</td>
-    <td>Introducción personalizada basada en un hecho reciente o logro del cliente. El objetivo es captar su atención de inmediato.</td>
-    <td>Cliente → Se basa en su actividad, logros o contexto.</td>
-  </tr>
-  <tr>
-    <td>Your Value Prop</td>
-    <td>Propuesta de valor de tu empresa (proveedor). Explica cómo ayudas a resolver un problema específico.</td>
-    <td>Proveedor → Nuestro diferenciador y lo que podemos hacer por el cliente.</td>
-  </tr>
-  <tr>
-    <td>Target Niche</td>
-    <td>Segmento de mercado al que queremos llegar (industria, subsegmento, ubicación).</td>
-    <td>Proveedor → Nuestra audiencia objetivo.</td>
-  </tr>
-  <tr>
-    <td>Your Targets Goal</td>
-    <td>Meta principal del cliente; lo que quiere lograr en su negocio o estrategia.</td>
-    <td>Cliente → Su necesidad o aspiración.</td>
-  </tr>
-  <tr>
-    <td>Your Targets Value Prop</td>
-    <td>Propuesta de valor del cliente. Cómo se diferencian en su mercado y qué buscan potenciar.</td>
-    <td>Cliente → Cómo se presentan en su industria.</td>
-  </tr>
-  <tr>
-    <td>Cliffhanger Value Prop</td>
-    <td>Propuesta intrigante para motivar la conversación, generalmente una promesa de resultados.</td>
-    <td>Proveedor → Gancho atractivo para generar curiosidad.</td>
-  </tr>
-  <tr>
-    <td>CTA (Call to Action)</td>
-    <td>Acción específica que buscamos: agendar reunión, responder el correo, etc.</td>
-    <td>Proveedor → Invitación a la acción concreta.</td>
-  </tr>
-</table>
-"""
+    block_text_es = """"""
 
 
     # Construcción final del HTML
@@ -2094,7 +1666,7 @@ Laura"
     page_html = f"""
     <html>
     <head>
-        <title>ClickerMaker</title>
+        <title>ClickerMatch</title>
         <style>
             body {{
                 background: url('/static/background.png') no-repeat center center fixed;
@@ -2306,11 +1878,11 @@ Laura"
         <div style="position: absolute; top: 20px; right: 30px;">
             <div style="position: relative; display: inline-block;">
                 <button onclick="toggleDropdown()" style="background: transparent; border: none; color: white; font-weight: bold; cursor: pointer;">
-                    👤 {{ session.get("user", "Usuario") }}
+                    👤 { session.get("user", "Usuario") }
                 </button>
                 <div id="dropdownMenu" style="display: none; position: absolute; right: 0; background-color: #1F1F1F; min-width: 200px; box-shadow: 0px 8px 16px rgba(0,0,0,0.4); border-radius: 10px; z-index: 1000; padding: 10px;">
-                    <p style="margin: 0; color: white;"><strong>{{ session.get("user", "Usuario") }}</strong></p>
-                    <p style="margin: 0; font-size: 12px; color: #ccc;">{{ session.get("correo", "") }}</p>
+                    <p style="margin: 0; color: white;"><strong>{ session.get("user", "Usuario") }</strong></p>
+                    <p style="margin: 0; font-size: 12px; color: #ccc;">{ session.get("correo", "") }</p>
                     <hr style="border-color: #444;">
                     <a href="/logout" style="color: #FF4C4C; text-decoration: none; display: block; margin-top: 5px;">Cerrar sesión</a>
                 </div>
@@ -2502,21 +2074,20 @@ Laura"
 
         <div style="display:flex; flex-direction: column; gap: 10px; margin-top: 10px;">
             <button type="submit" name="accion" value="guardar_custom_fields">💾 Guardar Campos</button>
-            <button type="submit" name="accion" value="scrap_proveedor">🔍 Scraping del Proveedor</button>
+            <button type="submit" name="accion" value="scrap_proveedor">🔍 Scrapping de mi sitio</button>
         </div>
     </form>
 
     <hr>
-
     <form method="POST">
         <input type="hidden" name="accion" value="generar_tabla"/>
         <button type="submit" style="background-color: {{ 'green' if acciones_realizadas['generar_tabla'] else '#1E90FF' }};">
             Generar Mails con ChatGPT
         </button>
     </form>
-
     <hr>
     </details>
+    
     <!--
     <details>
     <summary style="cursor: pointer; font-weight: bold;">🧠 Edición de IA Prompts</summary>           
@@ -2555,8 +2126,7 @@ Laura"
     </details>
     </details>
     -->
-  
-    
+      
     <details>
     <summary style="cursor: pointer; font-weight: bold;">➕ Exportar</summary>
         <form method="POST">
@@ -2570,10 +2140,8 @@ Laura"
         <button type="submit">Exportar</button>
         </form>
     </div>
-
     </details>
    
-
     <div class="container-wide">
         <h2>Base de datos (primeros 50 registros)</h2>
         {tabla_html(df_leads,50)}
