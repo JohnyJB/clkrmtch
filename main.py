@@ -815,44 +815,75 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
 #Prompts individuales
 def prompt_reply_rate_email(row: pd.Series) -> str:
     return f"""
-Quiero que redactes un correo frío B2B en español, de entre 90 y 130 palabras, que inicie con un saludo, luego una observación llamativa, concreta o positiva sobre la empresa del prospecto, y que continúe de forma estratégica y conversacional sin sonar a venta. 
+Quiero que actúes como un especialista en ventas B2B con enfoque en generación de citas de alto valor. 
+Tu tarea es redactar correos fríos personalizados, breves y efectivos, siguiendo la fórmula “25% Reply Rate Email Formula”.
+📌 CONTEXTO DE LOS DATOS (INPUTS)
+Estoy trabajando con una tabla que contiene información de prospectos, con las siguientes columnas clave:
+First name
+Last name
+Title → Puesto del prospecto (ej. Director de Marketing)
+Company Name
+Company Industry → Industria específica en la que opera
+Location → Ciudad, estado o país
+Propuesta de valor de mi empresa → Texto o resumen de la solución que quiero ofrecer (puede ser distinto por segmento)
+(Opcional, se obtiene del scrapping) Caso de éxito relevante → Referencia breve a un cliente similar con un resultado medible
 
-📌 REGLAS IMPORTANTES:
-- No incluyas el nombre ni la empresa del remitente.
-- No firmes el correo.
-- No hables directamente de “nosotros”, ni uses frases como “ofrecemos”, “te ayudamos”, “MARKETPRO”.
-- No menciones el asunto.
-- No intentes vender ni enlistar servicios.
-- El objetivo del correo es despertar interés y abrir conversación para una llamada.
-- Si no hay datos suficientes para alguna sección, omítela de forma natural.
-- No incluyas nombre del remitente
-Párrafo 1 máximo 120 caracteres
-Párrafo 2 máximo 280 caracteres
-Párrafo 3 máximo 160 caracteres
-Párrafo 4 máximo 60 caracteres
+📩 OBJETIVO DEL CORREO
+El correo debe estar diseñado para obtener una respuesta que derive en una llamada o reunión.
 
-🧑‍💼 Información del prospecto:
-- Nombre: {row.get("First name", "-")} {row.get("Last name", "-")}
-- Puesto: {row.get("Title", "-")}
-- Empresa: {row.get("Company Name", "-")}
-- Industria: {row.get("Company Industry", "-")}
-- Ubicación: {row.get("Location", "-")}
+🧱 ESTRUCTURA QUE DEBES USAR
+[Personalización]
+ Comienza con una frase relevante basada en el puesto, empresa, logros públicos o tipo de industria del prospecto. Puede provenir de su LinkedIn, sitio web o de su contexto empresarial.
 
-🏢 Información contextual de su empresa:
-- Descripción: {row.get("EMPRESA_DESCRIPCION", "-")}
-- Productos / servicios: {row.get("EMPRESA_PRODUCTOS_SERVICIOS", "-")}
-- Industrias objetivo: {row.get("EMPRESA_INDUSTRIAS_TARGET", "-")}
-- Scraping web: {row.get("scrapping", "-")} {row.get("Scrapping Adicional", "-")}
+[Nuestra propuesta de valor]
+ Resume qué hace nuestra empresa y cómo puede ayudar a ese tipo de perfil, industria o empresa.
 
-🎯 ESTRUCTURA A RESPETAR:
-1. **[Saludo]**
-2. **[Personalización / observación positiva]** sobre la empresa del prospecto
-3. **[Target Niche + Goal]**: qué tipo de empresa es y qué seguramente busca lograr
-4. **[Cliffhanger]**: tienes algo preparado que puede interesarle (no vendas, no expliques, solo sugiere)
-5. **[CTA]**: pregunta sencilla para abrir conversación, sin presión ni cierre duro
+[Segmentación clara]
+ Menciona de forma específica el tipo de empresa, ubicación o función del prospecto para que sienta que el mensaje fue escrito para él.
 
-📩 RESPUESTA ESPERADA:
-Solo el cuerpo del correo, en español, en tono profesional y conversacional. Nada más.
+[Objetivo o desafío del prospecto]
+ Muestra que comprendes lo que esa persona quiere lograr (ej. más visibilidad, eficiencia, ventas, automatización, control, etc.).
+
+[Caso de uso o promesa] (opcional)
+ Si tienes un caso de éxito relevante o un resultado similar, menciona de forma breve el beneficio logrado.
+
+[Cliffhanger + CTA]
+ Cierra con una invitación clara y directa a agendar una llamada o revisar un plan diseñado para ese tipo de empresa.
+
+✍️ INSTRUCCIONES DE ESTILO
+Longitud máxima: 130 palabras
+Tono: Profesional, directo y personalizado
+Evita lenguaje genérico o plantillado
+Escribe como si lo fueras a mandar a un tomador de decisión ocupado
+
+✅ INPUTS
+
+Info del contacto:
+First name: {row.get("First name", "-")}
+Title: {row.get("Title", "-")}
+Company Name: {row.get("Company Name", "-")}
+Company Industry: {row.get("Company Industry", "-")}
+Location: {row.get("Location", "-")}
+scrapping de web del contacto: ({row.get("scrapping", "-")} {row.get("Scrapping Adicional", "-")})
+
+Info de nosotros:
+Propuesta de valor de mi empresa: {descripcion_proveedor}
+Caso de éxito: (Opcional, en base al scrapp del contacto)
+scrapping de nuestra web: {row.get("scrapping_proveedor", "-")}
+
+
+✅ EJEMPLO DE OUTPUT ESPERADO (no uses estos datos, son solo de ejemplo)
+Hola Valeria,
+Vi que lideras Atracción de Talento en Banco XYZ, una industria donde la velocidad y precisión en la contratación es clave.
+
+Me pongo en contacto contigo porque ayudamos... a empresas financieras a acelerar su proceso de reclutamiento, identificando candidatos con alta afinidad mediante campañas personalizadas basadas en datos de intención.
+Trabajamos con bancos en Monterrey para reducir tiempo y costo por vacante sin perder calidad.
+Justo ayudamos a Banregio a reducir su ciclo de contratación en un 35%.
+¿Te parece si lo vemos esta semana en una llamada rápida?
+Saludos,
+
+
+La salida debe ser únicamente el texto del cuerpo del correo, sin encabezado, sin firma, sin explicación.
 """
 
 def prompt_one_sentence_email(row: pd.Series) -> str:
