@@ -677,8 +677,9 @@ def analizar_proveedor_scraping_con_chatgpt(texto_scrapeado: str) -> dict:
 Eres un analista experto en inteligencia comercial. A partir del siguiente texto obtenido del sitio web de una empresa (scrapeado sin formato), tu tarea es identificar y sintetizar información clave del negocio. Devuelve la respuesta exclusivamente en **formato JSON**, sin explicaciones adicionales ni texto extra.
 
 Instrucciones:
-- Si algún dato no puede determinarse con claridad, devuelve "-" en ese campo.
+- Si algún dato no puede determinarse con claridad, devuelve "ND" en ese campo, excepto en Industrias, eso piensa, se creativo.
 - Si puedes inferir información relevante (como industrias o ICP), hazlo con base en los productos, servicios, lenguaje del texto o clientes mencionados.
+- En industrias si puedes inferir, traite industria a la que serían sus productoso servicios o ideal
 - Mantén los textos concisos y profesionales.
 
 Formato de salida esperado:
@@ -687,7 +688,7 @@ Formato de salida esperado:
   "Nombre de la Empresa": "Nombre tal como aparece en el texto (si aplica). Si no aparece, pon '-'",
   "Objetivo": "Propósito, misión o enfoque principal de la empresa. Qué hace",
   "Productos o Servicios": "Resumen o listado de lo que ofrece la empresa.",
-  "Industrias": "Industrias o sectores a los que sirve. a quienes",
+  "Industrias": "Industrias o sectores a los que sirve. a quienes, hazlo en base al escrapping, infiere",
   "Clientes o Casos de Exito": "Empresas mencionadas como clientes o ejemplos de casos.",
   "ICP": "-"
 }}
@@ -708,7 +709,7 @@ Texto extraído del sitio web:
             timeout=30
         )
         content = respuesta.choices[0].message.content.strip()
-        #print("[LOG] Respuesta ChatGPT (Análisis proveedor):", content)
+        print("[LOG] Respuesta ChatGPT (Análisis proveedor):", content)
 
         # Parsear JSON
         try:
@@ -778,6 +779,7 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
     prompt = f""""""
 
     prompt = _limpiar_caracteres_raros(prompt)
+    print("\n📤 PROMPT ENVIADO A CHATGPT:\n" + prompt)
     #guardar_prompt_log(prompt, lead_name=lead_name, idx=row.name)
     #print(f"[PROMPT] idx={row.name}, lead={lead_name}")
     #print(prompt)
@@ -792,7 +794,7 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
             timeout=30
         )
         content = respuesta.choices[0].message.content.strip()
-
+        print("\n📥 RESPUESTA DE CHATGPT:\n" + content)
         # Intentar parsear JSON
         try:
             parsed = json.loads(content)
@@ -869,18 +871,18 @@ scrapping de web del contacto: ({row.get("scrapping", "-")} {row.get("Scrapping 
 Info de nosotros:
 Propuesta de valor de mi empresa: {descripcion_proveedor}
 Caso de éxito: (Opcional, en base al scrapp del contacto)
-scrapping de nuestra web: {row.get("scrapping_proveedor", "-")}
+scrapping de nuestra web: {plan_estrategico}
 
 
 ✅ EJEMPLO DE OUTPUT ESPERADO (no uses estos datos, son solo de ejemplo)
-Hola Valeria,
-Vi que lideras Atracción de Talento en Banco XYZ, una industria donde la velocidad y precisión en la contratación es clave.
+Hola Jonathan,
+Vi que lideras Trade Marketing y Category Management en Alpura, una marca clave en la industria láctea mexicana.
+Desde MARKETPRO, ayudamos a directores como tú a mejorar la eficiencia en la ejecución y control en punto de venta, creando experiencias consistentes en canales físicos y digitales.
+Trabajamos con empresas de consumo como la tuya para perfeccionar la conexión con el shopper, reforzando estrategia de marca con ejecución en PDV, capacitación y marketing omnicanal.
+Tengo un plan que podría incrementar la visibilidad y conversión en tus principales cadenas de retail.
+¿Te va bien una llamada esta semana para mostrártelo?
+Saludos
 
-Me pongo en contacto contigo porque ayudamos... a empresas financieras a acelerar su proceso de reclutamiento, identificando candidatos con alta afinidad mediante campañas personalizadas basadas en datos de intención.
-Trabajamos con bancos en Monterrey para reducir tiempo y costo por vacante sin perder calidad.
-Justo ayudamos a Banregio a reducir su ciclo de contratación en un 35%.
-¿Te parece si lo vemos esta semana en una llamada rápida?
-Saludos,
 
 
 La salida debe ser únicamente el texto del cuerpo del correo, sin encabezado, sin firma, sin explicación.
@@ -913,6 +915,7 @@ def generar_email_por_estrategia(row: pd.Series, prompt_func, col_name: str) -> 
             timeout=30
         )
         content = response.choices[0].message.content.strip()
+        print(f"\n[LOG - RESPUESTA para {col_name}]\n{content}\n" + "-"*60)
         return content
     except Exception as e:
         print(f"[ERROR] Falló generación de '{col_name}': {e}")
@@ -973,11 +976,11 @@ def generar_contenido_para_todos():
             print(f"[LOG] Generando contenido ChatGPT para lead idx={idx}...")
             estrategias = [
                 ("Strategy - Reply Rate Email", prompt_reply_rate_email),
-                ("Strategy - One Sentence Email", prompt_one_sentence_email),
-                ("Strategy - Asking for an Introduction", prompt_asking_for_introduction),
-                ("Strategy - Ask for Permission", prompt_ask_for_permission),
-                ("Strategy - Loom Video", prompt_loom_video),
-                ("Strategy - Free Sample List", prompt_free_sample_list),
+                #("Strategy - One Sentence Email", prompt_one_sentence_email),
+                #("Strategy - Asking for an Introduction", prompt_asking_for_introduction),
+                #("Strategy - Ask for Permission", prompt_ask_for_permission),
+                #("Strategy - Loom Video", prompt_loom_video),
+                #("Strategy - Free Sample List", prompt_free_sample_list),
             ]
             for col_name, prompt_func in estrategias:
                 df_leads.at[idx, col_name] = generar_email_por_estrategia(row, prompt_func, col_name)
@@ -985,7 +988,7 @@ def generar_contenido_para_todos():
             print(f"[ERROR] Error inesperado en lead idx={idx}: {e}")
 
     # Limpieza final quita NAN de
-    cleanup_leads()
+    #cleanup_leads()
 
 def cleanup_leads():
     """Reemplaza NaN, None y corchetes en las columnas de texto final."""
@@ -1567,7 +1570,7 @@ def index():
             scrap_proveedor_text = sc
 
             info_proveedor_global = analizar_proveedor_scraping_con_chatgpt(sc)
-
+      
             descripcion_proveedor = str(info_proveedor_global.get("Objetivo", ""))
             productos_proveedor = str(info_proveedor_global.get("Productos o Servicios", ""))
             mercado_proveedor = info_proveedor_global.get("Industrias", "")
@@ -1577,62 +1580,62 @@ def index():
                 mercado_proveedor = ", ".join(mercado_proveedor)
             else:
                 mercado_proveedor = str(mercado_proveedor)
-        
-            if not df_leads.empty:
-                df_leads["scrapping_proveedor"] = sc
+            #if not df_leads.empty:
+                #df_leads["scrapping_proveedor"] = sc
 
             status_msg += "Scraping y análisis del proveedor completado.<br>"
 
             # 🚀 Ejecutar también super_scrap_leads
-            if not df_leads.empty:
-                if "scrapping" not in df_leads.columns:
-                    df_leads["scrapping"] = "-"
-                if "URLs on WEB" not in df_leads.columns:
-                    df_leads["URLs on WEB"] = "-"
-                
-                scraping_progress["total"] = len(df_leads)
-                scraping_progress["procesados"] = 0
+            if accion == "super_scrap_leads":
+                if not df_leads.empty:
+                    if "scrapping" not in df_leads.columns:
+                        df_leads["scrapping"] = "-"
+                    if "URLs on WEB" not in df_leads.columns:
+                        df_leads["URLs on WEB"] = "-"
+                    
+                    scraping_progress["total"] = len(df_leads)
+                    scraping_progress["procesados"] = 0
 
-                for idx, row in df_leads.iterrows():
-                    url = str(row.get(mapeo_website, "")).strip()
-                    if url:
-                        try:
-                            texto_scrap = realizar_scraping(url)
-                            df_leads.at[idx, "scrapping"] = texto_scrap if texto_scrap.strip() else "-"
-                        except Exception as e:
+                    for idx, row in df_leads.iterrows():
+                        url = str(row.get(mapeo_website, "")).strip()
+                        if url:
+                            try:
+                                texto_scrap = realizar_scraping(url)
+                                df_leads.at[idx, "scrapping"] = texto_scrap if texto_scrap.strip() else "-"
+                            except Exception as e:
+                                df_leads.at[idx, "scrapping"] = "-"
+                                print(f"[ERROR] Scraping lead idx={idx}: {e}")
+                            try:
+                                urls_extraidas = extraer_urls_de_web(url)
+                                df_leads.at[idx, "URLs on WEB"] = urls_extraidas if urls_extraidas.strip() else "-"
+                            except Exception as e:
+                                df_leads.at[idx, "URLs on WEB"] = "-"
+                                print(f"[ERROR] Extrayendo URLs idx={idx}: {e}")
+                        else:
                             df_leads.at[idx, "scrapping"] = "-"
-                            print(f"[ERROR] Scraping lead idx={idx}: {e}")
-                        try:
-                            urls_extraidas = extraer_urls_de_web(url)
-                            df_leads.at[idx, "URLs on WEB"] = urls_extraidas if urls_extraidas.strip() else "-"
-                        except Exception as e:
                             df_leads.at[idx, "URLs on WEB"] = "-"
-                            print(f"[ERROR] Extrayendo URLs idx={idx}: {e}")
-                    else:
-                        df_leads.at[idx, "scrapping"] = "-"
-                        df_leads.at[idx, "URLs on WEB"] = "-"
 
-                    scraping_progress["procesados"] += 1
+                        scraping_progress["procesados"] += 1
 
-                acciones_realizadas["super_scrap_leads"] = True
-                status_msg += "Scraping de leads ejecutado tras scrap del proveedor.<br>"
-            else:
-                status_msg += "No hay leads para aplicar scraping tras scrap del proveedor.<br>"
+                    acciones_realizadas["super_scrap_leads"] = True
+                    status_msg += "Scraping de leads ejecutado tras scrap del proveedor.<br>"
+                else:
+                    status_msg += "No hay leads para aplicar scraping tras scrap del proveedor.<br>"
 
-            # ➕ También ejecutar scraping adicional de URLs comunes
-            if not df_leads.empty and "URLs on WEB" in df_leads.columns:
-                if "Scrapping Adicional" not in df_leads.columns:
-                    df_leads["Scrapping Adicional"] = "-"
-                for idx, row in df_leads.iterrows():
-                    urls_csv = str(row.get("URLs on WEB", "")).strip()
-                    if urls_csv and urls_csv != "-":
-                        try:
-                            texto_adicional = realizar_scrap_adicional(urls_csv)
-                            df_leads.at[idx, "Scrapping Adicional"] = texto_adicional
-                        except Exception as e:
-                            print(f"[ERROR] Scraping adicional idx={idx}:", e)
-                            df_leads.at[idx, "Scrapping Adicional"] = "-"
-                status_msg += "Scraping adicional también ejecutado tras scrap del proveedor.<br>"
+                # ➕ También ejecutar scraping adicional de URLs comunes
+                if not df_leads.empty and "URLs on WEB" in df_leads.columns:
+                    if "Scrapping Adicional" not in df_leads.columns:
+                        df_leads["Scrapping Adicional"] = "-"
+                    for idx, row in df_leads.iterrows():
+                        urls_csv = str(row.get("URLs on WEB", "")).strip()
+                        if urls_csv and urls_csv != "-":
+                            try:
+                                texto_adicional = realizar_scrap_adicional(urls_csv)
+                                df_leads.at[idx, "Scrapping Adicional"] = texto_adicional
+                            except Exception as e:
+                                print(f"[ERROR] Scraping adicional idx={idx}:", e)
+                                df_leads.at[idx, "Scrapping Adicional"] = "-"
+                    status_msg += "Scraping adicional también ejecutado tras scrap del proveedor.<br>"
 
 
         elif accion == "generar_tabla":
@@ -1647,7 +1650,7 @@ def index():
                 status_msg += "No hay leads para exportar.<br>"
             else:
                 # Crea una copia del df sin la columna que quieres omitir
-                df_export = df_leads.drop(columns=["scrapping_proveedor"], errors="ignore")
+                df_export = df_leads.copy()
 
                 if formato == "csv":
                     csv_output = io.StringIO()
@@ -2036,7 +2039,7 @@ def index():
 
         <form method="POST">
             <input type="hidden" name="accion" value="scrap_urls_filtradas"/>
-            <!-- <button type="submit">Scrapping URLs Filtradas</button> -->
+            <!-- <button type="submit">Scrapping Adicional</button> -->
         </form> 
         <form method="POST">
             <input type="hidden" name="accion" value="extraer_redes_y_telefono"/>
