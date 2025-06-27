@@ -6,6 +6,10 @@ from datetime import timedelta
 import uuid
 from cryptography.fernet import Fernet
 import os
+import re
+from concurrent.futures import ThreadPoolExecutor
+
+
 
 global prompt_actual
 PROMPT_FILE = "prompt_chatgpt.txt"
@@ -253,8 +257,6 @@ except ImportError:
 ###############################
 # 1) Hardcodear la API Key
 ###############################
-
-
 def decrypt_api_key(encrypted_data: bytes) -> str:
     """
     Desencripta los datos en bytes usando ENCRYPTION_KEY,
@@ -406,8 +408,8 @@ def generar_info_empresa_chatgpt(row: pd.Series) -> dict:
             "EMPRESA_PRODUCTOS_SERVICIOS": "ND",
             "EMPRESA_INDUSTRIAS_TARGET": "ND"
         }
-
-    texto_scrap = (str(row.get("scrapping", "")) + "\n" + str(row.get("Scrapping Adicional", ""))).strip()
+    texto_scrap = (cortar_al_limite(str(row.get("scrapping", "")), 3000) + "\n" + cortar_al_limite(str(row.get("Scrapping Adicional", "")), 3000)).strip()
+    texto_scrap = texto_scrap[:8000] 
     prompt = f"""
 Eres un analista experto en inteligencia de negocios. Tu tarea es analizar el siguiente texto extraído del sitio web de una empresa y devolver un resumen de alta calidad en formato JSON, sin explicaciones adicionales. Extrae únicamente lo que se pueda inferir del texto, evitando suposiciones.
 
@@ -444,6 +446,13 @@ Texto a analizar (scrapping del sitio web de la empresa):
             "EMPRESA_PRODUCTOS_SERVICIOS": "-",
             "EMPRESA_INDUSTRIAS_TARGET": "-"
         }
+def cortar_al_limite(texto, max_chars=3000):
+    texto = texto.strip().replace("\n", " ")
+    if len(texto) <= max_chars:
+        return texto
+    corte = texto[:max_chars]
+    ultimo_punto = corte.rfind(".")
+    return corte[:ultimo_punto+1] if ultimo_punto != -1 else corte
 
 
 def guardar_prompt_log(prompt: str, lead_name: str = "", idx: int = -1):
@@ -499,8 +508,6 @@ def extraer_texto_pdf(pdf_path: str) -> str:
     except Exception as e:
         print("[ERROR] Al leer PDF:", e)
         return "-"
-
-
 
 def realizar_super_scraping(base_url: str) -> str:
     """
@@ -866,7 +873,7 @@ Title: {row.get("Title", "-")}
 Company Name: {row.get("Company Name", "-")}
 Company Industry: {row.get("Company Industry", "-")}
 Location: {row.get("Location", "-")}
-scrapping de web del contacto: ({row.get("scrapping", "-")} {row.get("Scrapping Adicional", "-")})
+scrapping de web del contacto: ({cortar_al_limite(str(row.get('scrapping', '-')), 3000)} {cortar_al_limite(str(row.get('Scrapping Adicional', '-')), 3000)})
 
 Info de nosotros:
 Propuesta de valor de mi empresa: {descripcion_proveedor}
@@ -900,17 +907,22 @@ def prompt_free_sample_list(row: pd.Series) -> str:
     return f"""creame un mail de loom_video""" 
 
 def generar_email_por_estrategia(row: pd.Series, prompt_func, col_name: str) -> str:
+    if pd.notnull(row.get(col_name)) and row.get(col_name) != "-":
+        return row.get(col_name)  # ya está generado
+
     prompt = prompt_func(row)
+
     # 🖨️ Imprimir en el log
     print(f"\n\n[LOG - PROMPT para {col_name}]")
     print(f"Contacto: {row.get('First name', '-') or '-'} {row.get('Last name', '-') or '-'}")
     print(prompt)
     print("-" * 60)
+
     try:
         response = client.chat.completions.create(
             model=OPENAI_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=1000,
+            max_tokens=1000,  
             temperature=0.7,
             timeout=30
         )
@@ -920,6 +932,7 @@ def generar_email_por_estrategia(row: pd.Series, prompt_func, col_name: str) -> 
     except Exception as e:
         print(f"[ERROR] Falló generación de '{col_name}': {e}")
         return "-"
+
 
 def procesar_leads():
     """Scrapea website de cada lead y rellena df_leads con el texto."""
@@ -964,31 +977,35 @@ def build_select_options(default_value, columns):
         opts.append(f"<option value='{col}' {selected}>{col}</option>")
     return "\n".join(opts)
 
-def generar_contenido_para_todos():
-    """Itera sobre df_leads y llama a ChatGPT para generar las columnas definidas."""
+def generar_contenido_para_todos(batch_size=10):
+    """Itera sobre df_leads en bloques y llama a ChatGPT para generar estrategias de email."""
     global df_leads
     if df_leads.empty:
         print("[LOG] df_leads vacío, no generamos contenido.")
         return
 
-    for idx, row in df_leads.iterrows():
-        try:
-            print(f"[LOG] Generando contenido ChatGPT para lead idx={idx}...")
-            estrategias = [
-                ("Strategy - Reply Rate Email", prompt_reply_rate_email),
-                #("Strategy - One Sentence Email", prompt_one_sentence_email),
-                #("Strategy - Asking for an Introduction", prompt_asking_for_introduction),
-                #("Strategy - Ask for Permission", prompt_ask_for_permission),
-                #("Strategy - Loom Video", prompt_loom_video),
-                #("Strategy - Free Sample List", prompt_free_sample_list),
-            ]
-            for col_name, prompt_func in estrategias:
-                df_leads.at[idx, col_name] = generar_email_por_estrategia(row, prompt_func, col_name)
-        except Exception as e:
-            print(f"[ERROR] Error inesperado en lead idx={idx}: {e}")
+    estrategias = [
+        ("Strategy - Reply Rate Email", prompt_reply_rate_email),
+        # Puedes activar más si quieres velocidad menor:
+        # ("Strategy - One Sentence Email", prompt_one_sentence_email),
+        # ("Strategy - Asking for an Introduction", prompt_asking_for_introduction),
+        # ("Strategy - Ask for Permission", prompt_ask_for_permission),
+        # ("Strategy - Loom Video", prompt_loom_video),
+        # ("Strategy - Free Sample List", prompt_free_sample_list),
+    ]
 
-    # Limpieza final quita NAN de
-    #cleanup_leads()
+    for i in range(0, len(df_leads), batch_size):
+        batch = df_leads.iloc[i:i+batch_size]
+        for idx, row in batch.iterrows():
+            for col_name, prompt_func in estrategias:
+                try:
+                    if pd.notnull(df_leads.at[idx, col_name]) and df_leads.at[idx, col_name] != "-":
+                        continue  # Ya existe
+                    df_leads.at[idx, col_name] = generar_email_por_estrategia(row, prompt_func, col_name)
+                except Exception as e:
+                    print(f"[ERROR] Falló idx={idx}, col={col_name}: {e}")
+        print(f"[INFO] Procesado batch {i} a {i+batch_size-1}")
+
 
 def cleanup_leads():
     """Reemplaza NaN, None y corchetes en las columnas de texto final."""
@@ -1009,6 +1026,12 @@ def cleanup_leads():
             )
             # Quitar corchetes de array si aparecieran
             df_leads[col] = df_leads[col].replace(r"\[|\]", "", regex=True)
+
+def remove_illegal_chars(val):
+    if isinstance(val, str):
+        return re.sub(r'[\x00-\x1F\x7F]', '', val)
+    return val
+
 
 ##########################################
 # Mostrar tabla HTML (solo primeros 10)
@@ -1033,11 +1056,11 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
         "Strategy - Loom Video", "Strategy - Free Sample List", "super_scrapping",
         "scrapping", "URLs on WEB", "Scrapping Adicional"
     ]
+    columnas_moradas = {"area", "departamento", "Nivel Jerarquico", "Strategy - Reply Rate Email", "Industria Mayor", "scrapping", "URLs on WEB", "Scrapping Adicional", "EMPRESA_DESCRIPCION", "EMPRESA_PRODUCTOS_SERVICIOS", "EMPRESA_INDUSTRIAS_TARGET"}
     thead = "".join(
-        f"<th class='col-ancha'>{col}</th>" if col in anchas else f"<th>{col}</th>"
+        f"<th class='{'col-ancha ' if col in anchas else ''}{'highlighted' if col in columnas_moradas else ''}'>{col}</th>"
         for col in cols
     )
-
     rows_html = ""
     for _, row in subset.iterrows():
         row_html = ""
@@ -1080,21 +1103,7 @@ def index():
     url_proveedor_global = ""  # Moveremos esto a variable local
     accion = request.form.get("accion", "")
     if request.method == "POST":
-
-        if accion == "generar_info_empresa":
-            if not df_leads.empty:
-                for col in ["EMPRESA_DESCRIPCION", "EMPRESA_PRODUCTOS_SERVICIOS", "EMPRESA_INDUSTRIAS_TARGET"]:
-                    if col not in df_leads.columns:
-                        df_leads[col] = "-"
-
-                for idx, row in df_leads.iterrows():
-                    result = generar_info_empresa_chatgpt(row)
-                    for key, val in result.items():
-                        df_leads.at[idx, key] = val
-                status_msg += "Información de la empresa generada con éxito con ChatGPT.<br>"
-            else:
-                status_msg += "Primero debes cargar una base de leads.<br>"
-            
+         
         if accion == "guardar_prompt_chatgpt":
             nuevo_prompt = request.form.get("prompt_chatgpt", "").strip()
             prompt_actual = nuevo_prompt
@@ -1113,7 +1122,138 @@ def index():
             prompt_mails = cargar_prompt_mails_original()
             status_msg += "♻️ Prompt de mails de estrategia reiniciado.<br>"
 
+        if accion == "clasificar_global":
+            if os.path.exists("catalogopuesto.xlsx"):
+                try:
+                    global catalogo_df
+                    catalogo_df = pd.read_excel("catalogopuesto.xlsx")
 
+                    def clasificar_puesto(title):
+                        title = str(title).strip().lower()
+
+                        # Ordenar catálogo por longitud de palabra clave descendente (para priorizar coincidencias más específicas)
+                        catalogo_ordenado = catalogo_df.copy()
+                        catalogo_ordenado["longitud"] = catalogo_ordenado["Palabra Clave"].astype(str).apply(len)
+                        catalogo_ordenado = catalogo_ordenado.sort_values(by="longitud", ascending=False)
+
+                        for _, row in catalogo_ordenado.iterrows():
+                            palabra_clave = str(row.get("Palabra Clave", "")).strip().lower()
+                            if palabra_clave and palabra_clave in title:
+                                return row.get("Nivel Jerárquico", "")
+                        return "-"
+
+                    if not df_leads.empty:
+                        df_leads["Nivel Jerarquico"] = df_leads[mapeo_puesto].apply(clasificar_puesto)
+
+                        cols = list(df_leads.columns)
+                        if mapeo_puesto in cols and "Nivel Jerarquico" in cols:
+                            cols.remove("Nivel Jerarquico")
+                            insert_idx = cols.index(mapeo_puesto) + 1
+                            cols.insert(insert_idx, "Nivel Jerarquico")
+                            df_leads = df_leads[cols]
+                            acciones_realizadas["clasificar_puestos"] = True
+                        status_msg += "Clasificación de puestos aplicada usando 'Palabra Clave' y 'Nivel Jerárquico'.<br>"
+                    else:
+                        status_msg += "Carga primero tu base de leads antes de clasificar.<br>"
+
+                except Exception as e:
+                    status_msg += f"Error al cargar o clasificar con catalogopuesto.xlsx: {e}<br>"
+            else:
+                status_msg += "No se encontró el archivo catalogopuesto.xlsx.<br>"            
+            #CG Clasificar area---------------------------------
+            if os.path.exists("catalogoarea.xlsx"):
+                try:
+                    catalogo_area = pd.read_excel("catalogoarea.xlsx")
+                    catalogo_area["title_minusc"] = catalogo_area["title_minusc"].str.strip().str.lower()
+
+                    def asignar_areas(title):
+                        t = str(title).strip().lower().replace(",", " ")
+                        t_words = set(t.split())
+
+                        # 1️⃣ Buscar coincidencias con TODAS las palabras
+                        for _, row in catalogo_area.iterrows():
+                            clave = str(row["title_minusc"]).strip().lower().replace(",", " ")
+                            clave_words = set(clave.split())
+
+                            if clave_words.issubset(t_words):  # todas las palabras clave están presentes
+                                return row["departamento"], row["area"]
+
+
+                        # 2️⃣ Si no encontró exacto, buscar coincidencia con al menos UNA palabra
+                        for _, row in catalogo_area.iterrows():
+                            clave = str(row["title_minusc"]).strip().lower().replace(",", " ")
+                            clave_words = set(clave.split())
+
+                            if t_words & clave_words:  # al menos una palabra coincide
+                                return row["departamento"], row["area"]
+
+
+                        return "", ""
+
+
+
+                    if not df_leads.empty:
+                        # Asignar área y departamento
+                        df_leads["departamento"], df_leads["area"] = zip(*df_leads[mapeo_puesto].map(asignar_areas))
+
+                        # Asegurar que estén justo después de la columna del puesto
+                        cols = list(df_leads.columns)
+                        for col in ["departamento", "area"]:
+                            if col in cols:
+                                cols.remove(col)
+                                insert_idx = cols.index(mapeo_puesto) + 1
+                                cols.insert(insert_idx, col)
+                        df_leads = df_leads[cols]
+                        acciones_realizadas["clasificar_areas"] = True
+
+                        status_msg += "Clasificación de áreas aplicada correctamente desde catalogoarea.xlsx.<br>"
+                    else:
+                        status_msg += "Carga primero tu base de leads antes de clasificar áreas.<br>"
+
+                except Exception as e:
+                    status_msg += f"Error al clasificar áreas: {e}<br>"
+            else:
+                status_msg += "No se encontró el archivo catalogoarea.xlsx.<br>"
+            #CG Clasificar industria mayor---------------------------------
+            try:
+                if not df_leads.empty and os.path.exists("catalogoindustrias.csv"):
+                    df_cat = pd.read_csv("catalogoindustrias.csv")
+
+                    df_cat['company_industry'] = df_cat['company_industry'].astype(str).str.strip().str.lower()
+                    df_leads[mapeo_industria] = df_leads[mapeo_industria].astype(str).str.strip().str.lower()
+
+                    # Hacemos merge left para mantener todas las filas originales
+                    df_leads = df_leads.merge(df_cat, how='left', left_on=mapeo_industria, right_on='company_industry')
+                    # Crear columna si no existe
+                    if 'Industria Mayor' not in df_leads.columns:
+                        df_leads['Industria Mayor'] = ""
+
+                    # Crear columna si no existe
+                    if 'Industria Mayor' not in df_leads.columns:
+                        df_leads['Industria Mayor'] = ""
+
+                    # Si hay datos en company_mayor_industry, copiarlos a 'Industria Mayor'
+                    if 'company_mayor_industry' in df_leads.columns:
+                        df_leads['Industria Mayor'] = df_leads['company_mayor_industry'].fillna(df_leads['Industria Mayor'])
+
+                    # Limpiar columnas auxiliares usadas solo para el merge
+                    df_leads.drop(columns=['company_industry', 'company_mayor_industry'], errors='ignore', inplace=True)
+
+                    # Reordenar columna si existe
+                    if 'Industria Mayor' in df_leads.columns and mapeo_industria in df_leads.columns:
+                        cols = list(df_leads.columns)
+                        cols.remove('Industria Mayor')
+                        insert_idx = cols.index(mapeo_industria) + 1
+                        cols.insert(insert_idx, 'Industria Mayor')
+                        df_leads = df_leads[cols]
+                    acciones_realizadas["clasificar_industrias"] = True
+                    status_msg += "Clasificación de industrias aplicada desde catalogoindustrias.csv.<br>"
+                else:
+                    status_msg += "No hay datos para clasificar o falta el archivo catalogoindustrias.csv.<br>"
+            except Exception as e:
+                status_msg += f"Error al clasificar industrias: {e}<br>"
+    
+                
         if accion == "guardar_custom_fields":
             propuesta_valor = request.form.get("propuesta_valor", "").strip()
             contexto_prov = request.form.get("contexto_prov", "").strip()
@@ -1174,94 +1314,7 @@ def index():
             else:
                 status_msg += "Carga primero tu base de leads para extraer redes y teléfonos.<br>"
 
-        if accion == "scrap_urls_filtradas":
-            if not df_leads.empty:
-                if "URLs on WEB" not in df_leads.columns:
-                    status_msg += "Primero debes ejecutar 'ExtraerURLs'.<br>"
-                else:
-                    df_leads["Scrapping Adicional"] = "-"
-                    scraping_progress["total"] = len(df_leads)
-                    scraping_progress["procesados"] = 0
-
-                    for idx, row in df_leads.iterrows():
-                        urls_csv = str(row.get("URLs on WEB", "")).strip()
-                        if urls_csv and urls_csv != "-":
-                            texto_adicional = realizar_scrap_adicional(urls_csv)
-                            df_leads.at[idx, "Scrapping Adicional"] = texto_adicional
-                        else:
-                            df_leads.at[idx, "Scrapping Adicional"] = "-"
-                        scraping_progress["procesados"] += 1
-
-                    status_msg += "Scraping adicional de URLs comunes completado.<br>"
-            else:
-                status_msg += "Primero carga una base de leads.<br>"
-
-        if accion == "extraer_urls_leads":
-            logs_urls_scrap.clear()
-            if not df_leads.empty:
-                df_leads["URLs on WEB"] = "-"
-                scraping_progress["total"] = len(df_leads)
-                scraping_progress["procesados"] = 0
-
-                for idx, row in df_leads.iterrows():
-                    url = str(row.get(mapeo_website, "")).strip()
-
-                    if url:
-                        logs_urls_scrap.append(f"🔗 Iniciando scraping de: {url}")
-                        urls_extraidas = extraer_urls_de_web(url)
-                        df_leads.at[idx, "URLs on WEB"] = urls_extraidas
-                        logs_urls_scrap.append(f"✅ Finalizado: {url}")
-                    else:
-                        logs_urls_scrap.append(f"⚠️ URL vacía en fila {idx}")
-
-                    scraping_progress["procesados"] += 1
-
-                status_msg += "Extracción de URLs completada para todos los leads.<br>"
-            else:
-                status_msg += "Primero carga una base de leads.<br>"
-
-        if accion == "super_scrap_leads":
-            if not df_leads.empty:
-                if "scrapping" not in df_leads.columns:
-                    df_leads["scrapping"] = "-"
-                if "URLs on WEB" not in df_leads.columns:
-                    df_leads["URLs on WEB"] = "-"
-                
-                scraping_progress["total"] = len(df_leads)
-                scraping_progress["procesados"] = 0
-
-                for idx, row in df_leads.iterrows():
-                    url = str(row.get(mapeo_website, "")).strip()
-                    if url:
-                        print(f"[SCRAP-LEAD] Scraping principal en: {url}")
-                        try:
-                            texto_scrap = realizar_scraping(url)
-                            df_leads.at[idx, "scrapping"] = texto_scrap if texto_scrap.strip() else "-"
-                        except Exception as e:
-                            print(f"[ERROR] Scraping lead idx={idx}: {e}")
-                            df_leads.at[idx, "scrapping"] = "-"
-
-                        #print(f"[SCRAP-URLS] Extrayendo URLs de: {url}")
-                        try:
-                            urls_extraidas = extraer_urls_de_web(url)
-                            df_leads.at[idx, "URLs on WEB"] = urls_extraidas if urls_extraidas.strip() else "-"
-                        except Exception as e:
-                            print(f"[ERROR] Extrayendo URLs idx={idx}: {e}")
-                            df_leads.at[idx, "URLs on WEB"] = "-"
-                    else:
-                        print(f"[SCRAP-LEAD] Sin URL en idx={idx}")
-                        df_leads.at[idx, "scrapping"] = "-"
-                        df_leads.at[idx, "URLs on WEB"] = "-"
-
-                    scraping_progress["procesados"] += 1
-                    porcentaje = int(scraping_progress["procesados"] / scraping_progress["total"] * 100)
-                    acciones_realizadas["super_scrap_leads"] = True
-                    print(f"[LOG] Scrapping {scraping_progress['procesados']} de {scraping_progress['total']} ({porcentaje}%)")
-
-                status_msg += "Scraping principal y extracción de URLs completados para todos los leads.<br>"
-            else:
-                status_msg += "Cargue una base de leads primero.<br>"
-                        
+       
         if accion == "cargar_contactos_db":
             try:
                 id_inicio = request.form.get("id_inicio", "").strip()
@@ -1357,143 +1410,6 @@ def index():
                     plan_estrategico = texto_extraido
                     status_msg += "Texto extraído del PDF cargado en Plan Estratégico.<br>"
 
-        # Clasificar area
-        if accion == "clasificar_areas":
-            if os.path.exists("catalogoarea.xlsx"):
-                try:
-                    catalogo_area = pd.read_excel("catalogoarea.xlsx")
-                    catalogo_area["title_minusc"] = catalogo_area["title_minusc"].str.strip().str.lower()
-
-                    def asignar_areas(title):
-                        t = str(title).strip().lower().replace(",", " ")
-                        t_words = set(t.split())
-
-                        # 1️⃣ Buscar coincidencias con TODAS las palabras
-                        for _, row in catalogo_area.iterrows():
-                            clave = str(row["title_minusc"]).strip().lower().replace(",", " ")
-                            clave_words = set(clave.split())
-
-                            if clave_words.issubset(t_words):  # todas las palabras clave están presentes
-                                return row["departamento"], row["area"]
-
-
-                        # 2️⃣ Si no encontró exacto, buscar coincidencia con al menos UNA palabra
-                        for _, row in catalogo_area.iterrows():
-                            clave = str(row["title_minusc"]).strip().lower().replace(",", " ")
-                            clave_words = set(clave.split())
-
-                            if t_words & clave_words:  # al menos una palabra coincide
-                                return row["departamento"], row["area"]
-
-
-                        return "", ""
-
-
-
-                    if not df_leads.empty:
-                        # Asignar área y departamento
-                        df_leads["departamento"], df_leads["area"] = zip(*df_leads[mapeo_puesto].map(asignar_areas))
-
-                        # Asegurar que estén justo después de la columna del puesto
-                        cols = list(df_leads.columns)
-                        for col in ["departamento", "area"]:
-                            if col in cols:
-                                cols.remove(col)
-                                insert_idx = cols.index(mapeo_puesto) + 1
-                                cols.insert(insert_idx, col)
-                        df_leads = df_leads[cols]
-                        acciones_realizadas["clasificar_areas"] = True
-
-                        status_msg += "Clasificación de áreas aplicada correctamente desde catalogoarea.xlsx.<br>"
-                    else:
-                        status_msg += "Carga primero tu base de leads antes de clasificar áreas.<br>"
-
-                except Exception as e:
-                    status_msg += f"Error al clasificar áreas: {e}<br>"
-            else:
-                status_msg += "No se encontró el archivo catalogoarea.xlsx.<br>"
-
-        if accion == "clasificar_industrias":
-            try:
-                if not df_leads.empty and os.path.exists("catalogoindustrias.csv"):
-                    df_cat = pd.read_csv("catalogoindustrias.csv")
-
-                    df_cat['company_industry'] = df_cat['company_industry'].astype(str).str.strip().str.lower()
-                    df_leads[mapeo_industria] = df_leads[mapeo_industria].astype(str).str.strip().str.lower()
-
-                    # Hacemos merge left para mantener todas las filas originales
-                    df_leads = df_leads.merge(df_cat, how='left', left_on=mapeo_industria, right_on='company_industry')
-                    # Crear columna si no existe
-                    if 'Industria Mayor' not in df_leads.columns:
-                        df_leads['Industria Mayor'] = ""
-
-                    # Crear columna si no existe
-                    if 'Industria Mayor' not in df_leads.columns:
-                        df_leads['Industria Mayor'] = ""
-
-                    # Si hay datos en company_mayor_industry, copiarlos a 'Industria Mayor'
-                    if 'company_mayor_industry' in df_leads.columns:
-                        df_leads['Industria Mayor'] = df_leads['company_mayor_industry'].fillna(df_leads['Industria Mayor'])
-
-                    # Limpiar columnas auxiliares usadas solo para el merge
-                    df_leads.drop(columns=['company_industry', 'company_mayor_industry'], errors='ignore', inplace=True)
-
-                    # Reordenar columna si existe
-                    if 'Industria Mayor' in df_leads.columns and mapeo_industria in df_leads.columns:
-                        cols = list(df_leads.columns)
-                        cols.remove('Industria Mayor')
-                        insert_idx = cols.index(mapeo_industria) + 1
-                        cols.insert(insert_idx, 'Industria Mayor')
-                        df_leads = df_leads[cols]
-                    acciones_realizadas["clasificar_industrias"] = True
-                    status_msg += "Clasificación de industrias aplicada desde catalogoindustrias.csv.<br>"
-                else:
-                    status_msg += "No hay datos para clasificar o falta el archivo catalogoindustrias.csv.<br>"
-            except Exception as e:
-                status_msg += f"Error al clasificar industrias: {e}<br>"
-
-        
-        
-        if accion == "clasificar_puestos":
-            if os.path.exists("catalogopuesto.xlsx"):
-                try:
-                    global catalogo_df
-                    catalogo_df = pd.read_excel("catalogopuesto.xlsx")
-
-                    def clasificar_puesto(title):
-                        title = str(title).strip().lower()
-
-                        # Ordenar catálogo por longitud de palabra clave descendente (para priorizar coincidencias más específicas)
-                        catalogo_ordenado = catalogo_df.copy()
-                        catalogo_ordenado["longitud"] = catalogo_ordenado["Palabra Clave"].astype(str).apply(len)
-                        catalogo_ordenado = catalogo_ordenado.sort_values(by="longitud", ascending=False)
-
-                        for _, row in catalogo_ordenado.iterrows():
-                            palabra_clave = str(row.get("Palabra Clave", "")).strip().lower()
-                            if palabra_clave and palabra_clave in title:
-                                return row.get("Nivel Jerárquico", "")
-                        return "-"
-
-                    if not df_leads.empty:
-                        df_leads["Nivel Jerarquico"] = df_leads[mapeo_puesto].apply(clasificar_puesto)
-
-                        cols = list(df_leads.columns)
-                        if mapeo_puesto in cols and "Nivel Jerarquico" in cols:
-                            cols.remove("Nivel Jerarquico")
-                            insert_idx = cols.index(mapeo_puesto) + 1
-                            cols.insert(insert_idx, "Nivel Jerarquico")
-                            df_leads = df_leads[cols]
-                            acciones_realizadas["clasificar_puestos"] = True
-                        status_msg += "Clasificación de puestos aplicada usando 'Palabra Clave' y 'Nivel Jerárquico'.<br>"
-                    else:
-                        status_msg += "Carga primero tu base de leads antes de clasificar.<br>"
-
-                except Exception as e:
-                    status_msg += f"Error al cargar o clasificar con catalogopuesto.xlsx: {e}<br>"
-            else:
-                status_msg += "No se encontró el archivo catalogopuesto.xlsx.<br>"
-
-
         # Subir CSV de leads
         leadf = request.files.get("leads_csv")
         if leadf and leadf.filename:
@@ -1584,65 +1500,108 @@ def index():
                 #df_leads["scrapping_proveedor"] = sc
 
             status_msg += "Scraping y análisis del proveedor completado.<br>"
+  
+        if accion == "scrapp_leads_on":
+            print(f"[INFO] Scraping paralelo iniciado")
+            if df_leads.empty:
+                status_msg += "No hay leads para aplicar scraping tras scrap del proveedor.<br>"
+            else:
+                if "scrapping" not in df_leads.columns:
+                    df_leads["scrapping"] = "-"
+                if "URLs on WEB" not in df_leads.columns:
+                    df_leads["URLs on WEB"] = "-"
+                if "Scrapping Adicional" not in df_leads.columns:
+                    df_leads["Scrapping Adicional"] = "-"
+                scraping_progress["total"] = len(df_leads)
+                scraping_progress["procesados"] = 0
+                scrap_cache = {}          # cache para scrapping de sitio
+                urls_cache = {}           # cache para URLs on WEB
+                adicional_cache = {}      # cache para scraping adicional
+                # ───────── FUNCIÓN: Scraping principal y URLs ─────────
+                def scrapear_lead(idx_row_tuple):
+                    idx, row = idx_row_tuple
+                    url = str(row.get(mapeo_website, "")).strip()
+                    resultado = {"scrapping": "-", "urls": "-"}
 
-            # 🚀 Ejecutar también super_scrap_leads
-            if accion == "super_scrap_leads":
-                if not df_leads.empty:
-                    if "scrapping" not in df_leads.columns:
-                        df_leads["scrapping"] = "-"
-                    if "URLs on WEB" not in df_leads.columns:
-                        df_leads["URLs on WEB"] = "-"
-                    
-                    scraping_progress["total"] = len(df_leads)
-                    scraping_progress["procesados"] = 0
-
-                    for idx, row in df_leads.iterrows():
-                        url = str(row.get(mapeo_website, "")).strip()
-                        if url:
-                            try:
-                                texto_scrap = realizar_scraping(url)
-                                df_leads.at[idx, "scrapping"] = texto_scrap if texto_scrap.strip() else "-"
-                            except Exception as e:
-                                df_leads.at[idx, "scrapping"] = "-"
-                                print(f"[ERROR] Scraping lead idx={idx}: {e}")
-                            try:
-                                urls_extraidas = extraer_urls_de_web(url)
-                                df_leads.at[idx, "URLs on WEB"] = urls_extraidas if urls_extraidas.strip() else "-"
-                            except Exception as e:
-                                df_leads.at[idx, "URLs on WEB"] = "-"
-                                print(f"[ERROR] Extrayendo URLs idx={idx}: {e}")
+                    if url:
+                        if url in scrap_cache:
+                            resultado["scrapping"] = scrap_cache[url]
                         else:
-                            df_leads.at[idx, "scrapping"] = "-"
-                            df_leads.at[idx, "URLs on WEB"] = "-"
-
-                        scraping_progress["procesados"] += 1
-
-                    acciones_realizadas["super_scrap_leads"] = True
-                    status_msg += "Scraping de leads ejecutado tras scrap del proveedor.<br>"
-                else:
-                    status_msg += "No hay leads para aplicar scraping tras scrap del proveedor.<br>"
-
-                # ➕ También ejecutar scraping adicional de URLs comunes
-                if not df_leads.empty and "URLs on WEB" in df_leads.columns:
-                    if "Scrapping Adicional" not in df_leads.columns:
-                        df_leads["Scrapping Adicional"] = "-"
-                    for idx, row in df_leads.iterrows():
-                        urls_csv = str(row.get("URLs on WEB", "")).strip()
-                        if urls_csv and urls_csv != "-":
                             try:
-                                texto_adicional = realizar_scrap_adicional(urls_csv)
-                                df_leads.at[idx, "Scrapping Adicional"] = texto_adicional
+                                resultado["scrapping"] = realizar_scraping(url)
+                                scrap_cache[url] = resultado["scrapping"]
                             except Exception as e:
-                                print(f"[ERROR] Scraping adicional idx={idx}:", e)
-                                df_leads.at[idx, "Scrapping Adicional"] = "-"
-                    status_msg += "Scraping adicional también ejecutado tras scrap del proveedor.<br>"
+                                print(f"[ERROR] Scraping lead idx={idx}: {e}")
+
+                        if url in urls_cache:
+                            resultado["urls"] = urls_cache[url]
+                        else:
+                            try:
+                                resultado["urls"] = extraer_urls_de_web(url)
+                                urls_cache[url] = resultado["urls"]
+                            except Exception as e:
+                                print(f"[ERROR] Extrayendo URLs idx={idx}: {e}")
+
+                    return (idx, resultado)
+                                                
+                # ───────── FUNCIÓN: Scraping Adicional ─────────
+                def scrapear_adicional(idx_row_tuple):
+                    idx, row = idx_row_tuple
+                    urls_csv = str(row.get("URLs on WEB", "")).strip()
+
+                    if urls_csv in adicional_cache:
+                        return (idx, adicional_cache[urls_csv])
+
+                    resultado = "-"
+                    if urls_csv and urls_csv != "-":
+                        try:
+                            resultado = realizar_scrap_adicional(urls_csv)
+                            adicional_cache[urls_csv] = resultado
+                        except Exception as e:
+                            print(f"[ERROR] Scraping adicional idx={idx}: {e}")
+                    return (idx, resultado)
+
+
+                # ───────── Ejecutar scraping en paralelo ─────────
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    resultados = list(executor.map(scrapear_lead, df_leads.iterrows()))
+                for idx, res in resultados:
+                    df_leads.at[idx, "scrapping"] = res["scrapping"]
+                    df_leads.at[idx, "URLs on WEB"] = res["urls"]
+                    scraping_progress["procesados"] += 1
+
+                status_msg += "✅ Scraping de leads y URLs ejecutado en paralelo.<br>"
+
+                # ───────── Scraping adicional ─────────
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    adicionales = list(executor.map(scrapear_adicional, df_leads.iterrows()))
+                for idx, texto in adicionales:
+                    df_leads.at[idx, "Scrapping Adicional"] = texto
+
+                status_msg += "✅ Scraping adicional ejecutado en paralelo.<br>"
+
+                # ───────── Generar info de empresa con ChatGPT ─────────
+                if "EMPRESA_DESCRIPCION" not in df_leads.columns:
+                    df_leads["EMPRESA_DESCRIPCION"] = "-"
+                if "EMPRESA_PRODUCTOS_SERVICIOS" not in df_leads.columns:
+                    df_leads["EMPRESA_PRODUCTOS_SERVICIOS"] = "-"
+                if "EMPRESA_INDUSTRIAS_TARGET" not in df_leads.columns:
+                    df_leads["EMPRESA_INDUSTRIAS_TARGET"] = "-"
+
+                for idx, row in df_leads.iterrows():
+                    result = generar_info_empresa_chatgpt(row)
+                    for key, val in result.items():
+                        df_leads.at[idx, key] = val
+
+                status_msg += "✅ Información de empresa generada con éxito.<br>"
 
 
         elif accion == "generar_tabla":
             procesar_leads()
-            generar_contenido_para_todos()
+            generar_contenido_para_todos(batch_size=10)
             acciones_realizadas["generar_tabla"] = True
             status_msg += "Leads procesados y contenido de ChatGPT generado.<br>"
+
 
         elif accion == "exportar_archivo":
             formato = request.form.get("formato", "csv")
@@ -1650,11 +1609,10 @@ def index():
                 status_msg += "No hay leads para exportar.<br>"
             else:
                 # Crea una copia del df sin la columna que quieres omitir
-                df_export = df_leads.copy()
-
+                df_export = df_leads.copy().applymap(remove_illegal_chars)
                 if formato == "csv":
                     csv_output = io.StringIO()
-                    df_export.to_csv(csv_output, index=False, encoding="utf-8-sig")
+                    df_export.to_csv(csv_output, index=False, encoding="utf-8-sig", quoting=csv.QUOTE_MINIMAL, line_terminator="\n")
                     csv_output.seek(0)
                     resp = make_response(csv_output.getvalue())
                     resp.headers["Content-Disposition"] = "attachment; filename=leads_final.csv"
@@ -1890,7 +1848,11 @@ def index():
             .editor .var {{
                 color: #00aaff;
                 font-weight: bold;
-            }}     
+            }}    
+            th.highlighted {{
+                background-color: #a020f0; /* morado */
+                color: white;
+            }} 
         </style>
     </head>
     <body>
@@ -2006,41 +1968,18 @@ def index():
         <!-- <details>
         <summary>Clasificadores Individualmente</summary> -->
         <form method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="accion" value="clasificar_puestos"/>
+            <input type="hidden" name="accion" value="clasificar_global"/>
             <button type="submit" style="background-color: {color_puestos};">
-                Clasificar Puesto
-            </button>
-        </form>
-        <form method="POST">
-            <input type="hidden" name="accion" value="clasificar_areas"/>
-            <button type="submit" style="background-color: {color_areas};">
-                Clasificar Área y Departamento
-            </button>
-        </form>
-        <form method="POST">
-            <input type="hidden" name="accion" value="clasificar_industrias"/>
-            <button type="submit" style="background-color: {color_industrias};">
-                Clasificar Industria Mayor
+                Clasificar
             </button>
         </form>
         <!-- </details> -->
         <form method="POST">
-            <input type="hidden" name="accion" value="super_scrap_leads"/>
+            <input type="hidden" name="accion" value="scrapp_leads_on"/>
             <button type="submit" style="background-color: {color_scrap};">
                 Scraping de Leads
             </button>
         </form>   
-        <form method="POST">
-        <input type="hidden" name="accion" value="scrap_urls_filtradas"/>
-        <button type="submit" style="background-color: #1E90FF;">
-            Scraping Adicional de URLs comunes
-        </button>
-        </form>
-
-        <form method="POST">
-            <input type="hidden" name="accion" value="scrap_urls_filtradas"/>
-            <!-- <button type="submit">Scrapping Adicional</button> -->
-        </form> 
         <form method="POST">
             <input type="hidden" name="accion" value="extraer_redes_y_telefono"/>
             <button type="submit">Extraer Redes y Teléfono</button>
@@ -2055,12 +1994,7 @@ def index():
                 Determinar Desafíos con IA
             </button> -->
         </form>
-        <form method="POST">
-            <input type="hidden" name="accion" value="generar_info_empresa"/>
-            <button type="submit" style="background-color:#1E90FF;">
-                🧠 Generar Info Empresa con ChatGPT
-            </button>
-        </form>
+
                  
     </details> 
     
@@ -2112,16 +2046,13 @@ def index():
         </div>
     </form>
 
-    <hr>
+    </details>
     <form method="POST">
         <input type="hidden" name="accion" value="generar_tabla"/>
         <button type="submit" style="background-color: {{ 'green' if acciones_realizadas['generar_tabla'] else '#1E90FF' }};">
             Generar Mails con ChatGPT
         </button>
-    </form>
-    <hr>
-    </details>
-    
+    </form>    
     <!--
     <details>
     <summary style="cursor: pointer; font-weight: bold;">🧠 Edición de IA Prompts</summary>           
@@ -2347,14 +2278,7 @@ def index():
 
     </html>
     """
-    # Rellenar valores dinámicos para botones
-    #for clave, valor in acciones_realizadas.items():
-    #    page_html = page_html.replace(f"{{{{ acciones_realizadas['{clave}'] }}}}", str(valor).lower())
-    #page_html = page_html.replace("{descripcion_proveedor}", str(descripcion_proveedor or ""))
-    #page_html = page_html.replace("{productos_proveedor}", str(productos_proveedor or ""))
-    #page_html = page_html.replace("{mercado_proveedor}", str(mercado_proveedor or ""))
-    #page_html = page_html.replace("{icp_proveedor}", str(icp_proveedor or ""))
-    
+
     prompt_chatgpt = cargar_prompt_desde_archivo()
     prompt_mails = cargar_prompt_mails_original()
 
