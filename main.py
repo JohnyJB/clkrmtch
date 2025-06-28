@@ -8,7 +8,20 @@ from cryptography.fernet import Fernet
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor
-
+import time
+import os
+import io
+import re
+import json
+import requests
+import pandas as pd
+from dotenv import load_dotenv
+from bs4 import BeautifulSoup
+from flask import Flask, request, make_response, session, redirect, url_for
+from pdfminer.high_level import extract_text
+from PIL import Image
+import pytesseract
+from pdf2image import convert_from_path
 
 
 global prompt_actual
@@ -96,39 +109,41 @@ template_base = '''
             background: url('/static/background.png') no-repeat center center fixed;
             background-size: cover;
             color: #FFFFFF;
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
             margin: 0; padding: 0;
             text-align: center;
         }
         .container {
             max-width: 300px;
             margin: 60px auto;
-            background-color: #1F1F1F;
+            background-color: #FFFFFF;
             padding: 30px;
             border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            box-shadow: 0 10px 30px rgba(30,144,255,0.3);
+            color: #333;
         }
         input[type="text"], input[type="email"], input[type="password"] {
+            background-color: #f9f9f9;
+            border: 1px solid #1E90FF;
+            color: #333;
             width: 100%;
             padding: 10px;
             margin: 10px 0;
-            background-color: #2A2A2A;
-            border: 1px solid #ccc;
             border-radius: 8px;
-            color: #fff;
         }
         button {
             width: 100%;
             padding: 10px;
-            background-color: #1E90FF;
+            background: linear-gradient(45deg, #1E90FF, #00BFFF);
             border: none;
-            color: white;
+            color: #fff;
             cursor: pointer;
+            font-weight: bold;
             font-size: 16px;
             margin-top: 10px;
         }
         button:hover {
-            background-color: #00BFFF;
+            background-color: linear-gradient(45deg, #00BFFF, #1E90FF);
         }
         .msg {
             color: #ff8080;
@@ -223,21 +238,7 @@ def register():
 
 
 # plataforma.py
-import time
-import os
-import io
-import re
-import json
-import requests
-import pandas as pd
-from dotenv import load_dotenv
-from bs4 import BeautifulSoup
-from flask import Flask, request, make_response, session, redirect, url_for
-from cryptography.fernet import Fernet
-from pdfminer.high_level import extract_text
-from PIL import Image
-import pytesseract
-from pdf2image import convert_from_path
+
 # Rutas comunes para explorar además de la principal
 EXTRA_PATHS = ["/about", "/about-us", "/nosotros", "/quienes-somos", "/servicios", "/services"]
 COMMON_INFO_PATHS = [
@@ -305,9 +306,6 @@ def load_api_key_from_file(file_path: str) -> str:
         encrypted_data = f.read()
     
     return decrypt_api_key(encrypted_data)
-
-
-
 
 # -------------------------------
 # Cargamos la clave descifrada
@@ -1038,7 +1036,7 @@ def remove_illegal_chars(val):
 ##########################################
 def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
     if df.empty:
-        return "<p><em>DataFrame vacío</em></p>"
+        return "<p><em>Configura tu lista de contactos</em></p>"
 
     # Crear una copia solo para la visualización, eliminando las columnas ocultas
     #subset = df.drop(columns=["scrapping_proveedor", "scrapping"], errors="ignore").head(max_filas)
@@ -1664,17 +1662,22 @@ def index():
                 background: url('/static/background.png') no-repeat center center fixed;
                 background-size: cover;
                 color: #FFFFFF;
-                font-family: 'Segoe UI', Arial, sans-serif;
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
                 margin: 0; padding: 0;
                 text-align: center;
             }}
+            h1, h2, h3 {{
+                font-family: 'Orbitron', sans-serif;
+            }}  
             .container {{
+                background: rgba(0, 45, 99, 0.6); /* ahora más cercano a #002d63 */
+                backdrop-filter: blur(8px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
                 width: 5%;
                 max-width: 300px;
                 min-width: 300px;
                 flex-shrink: 0; 
                 margin: 40px auto;
-                background-color: #1F1F1F;
                 padding: 20px 30px;
                 border-radius: 20px;
                 box-shadow: 0 10px 30px rgba(0,0,0,0.4);
@@ -1684,11 +1687,17 @@ def index():
                 flex-grow: 1;
                 overflow-x: auto;
                 margin: 20px auto;
-                background-color: #1F1F1F;
+                background: rgba(0, 45, 99, 0.6); /* ahora más cercano a #002d63 */
+                backdrop-filter: blur(8px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
                 padding: 20px;
                 border-radius: 20px;
                 box-shadow: 0 10px 30px rgba(0,0,0,0.4);
                 overflow-x: auto;
+            }}
+            .container-wide {{
+                max-height: 600px;
+                overflow-y: auto;
             }}
             table {{
                 width: 100%;
@@ -1707,49 +1716,76 @@ def index():
             }}
             input[type="file"],
             input[type="text"],
+            textarea,
             select {{
                 width: 100%;
                 padding: 10px;
                 border-radius: 8px;
                 border: 1px solid #ccc;
-                background-color: #2A2A2A;
-                color: #fff;
+                background-color: #fff;
+                color: #333;
                 margin-bottom: 12px;
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                font-size: 14px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }}
+            textarea {{
+                background-color: #fff;
+                color: #333;
             }}
             button {{
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px; /* espacio entre ícono y texto */
+                font-weight: bold;
                 padding: 10px 16px;
-                border: none;
-                border-radius: 0px; /* <- sin bordes redondeados */
-                background-color: #1E90FF;
+                border-radius: 5px; /* <- sin bordes redondeados */
+                background: linear-gradient(45deg, #003366, #005599);
                 color: #fff;
                 cursor: pointer;
-                margin: 6px 0;
                 font-size: 14px;
                 width: 100%; /* <- que ocupen todo el ancho */
                 box-sizing: border-box; /* para que el padding no los saque del contenedor */
             }}
             button:hover {{
-                background-color: #00BFFF;
+                background: linear-gradient(45deg, #005599, #003366);
             }}
             details summary {{
-                background-color: #2A2A2A;
-                color: #ffffff;
+                background: linear-gradient(45deg, #00BFFF, #1E90FF);
+                color: #ffffff !important;
                 font-weight: bold;
-                padding: 12px;
+                padding: 12px 20px;
                 cursor: pointer;
                 border: none;
                 outline: none;
                 width: 100%;
                 box-sizing: border-box;
                 margin: 8px 0;
-                display: block;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                position: relative;
+                overflow: hidden;
             }}
-
+            details summary::before {{
+                content: "";
+                position: absolute;
+                left: 50px;
+                top: 0;
+                height: 100%;
+                width: 2px;
+                background: rgba(255,255,255,0.4);
+                transform: skewX(-40deg);
+            }}
+            details summary img.icon {{
+                height: 20px;
+                filter: brightness(0) invert(1);
+                margin-left: 10px;
+            }}
             details summary::marker {{
                 color: #aaa;
             }}
-
-
             .status {{
                 background-color: #333;
                 margin: 10px auto;
@@ -1760,7 +1796,9 @@ def index():
                 font-size: 13px;
             }}
             .scrap-container {{
-                background-color: #2A2A2A;
+                background: rgba(10, 20, 40, 0.6);
+                backdrop-filter: blur(8px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
                 margin: 10px auto;
                 padding: 10px;
                 border-radius: 8px;
@@ -1775,7 +1813,7 @@ def index():
                 border-radius: 10px;
                 text-align: left;
             }}
-            .spinner {{
+             .spinner {{
                 margin: 20px auto;
                 width: 50px;
                 height: 50px;
@@ -1783,7 +1821,13 @@ def index():
                 border-top: 6px solid #1E90FF;
                 border-radius: 50%;
                 animation: spin 1s linear infinite;
-                }}
+            }}
+
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
+            }}
+
             .cell-collapsible {{
                 max-height: 60px;
                 overflow: hidden;
@@ -1853,55 +1897,132 @@ def index():
                 background-color: #a020f0; /* morado */
                 color: white;
             }} 
+            .container input,
+            .container select,
+            .container textarea,
+            .container details summary,
+            .container .status,
+            .container .scrap-container {{
+                background-color: #fff;
+                color: #333;
+                border: 1px solid #ccc;
+            }}
+
+            .container details summary {{
+                background-color: #f0f0f0;
+                color: #333;
+                font-weight: bold;
+            }} 
+            .custom-file-upload {{
+                display: inline-block;
+                padding: 10px 16px;
+                width: 100%;
+                box-sizing: border-box;
+                border-radius: 5px;
+                background: linear-gradient(45deg, #003366, #005599);
+                color: #fff;
+                font-weight: bold;
+                cursor: pointer;
+                text-align: center;
+                font-size: 14px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                margin-bottom: 12px;
+            }}
+
+            .custom-file-upload:hover {{
+                background: linear-gradient(45deg, #005599, #003366);
+                opacity: 0.9;
+            }}          
         </style>
     </head>
     <body>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
 
     <div style="
-        position: relative;
         display: flex;
         align-items: center;
-        justify-content: flex-start;
-        padding: 30px 20px;
-        overflow: hidden;
+        justify-content: space-between;
+        padding: 20px 30px;
         background: linear-gradient(to right, #1E90FF 0%, transparent 100%);
         border-radius: 0 0 20px 20px;
         box-shadow: 0 4px 20px rgba(30, 144, 255, 0.3);
     ">
-        <img src="https://recordsencrisis.com/wp-content/uploads/2025/05/LOGO-CLICKER-MATCH.png" alt="ClickerMatch"
-            style="max-height: 80px; margin-right: 20px;" />
-        <div style="position: absolute; top: 20px; right: 30px;">
-            <div style="position: relative; display: inline-block;">
-                <button onclick="toggleDropdown()" style="background: transparent; border: none; color: white; font-weight: bold; cursor: pointer;">
-                    👤 { session.get("user", "Usuario") }
-                </button>
-                <div id="dropdownMenu" style="display: none; position: absolute; right: 0; background-color: #1F1F1F; min-width: 200px; box-shadow: 0px 8px 16px rgba(0,0,0,0.4); border-radius: 10px; z-index: 1000; padding: 10px;">
-                    <p style="margin: 0; color: white;"><strong>{ session.get("user", "Usuario") }</strong></p>
-                    <p style="margin: 0; font-size: 12px; color: #ccc;">{ session.get("correo", "") }</p>
-                    <hr style="border-color: #444;">
-                    <a href="/logout" style="color: #FF4C4C; text-decoration: none; display: block; margin-top: 5px;">Cerrar sesión</a>
-                </div>
-            </div>
-        </div>
+
+        <img src="/static/LOGO-CLICKER-MATCH.png" alt="ClickerMatch"
+            style="max-height: 80px;" />
 
         <h1 style="
             color: white;
-            font-size: 30px;
+            font-size: 28px;
             font-family: 'Orbitron', sans-serif;
             font-weight: 500;
             text-shadow: 1px 1px 4px rgba(0,0,0,0.5);
             letter-spacing: 1px;
+            margin: 0;
         ">
             IA que prospecta y agenda citas con tomadores de decisiones.
         </h1>
+
+        <div style="
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: rgba(0, 45, 99, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        " onclick="toggleDropdown()">
+            <img src="/static/profilepic/profile.png" alt="Profile" style="
+                height: 40px;
+                width: 40px;
+                border-radius: 50%;
+                margin-right: 10px;
+                object-fit: cover;
+                border: 2px solid #fff;
+            "/>
+            <div style="color: white; text-align: left;">
+                <div style="font-weight: bold;">{ session.get("user", "Usuario") }</div>
+                <div style="font-size: 12px; color: #ddd;">{ session.get("correo", "") }</div>
+            </div>
+            <div id="dropdownMenu" style="
+                display: none;
+                position: absolute;
+                right: 0;
+                top: 55px;
+                background: rgba(0, 45, 99, 0.9);
+                backdrop-filter: blur(8px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 10px;
+                min-width: 220px;
+                z-index: 1000;
+                box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+                padding: 12px;
+            ">
+                <p style="margin: 0; color: #fff;"><strong>{{ session.get("user", "Usuario") }}</strong></p>
+                <p style="margin: 0; font-size: 12px; color: #ccc;">{{ session.get("correo", "") }}</p>
+                <hr style="border-color: #555;">
+                <a href="/logout" style="
+                    color: #FF4C4C;
+                    text-decoration: none;
+                    display: block;
+                    margin-top: 5px;
+                    font-weight: bold;
+                ">🚪 Cerrar sesión</a>
+            </div>
+        </div>
+
+        </div>
     </div>
+
   
     <div style="display: flex; gap: 20px; align-items: flex-start;">
     <div class="container">
     <!-- Sección 0: Cargar Base de datos de servidor-->    
     <details>
-    <summary style="cursor: pointer; font-weight: bold;">📡 Buscar y cargar contactos desde DB</summary>
+    <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/db.png" class="icon" alt="icono db"> Base de Datos Online</summary>
     <form method="POST">
         <input type="hidden" name="accion" value="cargar_contactos_db" />
 
@@ -1922,11 +2043,14 @@ def index():
 
         <!-- Sección 1: Cargar CSV y Mapeo -->
     <details>
-    <summary style="cursor: pointer; font-weight: bold;">➕ Carga de base de datos</summary>
+    <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/file.png" class="icon" alt="icono db"> Carga de base de datos</summary>
         <form method="POST" enctype="multipart/form-data">
         <hr>
         <label>Base de Datos:</label>
-        <input type="file" name="leads_csv"/>
+        <label class="custom-file-upload">
+            📁 Seleccionar archivo
+            <input type="file" name="leads_csv" style="display:none;"/>
+        </label>
         <div style="display: flex; gap: 10px; align-items: center; justify-content: center;">
         <label for="start_row">Filas:</label>
         <input type="text" name="start_row" placeholder="Inicio" style="width: 80px;" />
@@ -1935,7 +2059,7 @@ def index():
         </div>
     
     <details>
-    <summary style="cursor: pointer; font-weight: bold;">➕ Mapeo de columnas (clic para mostrar u ocultar)</summary>
+    <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/mapping.png" class="icon" alt="icono db"> Mapeo de columnas</summary>
         <p>Mapeo de columnas:</p>
         <div style="margin-top:10px;">
         <label>Nombre del contacto:</label>
@@ -1954,14 +2078,17 @@ def index():
         <select name="col_location">{build_select_options(mapeo_location, df_leads.columns if not df_leads.empty else [])}</select>
         </div>
         </details>
-        
-        <button type="submit">Subir Archivo</button>
+
+        <button type="submit">
+            <img src="/static/icons/diskette.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">
+            Guardar Mapeo
+        </button>               
         </form>
     </details>    
         <hr>
         <!-- Sección: Clasificación de Puestos -->
     <details>
-    <summary style="cursor: pointer; font-weight: bold;">➕ Clasificadores</summary>
+    <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/data-classification.png" class="icon" alt="icono db">Clasificadores</summary>
         <!-- <button type="button" onclick="clasificarTodo()" style="background-color: {color_puestos};">
             Clasificar (Puestos + Áreas + Industrias)
         </button> -->
@@ -1970,19 +2097,19 @@ def index():
         <form method="POST" enctype="multipart/form-data">
             <input type="hidden" name="accion" value="clasificar_global"/>
             <button type="submit" style="background-color: {color_puestos};">
-                Clasificar
+                <img src="/static/icons/diskette.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">Clasificar
             </button>
         </form>
         <!-- </details> -->
         <form method="POST">
             <input type="hidden" name="accion" value="scrapp_leads_on"/>
             <button type="submit" style="background-color: {color_scrap};">
-                Scraping de Leads
+                <img src="/static/icons/hacker.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">Análisis de Contactos
             </button>
         </form>   
         <form method="POST">
             <input type="hidden" name="accion" value="extraer_redes_y_telefono"/>
-            <button type="submit">Extraer Redes y Teléfono</button>
+            <button type="submit"><img src="/static/icons/contact-information.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">Extraer Redes y Teléfono</button>
         </form>
         <form method="POST">
             <input type="hidden" name="accion" value="scrapear_linkedin_empresas"/>
@@ -2002,14 +2129,14 @@ def index():
     <hr>
     <details>
 
-    <summary style="cursor: pointer; font-weight: bold;">➕ Mi Info</summary>
+    <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/apartment.png" class="icon" alt="icono db"> Nuestra Info</summary>
 
     <form method="POST" enctype="multipart/form-data">
         <label>Plan Estratégico:</label>
         <textarea name="plan_estrategico" rows="3" style="width:100%;border-radius:10px;margin-top:8px;">{plan_estrategico or ''}</textarea>
 
         <details>
-            <summary style="cursor:pointer; font-weight: bold;">📄 Plan Estrategico</summary>
+            <summary style="cursor:pointer; font-weight: bold;"><img src="/static/icons/db.png" class="icon" alt="icono db"> Plan Estrategico</summary>
             <h4>Información analizada desde el sitio del proveedor</h4>
 
             <p><strong>Descripción:</strong><br>
@@ -2050,14 +2177,15 @@ def index():
     <form method="POST">
         <input type="hidden" name="accion" value="generar_tabla"/>
         <button type="submit" style="background-color: {{ 'green' if acciones_realizadas['generar_tabla'] else '#1E90FF' }};">
-            Generar Mails con ChatGPT
+            <img src="/static/icons/artificial-intelligence_atomic.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">
+            Generar Mails con I.A.
         </button>
     </form>    
     <!--
     <details>
-    <summary style="cursor: pointer; font-weight: bold;">🧠 Edición de IA Prompts</summary>           
+    <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/db.png" class="icon" alt="icono db"> Edición de IA Prompts</summary>           
     <details>
-    <summary style="cursor: pointer; font-weight: bold;">🧠 Prompt Value</summary>
+    <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/db.png" class="icon" alt="icono db"> Prompt Value</summary>
     <form method="POST" style="margin-bottom: 10px;" onsubmit="guardarContenidoEditor()">
         <button type="button" onclick="resaltarVariables()">🎨 Resaltar variables</button>
         <input type="hidden" name="accion" value="guardar_prompt_chatgpt"/>
@@ -2074,7 +2202,7 @@ def index():
     </form>
     </details>
     <details>
-    <summary style="cursor: pointer; font-weight: bold;">🧠 Prompt Mails Estrategia</summary>
+    <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/db.png" class="icon" alt="icono db"> Prompt Mails Estrategia</summary>
     <form method="POST" style="margin-bottom: 10px;" onsubmit="guardarContenidoEditorMails()">
         <button type="button" onclick="resaltarVariablesMails()">🎨 Resaltar variables</button>
         <input type="hidden" name="accion" value="guardar_prompt_mails"/>
@@ -2093,7 +2221,7 @@ def index():
     -->
       
     <details>
-    <summary style="cursor: pointer; font-weight: bold;">➕ Exportar</summary>
+    <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/export.png" class="icon" alt="icono db"> Exportar</summary>
         <form method="POST">
         <h2>Exportar</h2>
         <label>Formato:</label>
@@ -2108,15 +2236,10 @@ def index():
     </details>
    
     <div class="container-wide">
-        <h2>Base de datos (primeros 50 registros)</h2>
+        <h2>Lista de Contactos</h2>
         {tabla_html(df_leads,50)}
     </div>
     </div>
-
-    <div class="content-block">
-        {block_text_es}
-    </div>
-    
     <script>
     document.getElementById("pdf_plan_estrategico").addEventListener("change", function () {{
         const fileInput = this;
@@ -2262,9 +2385,6 @@ def index():
     </script>
 
 
-    <a href="/logout" style="color: #FF4C4C; text-decoration: none; display: block; margin-top: 10px;">
-    🚪 Cerrar sesión
-    </a>
     </body>
     <div id="loader" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;text-align:center;padding-top:200px;">
     <div style="color:white;font-size:20px;">⏳ Cargando datos... por favor espera</div>
