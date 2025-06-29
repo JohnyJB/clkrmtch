@@ -402,9 +402,9 @@ OPENAI_MAX_TOKENS = 1000
 def generar_info_empresa_chatgpt(row: pd.Series) -> dict:
     if client is None:
         return {
-            "EMPRESA_DESCRIPCION": "ND",
-            "EMPRESA_PRODUCTOS_SERVICIOS": "ND",
-            "EMPRESA_INDUSTRIAS_TARGET": "ND"
+            "Descripcion": "ND",
+            "PyS": "ND",
+            "Objetivo": "ND"
         }
     texto_scrap = (cortar_al_limite(str(row.get("scrapping", "")), 3000) + "\n" + cortar_al_limite(str(row.get("Scrapping Adicional", "")), 3000)).strip()
     texto_scrap = texto_scrap[:8000] 
@@ -414,9 +414,9 @@ Eres un analista experto en inteligencia de negocios. Tu tarea es analizar el si
 El formato de salida debe ser exactamente el siguiente:
 
 {{
-  "EMPRESA_DESCRIPCION": "Resumen claro y conciso sobre a qué se dedica la empresa. Si no se puede determinar, responde con 'ND'",
-  "EMPRESA_PRODUCTOS_SERVICIOS": "Lista breve o resumen de los productos y/o servicios ofrecidos. Si no se puede determinar, responde con 'ND'",
-  "EMPRESA_INDUSTRIAS_TARGET": "Industrias o sectores a los que sirve o está orientada la empresa. Si no se puede determinar, responde con 'ND'"
+  "Descripcion": "Resumen claro y conciso sobre a qué se dedica la empresa. Si no se puede determinar, responde con 'ND'",
+  "PyS": "Lista breve o resumen de los productos y/o servicios ofrecidos. Si no se puede determinar, responde con 'ND'",
+  "Objetivo": "Industrias o sectores a los que sirve o está orientada la empresa. Si no se puede determinar, responde con 'ND'"
 }}
 
 Texto a analizar (scrapping del sitio web de la empresa):
@@ -440,9 +440,9 @@ Texto a analizar (scrapping del sitio web de la empresa):
     except Exception as e:
         print("[ERROR] al generar info empresa:", e)
         return {
-            "EMPRESA_DESCRIPCION": "-",
-            "EMPRESA_PRODUCTOS_SERVICIOS": "-",
-            "EMPRESA_INDUSTRIAS_TARGET": "-"
+            "Descripcion": "-",
+            "PyS": "-",
+            "Objetivo": "-"
         }
 def cortar_al_limite(texto, max_chars=3000):
     texto = texto.strip().replace("\n", " ")
@@ -866,9 +866,12 @@ Escribe como si lo fueras a mandar a un tomador de decisión ocupado
 ✅ INPUTS
 
 Info del contacto:
-First name: {row.get("First name", "-")}
-Title: {row.get("Title", "-")}
-Company Name: {row.get("Company Name", "-")}
+Nombre: {row.get("First name", "-")}
+Puesto: {row.get("Title", "-")}
+Area: {row.get("Area", "(no se sabe)")}
+Departamento: {row.get("Departamento", "(no se sabe)")}
+Nivel Jerarquico: {row.get("Nivel Jerarquico", "(no se sabe)")}
+Company Name: {row.get("Company Name", "(no se sabe)")}
 Company Industry: {row.get("Company Industry", "-")}
 Location: {row.get("Location", "-")}
 scrapping de web del contacto: ({cortar_al_limite(str(row.get('scrapping', '-')), 3000)} {cortar_al_limite(str(row.get('Scrapping Adicional', '-')), 3000)})
@@ -1054,7 +1057,7 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
         "Strategy - Loom Video", "Strategy - Free Sample List", "super_scrapping",
         "scrapping", "URLs on WEB", "Scrapping Adicional"
     ]
-    columnas_moradas = {"area", "departamento", "Nivel Jerarquico", "Strategy - Reply Rate Email", "Industria Mayor", "scrapping", "URLs on WEB", "Scrapping Adicional", "EMPRESA_DESCRIPCION", "EMPRESA_PRODUCTOS_SERVICIOS", "EMPRESA_INDUSTRIAS_TARGET"}
+    columnas_moradas = {"Area","area", "departamento", "Departamento", "Nivel Jerarquico", "Strategy - Reply Rate Email", "Industria Mayor", "scrapping", "URLs on WEB", "Scrapping Adicional", "Descripcion", "PyS", "Objetivo", "EMPRESA_DESCRIPCION", "EMPRESA_PRODUCTOS_SERVICIOS", "EMPRESA_INDUSTRIAS_TARGET"}
     thead = "".join(
         f"<th class='{'col-ancha ' if col in anchas else ''}{'highlighted' if col in columnas_moradas else ''}'>{col}</th>"
         for col in cols
@@ -1064,7 +1067,16 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
         row_html = ""
         for col in cols:
             valor = str(row[col])
-            if col == "Company Logo Url Secondary" and pd.notnull(row[col]) and valor.strip().lower().startswith("http"):
+
+            # Aquí adaptamos específicamente Linkedin y Company Linkedin Url
+            if col in ["Linkedin", "Company Linkedin Url"]:
+                if pd.notnull(valor) and valor != "-" and valor.strip() != "":
+                    row_html += f"""<td><a href="{valor}" target="_blank">
+                        <img src="/static/icons/linkedin.png" alt="LinkedIn" style="width:24px; height:24px;">
+                    </a></td>"""
+                else:
+                    row_html += "<td>-</td>"
+            elif col == "Logo" and pd.notnull(row[col]) and valor.strip().lower().startswith("http"):
                 row_html += f"<td><img src='{valor}' alt='Logo' style='max-height:40px;'/></td>"
             else:
                 row_html += (
@@ -1075,7 +1087,10 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
         rows_html += f"<tr>{row_html}</tr>"
 
 
-    return f"<p><strong>📊 Total Registros: {len(subset)}</strong></p>" + f"<table><tr>{thead}</tr>{rows_html}</table>"
+
+    return f"<p><strong></strong></p>" + f"<table><tr>{thead}</tr>{rows_html}</table>"
+    #return f"<p><strong>📊 Total Registros: {len(subset)}</strong></p>" + f"<table><tr>{thead}</tr>{rows_html}</table>"
+
 
 
 ##########################################
@@ -1173,7 +1188,7 @@ def index():
                             clave = str(row["title_minusc"]).strip().lower().replace(",", " ")
                             clave_words = set(clave.split())
 
-                            if clave_words.issubset(t_words):  # todas las palabras clave están presentes
+                            if clave_words.issubset(t_words):  # todas las palabras clave están presentes, columnas en el archivo
                                 return row["departamento"], row["area"]
 
 
@@ -1192,7 +1207,7 @@ def index():
 
                     if not df_leads.empty:
                         # Asignar área y departamento
-                        df_leads["departamento"], df_leads["area"] = zip(*df_leads[mapeo_puesto].map(asignar_areas))
+                        df_leads["Departamento"], df_leads["Area"] = zip(*df_leads[mapeo_puesto].map(asignar_areas))
 
                         # Asegurar que estén justo después de la columna del puesto
                         cols = list(df_leads.columns)
@@ -1315,88 +1330,118 @@ def index():
        
         if accion == "cargar_contactos_db":
             try:
-                id_inicio = request.form.get("id_inicio", "").strip()
-                id_fin = request.form.get("id_fin", "").strip()
                 filtro = request.form.get("filtro_busqueda", "").strip().lower()
+                source = request.form.get("source", "").strip().lower()
+                industria = request.form.get("industria", "").strip().lower()
+                area = request.form.get("area", "").strip().lower()
+                departamento = request.form.get("departamento", "").strip().lower()
+                tamano = request.form.get("company_employee_count_range", "").strip().lower()
 
                 condiciones = []
-                params = {}
-
-                if id_inicio.isdigit() and id_fin.isdigit():
-                    condiciones.append("c.id BETWEEN :start AND :end")
-                    params["start"] = int(id_inicio)
-                    params["end"] = int(id_fin)
 
                 if filtro:
-                    condiciones.append("""(
-                        LOWER(c.name) LIKE :filtro OR
-                        LOWER(c.first_name) LIKE :filtro OR
-                        LOWER(c.last_name) LIKE :filtro OR
-                        LOWER(e.company_name) LIKE :filtro OR
-                        LOWER(e.company_domain) LIKE :filtro OR
-                        LOWER(e.company_revenue_range) LIKE :filtro
+                    condiciones.append(f"""(
+                        LOWER(c.name) LIKE '%{filtro}%' OR
+                        LOWER(c.first_name) LIKE '%{filtro}%' OR
+                        LOWER(c.last_name) LIKE '%{filtro}%' OR
+                        LOWER(e.company_name) LIKE '%{filtro}%' OR
+                        LOWER(e.company_domain) LIKE '%{filtro}%'
                     )""")
-                    params["filtro"] = f"%{filtro}%"
+                if source:
+                    condiciones.append(f"LOWER(c.source) LIKE '%{source}%'")
+                if industria:
+                    condiciones.append(f"LOWER(e.industria_mayor) LIKE '%{industria}%'")
+                if area:
+                    condiciones.append(f"LOWER(c.area) LIKE '%{area}%'")
+                if departamento:
+                    condiciones.append(f"LOWER(c.departamento) LIKE '%{departamento}%'")
+                if tamano:
+                    condiciones.append(f"LOWER(e.company_employee_count_range) LIKE '%{tamano}%'")
 
                 where_clause = "WHERE " + " AND ".join(condiciones) if condiciones else ""
 
-                query = text(f"""
-                    SELECT 
-                        e.company_name AS "Company Name",
-                        c.name AS "Name",
-                        c.title AS "Title",
+                # Control del límite
+                max_rows_str = request.form.get("max_rows", "100")
+                try:
+                    max_rows = int(max_rows_str)
+                    if max_rows <= 0:
+                        max_rows = 100
+                except:
+                    max_rows = 100
 
+                query_str = f"""
+                    SELECT 
+                        e.company_logo_url_secondary AS "Logo",
+                        e.company_name AS "Company Name",
+                        c.name AS "Nombre",
                         c.first_name AS "First name",
                         c.last_name AS "Last name",
+                        c.title AS "Title",
+                        c.area AS "Area",
+                        c.departamento AS "Departamento",
+                        c.niveljerarquico AS "Nivel Jerarquico",
                         c.email AS "Email",
-                        c.email_status AS "Email Status",
                         c.linkedin AS "Linkedin",
                         c.location AS "Location",
-                        c.added_on AS "Added On",
-
                         e.company_domain AS "Company Domain",
                         e.company_website AS "Company Website",
-                        e.company_employee_count AS "Company Employee Count",
                         e.company_employee_count_range AS "Company Employee Count Range",
                         e.company_founded AS "Company Founded",
                         e.company_industry AS "Company Industry",
+                        e.industria_mayor AS "Industria Mayor",
                         e.company_type AS "Company Type",
                         e.company_headquarters AS "Company Headquarters",
                         e.company_revenue_range AS "Company Revenue Range",
-                        e.company_linkedin_url AS "Company Linkedin Url",
-                        e.company_crunchbase_url AS "Company Crunchbase Url",
-                        e.company_funding_rounds AS "Company Funding Rounds",
-                        e.company_last_funding_round_amount AS "Company Last Funding Round Amount",
-                        e.company_logo_url_primary AS "Company Logo Url, Primary",
-                        e.company_logo_url_secondary AS "Company Logo Url Secondary"
+                        e.company_linkedin_url AS "Company Linkedin Url"
                     FROM contactos c
                     LEFT JOIN empresas e ON c.empresa_id = e.id
                     {where_clause}
                     ORDER BY c.id ASC
-                """)
+                    LIMIT {max_rows}
+                """
 
+                print("\n[DEBUG QUERY PARA PGADMIN]")
+                print(query_str)
+
+                # Ejecutar realmente (usa bind seguro aquí si quieres)
                 with engine.connect() as conn:
-                    result = conn.execute(query, params).mappings().all()
+                    result = conn.execute(text(query_str)).mappings().all()
                     df_leads = pd.DataFrame(result)
                     num_registros = len(df_leads)
                     status_msg += f"✅ Se cargaron {num_registros} contactos desde la DB.<br>"
+
                 for k in acciones_realizadas:
                     acciones_realizadas[k] = False
+                orden_columnas = [
+                    "Logo",
+                    "Company Name",
+                    "Nombre",
+                    "First name",
+                    "Last name",
+                    "Title",
+                    "Nivel Jerarquico",
+                    "Area",
+                    "Departamento",
+                    "Email",
+                    "Linkedin",
+                    "Location",
+                    "Company Domain",
+                    "Company Website",
+                    "Company Employee Count Range",
+                    "Company Founded",
+                    "Company Industry",
+                    "Industria Mayor",
+                    "Company Type",
+                    "Company Headquarters",
+                    "Company Revenue Range",
+                    "Company Linkedin Url"
+                ]
 
-                status_msg += f"✅ Se cargaron {len(df_leads)} contactos desde la DB.<br>"
-
-                # Auto mapeo (ajustado)
-                mapeo_nombre_contacto = 'Name'
-                mapeo_puesto = 'Title'
-                mapeo_empresa = 'Company Name'
-                mapeo_industria = 'Company Industry'
-                mapeo_website = 'Company Website'
-                mapeo_location = 'Location'
-                mapeo_empleados = 'Company Employee Count Range'
+                df_leads = df_leads[orden_columnas]                    
+                
 
             except Exception as e:
                 status_msg += f"❌ Error al cargar desde la base de datos: {e}<br>"
-
 
         if accion == "subir_pdf_plan":                                   
         # PDF para Plan Estratégico
@@ -1579,12 +1624,12 @@ def index():
                 status_msg += "✅ Scraping adicional ejecutado en paralelo.<br>"
 
                 # ───────── Generar info de empresa con ChatGPT ─────────
-                if "EMPRESA_DESCRIPCION" not in df_leads.columns:
-                    df_leads["EMPRESA_DESCRIPCION"] = "-"
-                if "EMPRESA_PRODUCTOS_SERVICIOS" not in df_leads.columns:
-                    df_leads["EMPRESA_PRODUCTOS_SERVICIOS"] = "-"
-                if "EMPRESA_INDUSTRIAS_TARGET" not in df_leads.columns:
-                    df_leads["EMPRESA_INDUSTRIAS_TARGET"] = "-"
+                if "Descripcion" not in df_leads.columns:
+                    df_leads["Descripcion"] = "-"
+                if "PyS" not in df_leads.columns:
+                    df_leads["PyS"] = "-"
+                if "Objetivo" not in df_leads.columns:
+                    df_leads["Objetivo"] = "-"
 
                 for idx, row in df_leads.iterrows():
                     result = generar_info_empresa_chatgpt(row)
@@ -1652,7 +1697,8 @@ def index():
      
     #Creación prompt
     prompt_chatgpt = cargar_prompt_desde_archivo()   
-        
+    num_leads_cargados = len(df_leads) if not df_leads.empty else 0
+
     page_html = f"""
     <html>
     <head>
@@ -1938,33 +1984,34 @@ def index():
     <body>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
 
-    <div style="
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 20px 30px;
-        background: linear-gradient(to right, #1E90FF 0%, transparent 100%);
-        border-radius: 0 0 20px 20px;
-        box-shadow: 0 4px 20px rgba(30, 144, 255, 0.3);
-    ">
-
-        <img src="/static/LOGO-CLICKER-MATCH.png" alt="ClickerMatch"
-            style="max-height: 80px;" />
-
-        <h1 style="
-            color: white;
-            font-size: 28px;
-            font-family: 'Orbitron', sans-serif;
-            font-weight: 500;
-            text-shadow: 1px 1px 4px rgba(0,0,0,0.5);
-            letter-spacing: 1px;
-            margin: 0;
-        ">
-            IA que prospecta y agenda citas con tomadores de decisiones.
-        </h1>
-
         <div style="
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 20px 30px;
+                background: linear-gradient(to right, #1E90FF 0%, transparent 100%);
+                border-radius: 0 0 20px 20px;
+                box-shadow: 0 4px 20px rgba(30, 144, 255, 0.3);
+            ">
+
+                <img src="/static/LOGO-CLICKER-MATCH.png" alt="ClickerMatch"
+                    style="max-height: 80px;" />
+
+                <h1 style="
+                    color: white;
+                    font-size: 28px;
+                    font-family: 'Orbitron', sans-serif;
+                    font-weight: 500;
+                    text-shadow: 1px 1px 4px rgba(0,0,0,0.5);
+                    letter-spacing: 1px;
+                    margin: 0;
+                ">
+                    IA que prospecta y agenda citas con tomadores de decisiones.
+                </h1>
+
+            <div class="profile-container" style="
             position: relative;
+            z-index: 2000;
             display: flex;
             align-items: center;
             background: rgba(0, 45, 99, 0.6);
@@ -1974,7 +2021,7 @@ def index():
             padding: 8px 12px;
             cursor: pointer;
             transition: background 0.3s;
-        " onclick="toggleDropdown()">
+        ">
             <img src="/static/profilepic/profile.png" alt="Profile" style="
                 height: 40px;
                 width: 40px;
@@ -2001,8 +2048,8 @@ def index():
                 box-shadow: 0 8px 16px rgba(0,0,0,0.4);
                 padding: 12px;
             ">
-                <p style="margin: 0; color: #fff;"><strong>{{ session.get("user", "Usuario") }}</strong></p>
-                <p style="margin: 0; font-size: 12px; color: #ccc;">{{ session.get("correo", "") }}</p>
+                <p style="margin: 0; color: #fff;"><strong>{ session.get("user", "Usuario") }</strong></p>
+                <p style="margin: 0; font-size: 12px; color: #ccc;">{ session.get("correo", "") }</p>
                 <hr style="border-color: #555;">
                 <a href="/logout" style="
                     color: #FF4C4C;
@@ -2013,6 +2060,7 @@ def index():
                 ">🚪 Cerrar sesión</a>
             </div>
         </div>
+
 
         </div>
     </div>
@@ -2029,11 +2077,200 @@ def index():
         <label>🔍 Buscar texto (en Nombre, Empresa, Dominio...):</label>
         <input type="text" name="filtro_busqueda" placeholder="Ej. Acme, gmail, alto" style="margin-bottom:10px;" />
 
-        <label for="id_inicio">ID desde:</label>
-        <input type="number" name="id_inicio" min="1" placeholder="1" />
+        <label>Lista:</label>
+        <input type="text" name="source" placeholder="" />
 
-        <label for="id_fin">hasta:</label>
-        <input type="number" name="id_fin" min="1" placeholder="100" />
+        <label for="industria_mayor">Industria:</label>
+        <select name="industria_mayor" id="industria_mayor">
+            <option value="">-- Todas --</option>
+            <option value="Finance">Finance</option>
+            <option value="Technology">Technology</option>
+            <option value="Education">Education</option>
+            <option value="Retail">Retail</option>
+            <option value="Retail Manufacturing">Retail Manufacturing</option>
+            <option value="Professional Services">Professional Services</option>
+            <option value="Hotel and Travel">Hotel and Travel</option>
+            <option value="Health">Health</option>
+            <option value="Industrial Manufacturing">Industrial Manufacturing</option>
+            <option value="Construction">Construction</option>
+            <option value="Logistics">Logistics</option>
+            <option value="Marketing Services">Marketing Services</option>
+            <option value="Automotive">Automotive</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Restaurants">Restaurants</option>
+            <option value="Human Resources">Human Resources</option>
+            <option value="Government">Government</option>
+            <option value="Real Estate">Real Estate</option>
+            <option value="Consumer Services">Consumer Services</option>
+            <option value="Telco">Telco</option>
+            <option value="Energy">Energy</option>
+            <option value="ONG">ONG</option>
+            <option value="Media">Media</option>
+            <option value="Industrial">Industrial</option>
+            <option value="Legal">Legal</option>
+            <option value="Environmental">Environmental</option>
+            <option value="Public Services">Public Services</option>
+        </select>
+
+
+        <label for="area">Área:</label>
+        <select name="area" id="area">
+            <option value="">-- Todas --</option>
+            <option value="Comercial">Comercial</option>
+            <option value="Dirección General">Dirección General</option>
+            <option value="Operaciones">Operaciones</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Recursos Humanos">Recursos Humanos</option>
+            <option value="Finanzas">Finanzas</option>
+            <option value="Tecnología">Tecnología</option>
+            <option value="Académica">Académica</option>
+            <option value="Administración">Administración</option>
+            <option value="Producto">Producto</option>
+            <option value="Jurídico">Jurídico</option>
+            <option value="Salud">Salud</option>
+            <option value="Construcción">Construcción</option>
+            <option value="Producción Artistica">Producción Artistica</option>
+            <option value="Municipio">Municipio</option>
+        </select>
+
+        <label for="departamento">Departamento:</label>
+        <select name="departamento" id="departamento">
+            <option value="">-- Todos --</option>
+            <option value="Ventas">Ventas</option>
+            <option value="Rectoria">Rectoria</option>
+            <option value="Operaciones">Operaciones</option>
+            <option value="Presidencia">Presidencia</option>
+            <option value="Compras">Compras</option>
+            <option value="Dirección General">Dirección General</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Desarrollo de Software">Desarrollo de Software</option>
+            <option value="Recursos Humanos">Recursos Humanos</option>
+            <option value="Ventas regionales">Ventas regionales</option>
+            <option value="Profesores">Profesores</option>
+            <option value="Retail">Retail</option>
+            <option value="Finanzas">Finanzas</option>
+            <option value="Ecommerce">Ecommerce</option>
+            <option value="Servicio al Cliente">Servicio al Cliente</option>
+            <option value="Logística">Logística</option>
+            <option value="Administración">Administración</option>
+            <option value="Consejo de Administración">Consejo de Administración</option>
+            <option value="Seguridad">Seguridad</option>
+            <option value="Tecnología">Tecnología</option>
+            <option value="Contraloría">Contraloría</option>
+            <option value="Practicas Profesionales">Practicas Profesionales</option>
+            <option value="Calidad">Calidad</option>
+            <option value="Trade Marketing">Trade Marketing</option>
+            <option value="Produccion">Produccion</option>
+            <option value="Desarrollo de Personal">Desarrollo de Personal</option>
+            <option value="Contabilidad">Contabilidad</option>
+            <option value="Networker">Networker</option>
+            <option value="Comercailización">Comercailización</option>
+            <option value="Business Intelligence">Business Intelligence</option>
+            <option value="Branding">Branding</option>
+            <option value="Contratos y Litigios">Contratos y Litigios</option>
+            <option value="Mantenimiento">Mantenimiento</option>
+            <option value="Almacén">Almacén</option>
+            <option value="Tecnología de la Infromacion">Tecnología de la Infromacion</option>
+            <option value="Comunicación">Comunicación</option>
+            <option value="Reclutamiento y Selección">Reclutamiento y Selección</option>
+            <option value="Cocina">Cocina</option>
+            <option value="Cuentas">Cuentas</option>
+            <option value="Medios Publicitarios">Medios Publicitarios</option>
+            <option value="Médico">Médico</option>
+            <option value="Contenidos">Contenidos</option>
+            <option value="Regulatorio y Cumplimiento">Regulatorio y Cumplimiento</option>
+            <option value="Compensaciones">Compensaciones</option>
+            <option value="Eventos y Patrocinios">Eventos y Patrocinios</option>
+            <option value="SEO / SEM / Medios Digitales">SEO / SEM / Medios Digitales</option>
+            <option value="Operaciones Aéreas">Operaciones Aéreas</option>
+            <option value="Cobranza">Cobranza</option>
+            <option value="Farmacia">Farmacia</option>
+            <option value="Control de Riesgos">Control de Riesgos</option>
+            <option value="Infraestructura TI">Infraestructura TI</option>
+            <option value="Tesorería">Tesorería</option>
+            <option value="Creativo">Creativo</option>
+            <option value="Revenue Management">Revenue Management</option>
+            <option value="KAM">KAM</option>
+            <option value="Inversiones">Inversiones</option>
+            <option value="Growth Marketing">Growth Marketing</option>
+            <option value="Expansión">Expansión</option>
+            <option value="Construcción">Construcción</option>
+            <option value="Desarrollo de Producto">Desarrollo de Producto</option>
+            <option value="Producción Audiovisual">Producción Audiovisual</option>
+            <option value="Distribución y Transporte">Distribución y Transporte</option>
+            <option value="Crédito">Crédito</option>
+            <option value="Innovación">Innovación</option>
+            <option value="Project Management">Project Management</option>
+            <option value="CRM">CRM</option>
+            <option value="Investigación">Investigación</option>
+            <option value="Nómina">Nómina</option>
+            <option value="Caja">Caja</option>
+            <option value="Sustentabilidad">Sustentabilidad</option>
+            <option value="Seguridad e Higiene">Seguridad e Higiene</option>
+            <option value="Recepción">Recepción</option>
+            <option value="Actuación">Actuación</option>
+            <option value="Desarrollo de Negocio">Desarrollo de Negocio</option>
+            <option value="Seguridad de la Informacion">Seguridad de la Informacion</option>
+            <option value="Presidencia Municipal">Presidencia Municipal</option>
+            <option value="Agente de Viajes">Agente de Viajes</option>
+            <option value="Desarrollo Web">Desarrollo Web</option>
+            <option value="Investigación y Desarrollo">Investigación y Desarrollo</option>
+            <option value="Psicología">Psicología</option>
+            <option value="Fiduciario">Fiduciario</option>
+            <option value="Transformación Digital">Transformación Digital</option>
+            <option value="Ventas Mayoreo">Ventas Mayoreo</option>
+            <option value="Nutrición">Nutrición</option>
+            <option value="Agente Inmobiliario">Agente Inmobiliario</option>
+            <option value="Redes Sociales">Redes Sociales</option>
+            <option value="Wellness">Wellness</option>
+            <option value="Digital Marketing">Digital Marketing</option>
+            <option value="UX / UI">UX / UI</option>
+            <option value="Alianzas Estratégicas">Alianzas Estratégicas</option>
+            <option value="Cuentas por Pagar">Cuentas por Pagar</option>
+            <option value="Planeacion Financiera">Planeacion Financiera</option>
+            <option value="Profesor Decano">Profesor Decano</option>
+            <option value="Base de Datos">Base de Datos</option>
+            <option value="Pérdidas y Mermas">Pérdidas y Mermas</option>
+            <option value="Preventa">Preventa</option>
+            <option value="Servicio al cliente">Servicio al cliente</option>
+            <option value="Doctorado">Doctorado</option>
+            <option value="Ventas Telefónicas">Ventas Telefónicas</option>
+            <option value="Mesa de Control">Mesa de Control</option>
+            <option value="Relaciones Públicas">Relaciones Públicas</option>
+            <option value="Finanzas Corporativas">Finanzas Corporativas</option>
+            <option value="Planeación Estratégica">Planeación Estratégica</option>
+            <option value="Soporte Técnico">Soporte Técnico</option>
+            <option value="Protección de Datos">Protección de Datos</option>
+            <option value="Investigación de Mercados">Investigación de Mercados</option>
+            <option value="Agente de Seguros">Agente de Seguros</option>
+            <option value="Chofer">Chofer</option>
+            <option value="Ingeniería">Ingeniería</option>
+            <option value="Desarrollo web">Desarrollo web</option>
+            <option value="Dirección General Adjunta">Dirección General Adjunta</option>
+        </select>
+        
+        <label for="company_employee_count_range">Tamaño de Empresa:</label>
+        <select name="company_employee_count_range" id="company_employee_count_range">
+            <option value="">-- Todos --</option>
+            <option value="10001+">10001+</option>
+            <option value="10000.0">10000.0</option>
+            <option value="5001 - 10000">5001 - 10000</option>
+            <option value="5000.0">5000.0</option>
+            <option value="1001 - 5000">1001 - 5000</option>
+            <option value="1000.0">1000.0</option>
+            <option value="501 - 1000">501 - 1000</option>
+            <option value="500.0">500.0</option>
+            <option value="201 - 500">201 - 500</option>
+            <option value="200.0">200.0</option>
+            <option value="51 - 200">51 - 200</option>
+            <option value="50.0">50.0</option>
+            <option value="11 - 50">11 - 50</option>
+            <option value="10.0">10.0</option>
+            <option value="2 - 10">2 - 10</option>
+            <option value="1.0">1.0</option>
+        </select>
+        <label>Número máximo de filas:</label>
+        <input type="number" name="max_rows" min="1" placeholder="100" />
 
         <button type="submit">📥 Buscar y Cargar</button>
     </form>
@@ -2237,6 +2474,7 @@ def index():
    
     <div class="container-wide">
         <h2>Lista de Contactos</h2>
+        <h3 style="color: white;">Total registros cargados: {num_leads_cargados}</h3>
         {tabla_html(df_leads,50)}
     </div>
     </div>
@@ -2382,6 +2620,17 @@ def index():
     const contenido = editor.innerText;
     document.getElementById("prompt_mails_oculto").value = contenido;
     }}
+    
+    document.addEventListener("click", function(event) {{
+        const profile = document.querySelector(".profile-container");
+        const dropdown = document.getElementById("dropdownMenu");
+        if (profile.contains(event.target)) {{
+            dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+        }} else {{
+            dropdown.style.display = "none";
+        }}
+    }});
+
     </script>
 
 
