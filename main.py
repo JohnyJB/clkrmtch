@@ -419,23 +419,78 @@ La salida debe ser únicamente el texto del cuerpo del correo, sin encabezado, s
 
 # inicializar prompt strategy
 prompt_strategy_default = """
-Quiero que actúes como un especialista en ventas B2B con enfoque en generación de citas de alto valor.
+Quiero que actúes como un especialista en ventas B2B con enfoque en generación de citas de alto valor. 
 Tu tarea es redactar correos fríos personalizados, breves y efectivos, siguiendo la fórmula “25% Reply Rate Email Formula”.
+📌 CONTEXTO DE LOS DATOS (INPUTS)
+Estoy trabajando con una tabla que contiene información de prospectos, con las siguientes columnas clave:
+First name
+Last name
+Title → Puesto del prospecto (ej. Director de Marketing)
+Company Name
+Company Industry → Industria específica en la que opera
+Location → Ciudad, estado o país
+Propuesta de valor de mi empresa → Texto o resumen de la solución que quiero ofrecer (puede ser distinto por segmento)
+(Opcional, se obtiene del scrapping) Caso de éxito relevante → Referencia breve a un cliente similar con un resultado medible
+
+📩 OBJETIVO DEL CORREO
+El correo debe estar diseñado para obtener una respuesta que derive en una llamada o reunión.
+
+🧱 ESTRUCTURA QUE DEBES USAR
+[Personalización]
+ Comienza con una frase relevante basada en el puesto, empresa, logros públicos o tipo de industria del prospecto. Puede provenir de su LinkedIn, sitio web o de su contexto empresarial.
+
+[Nuestra propuesta de valor]
+ Resume qué hace nuestra empresa y cómo puede ayudar a ese tipo de perfil, industria o empresa.
+
+[Segmentación clara]
+ Menciona de forma específica el tipo de empresa, ubicación o función del prospecto para que sienta que el mensaje fue escrito para él.
+
+[Objetivo o desafío del prospecto]
+ Muestra que comprendes lo que esa persona quiere lograr (ej. más visibilidad, eficiencia, ventas, automatización, control, etc.).
+
+[Caso de uso o promesa] (opcional)
+ Si tienes un caso de éxito relevante o un resultado similar, menciona de forma breve el beneficio logrado.
+
+[Cliffhanger + CTA]
+ Cierra con una invitación clara y directa a agendar una llamada o revisar un plan diseñado para ese tipo de empresa.
+
+✍️ INSTRUCCIONES DE ESTILO
+Longitud máxima: 130 palabras
+Tono: Profesional, directo y personalizado
+Evita lenguaje genérico o plantillado
+Escribe como si lo fueras a mandar a un tomador de decisión ocupado
+
+✅ INPUTS
 
 Info del contacto:
-Nombre: {first_name}
-Puesto: {title}
-Area: {area}
-Departamento: {departamento}
-Nivel Jerarquico: {nivel_jerarquico}
-Company Name: {company_name}
-Company Industry: {company_industry}
-Location: {location}
-scrapping de web del contacto: ({scrapping_contact})
+Nombre: {row.get("First name", "-")}
+Puesto: {row.get("Title", "-")}
+Area: {row.get("Area", "(no se sabe)")}
+Departamento: {row.get("Departamento", "(no se sabe)")}
+Nivel Jerarquico: {row.get("Nivel Jerarquico", "(no se sabe)")}
+Company Name: {row.get("Company Name", "(no se sabe)")}
+Company Industry: {row.get("Company Industry", "-")}
+Location: {row.get("Location", "-")}
+scrapping de web del contacto: ({cortar_al_limite(str(row.get('scrapping', '-')), 3000)} {cortar_al_limite(str(row.get('Scrapping Adicional', '-')), 3000)})
 
 Info de nosotros:
-Propuesta de valor de mi empresa: {propuesta_valor}
+Propuesta de valor de mi empresa: {descripcion_proveedor}
+Caso de éxito: (Opcional, en base al scrapp del contacto)
 scrapping de nuestra web: {plan_estrategico}
+
+
+✅ EJEMPLO DE OUTPUT ESPERADO (no uses estos datos, son solo de ejemplo)
+Hola Jonathan,
+Vi que lideras Trade Marketing y Category Management en Alpura, una marca clave en la industria láctea mexicana.
+Desde MARKETPRO, ayudamos a directores como tú a mejorar la eficiencia en la ejecución y control en punto de venta, creando experiencias consistentes en canales físicos y digitales.
+Trabajamos con empresas de consumo como la tuya para perfeccionar la conexión con el shopper, reforzando estrategia de marca con ejecución en PDV, capacitación y marketing omnicanal.
+Tengo un plan que podría incrementar la visibilidad y conversión en tus principales cadenas de retail.
+¿Te va bien una llamada esta semana para mostrártelo?
+Saludos
+
+
+
+La salida debe ser únicamente el texto del cuerpo del correo, sin encabezado, sin firma, sin explicación.
 """
 
 # inicializar con ese por default
