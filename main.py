@@ -24,7 +24,6 @@ import pytesseract
 from pdf2image import convert_from_path
 
 
-global prompt_actual
 PROMPT_FILE = "prompt_chatgpt.txt"
 prompt_actual = ""  # se sobreescribe al inicio de la app
 # ───────── Prompt de Estrategia de Mails ─────────
@@ -339,6 +338,110 @@ acciones_realizadas = {
 }
 
 app.secret_key = "CLAVE_SECRETA_PARA_SESSION"  # si deseas usar session
+
+
+
+#Prompts
+prompt_strategy = """
+Quiero que actúes como un especialista en ventas B2B con enfoque en generación de citas de alto valor. 
+Tu tarea es redactar correos fríos personalizados, breves y efectivos, siguiendo la fórmula “25% Reply Rate Email Formula”.
+📌 CONTEXTO DE LOS DATOS (INPUTS)
+Estoy trabajando con una tabla que contiene información de prospectos, con las siguientes columnas clave:
+First name
+Last name
+Title → Puesto del prospecto (ej. Director de Marketing)
+Company Name
+Company Industry → Industria específica en la que opera
+Location → Ciudad, estado o país
+Propuesta de valor de mi empresa → Texto o resumen de la solución que quiero ofrecer (puede ser distinto por segmento)
+(Opcional, se obtiene del scrapping) Caso de éxito relevante → Referencia breve a un cliente similar con un resultado medible
+
+📩 OBJETIVO DEL CORREO
+El correo debe estar diseñado para obtener una respuesta que derive en una llamada o reunión.
+
+🧱 ESTRUCTURA QUE DEBES USAR
+[Personalización]
+ Comienza con una frase relevante basada en el puesto, empresa, logros públicos o tipo de industria del prospecto. Puede provenir de su LinkedIn, sitio web o de su contexto empresarial.
+
+[Nuestra propuesta de valor]
+ Resume qué hace nuestra empresa y cómo puede ayudar a ese tipo de perfil, industria o empresa.
+
+[Segmentación clara]
+ Menciona de forma específica el tipo de empresa, ubicación o función del prospecto para que sienta que el mensaje fue escrito para él.
+
+[Objetivo o desafío del prospecto]
+ Muestra que comprendes lo que esa persona quiere lograr (ej. más visibilidad, eficiencia, ventas, automatización, control, etc.).
+
+[Caso de uso o promesa] (opcional)
+ Si tienes un caso de éxito relevante o un resultado similar, menciona de forma breve el beneficio logrado.
+
+[Cliffhanger + CTA]
+ Cierra con una invitación clara y directa a agendar una llamada o revisar un plan diseñado para ese tipo de empresa.
+
+✍️ INSTRUCCIONES DE ESTILO
+Longitud máxima: 130 palabras
+Tono: Profesional, directo y personalizado
+Evita lenguaje genérico o plantillado
+Escribe como si lo fueras a mandar a un tomador de decisión ocupado
+
+✅ INPUTS
+
+Info del contacto:
+Nombre: {row.get("First name", "-")}
+Puesto: {row.get("Title", "-")}
+Area: {row.get("Area", "(no se sabe)")}
+Departamento: {row.get("Departamento", "(no se sabe)")}
+Nivel Jerarquico: {row.get("Nivel Jerarquico", "(no se sabe)")}
+Company Name: {row.get("Company Name", "(no se sabe)")}
+Company Industry: {row.get("Company Industry", "-")}
+Location: {row.get("Location", "-")}
+scrapping de web del contacto: ({cortar_al_limite(str(row.get('scrapping', '-')), 3000)} {cortar_al_limite(str(row.get('Scrapping Adicional', '-')), 3000)})
+
+Info de nosotros:
+Propuesta de valor de mi empresa: {descripcion_proveedor}
+Caso de éxito: (Opcional, en base al scrapp del contacto)
+scrapping de nuestra web: {plan_estrategico}
+
+
+✅ EJEMPLO DE OUTPUT ESPERADO (no uses estos datos, son solo de ejemplo)
+Hola Jonathan,
+Vi que lideras Trade Marketing y Category Management en Alpura, una marca clave en la industria láctea mexicana.
+Desde MARKETPRO, ayudamos a directores como tú a mejorar la eficiencia en la ejecución y control en punto de venta, creando experiencias consistentes en canales físicos y digitales.
+Trabajamos con empresas de consumo como la tuya para perfeccionar la conexión con el shopper, reforzando estrategia de marca con ejecución en PDV, capacitación y marketing omnicanal.
+Tengo un plan que podría incrementar la visibilidad y conversión en tus principales cadenas de retail.
+¿Te va bien una llamada esta semana para mostrártelo?
+Saludos
+
+
+
+La salida debe ser únicamente el texto del cuerpo del correo, sin encabezado, sin firma, sin explicación.
+"""
+
+# inicializar prompt strategy
+prompt_strategy_default = """
+Quiero que actúes como un especialista en ventas B2B con enfoque en generación de citas de alto valor.
+Tu tarea es redactar correos fríos personalizados, breves y efectivos, siguiendo la fórmula “25% Reply Rate Email Formula”.
+
+Info del contacto:
+Nombre: {first_name}
+Puesto: {title}
+Area: {area}
+Departamento: {departamento}
+Nivel Jerarquico: {nivel_jerarquico}
+Company Name: {company_name}
+Company Industry: {company_industry}
+Location: {location}
+scrapping de web del contacto: ({scrapping_contact})
+
+Info de nosotros:
+Propuesta de valor de mi empresa: {propuesta_valor}
+scrapping de nuestra web: {plan_estrategico}
+"""
+
+# inicializar con ese por default
+prompt_strategy = prompt_strategy_default
+
+
 
 # DataFrame principal
 df_leads = pd.DataFrame()
@@ -821,80 +924,24 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
         }
 #Prompts individuales
 def prompt_reply_rate_email(row: pd.Series) -> str:
-    return f"""
-Quiero que actúes como un especialista en ventas B2B con enfoque en generación de citas de alto valor. 
-Tu tarea es redactar correos fríos personalizados, breves y efectivos, siguiendo la fórmula “25% Reply Rate Email Formula”.
-📌 CONTEXTO DE LOS DATOS (INPUTS)
-Estoy trabajando con una tabla que contiene información de prospectos, con las siguientes columnas clave:
-First name
-Last name
-Title → Puesto del prospecto (ej. Director de Marketing)
-Company Name
-Company Industry → Industria específica en la que opera
-Location → Ciudad, estado o país
-Propuesta de valor de mi empresa → Texto o resumen de la solución que quiero ofrecer (puede ser distinto por segmento)
-(Opcional, se obtiene del scrapping) Caso de éxito relevante → Referencia breve a un cliente similar con un resultado medible
 
-📩 OBJETIVO DEL CORREO
-El correo debe estar diseñado para obtener una respuesta que derive en una llamada o reunión.
+    # Aquí reemplazas tus "tags" en el prompt_strategy
+    prompt = prompt_strategy.format(
+        first_name=row.get("First name", "-"),
+        title=row.get("Title", "-"),
+        area=row.get("Area", "(no se sabe)"),
+        departamento=row.get("Departamento", "(no se sabe)"),
+        nivel_jerarquico=row.get("Nivel Jerarquico", "(no se sabe)"),
+        company_name=row.get("Company Name", "(no se sabe)"),
+        company_industry=row.get("Company Industry", "-"),
+        location=row.get("Location", "-"),
+        scrapping_contact=f"{cortar_al_limite(str(row.get('scrapping', '-')), 3000)} {cortar_al_limite(str(row.get('Scrapping Adicional', '-')), 3000)}",
+        propuesta_valor=descripcion_proveedor,
+        plan_estrategico=plan_estrategico
+    )
 
-🧱 ESTRUCTURA QUE DEBES USAR
-[Personalización]
- Comienza con una frase relevante basada en el puesto, empresa, logros públicos o tipo de industria del prospecto. Puede provenir de su LinkedIn, sitio web o de su contexto empresarial.
+    return prompt
 
-[Nuestra propuesta de valor]
- Resume qué hace nuestra empresa y cómo puede ayudar a ese tipo de perfil, industria o empresa.
-
-[Segmentación clara]
- Menciona de forma específica el tipo de empresa, ubicación o función del prospecto para que sienta que el mensaje fue escrito para él.
-
-[Objetivo o desafío del prospecto]
- Muestra que comprendes lo que esa persona quiere lograr (ej. más visibilidad, eficiencia, ventas, automatización, control, etc.).
-
-[Caso de uso o promesa] (opcional)
- Si tienes un caso de éxito relevante o un resultado similar, menciona de forma breve el beneficio logrado.
-
-[Cliffhanger + CTA]
- Cierra con una invitación clara y directa a agendar una llamada o revisar un plan diseñado para ese tipo de empresa.
-
-✍️ INSTRUCCIONES DE ESTILO
-Longitud máxima: 130 palabras
-Tono: Profesional, directo y personalizado
-Evita lenguaje genérico o plantillado
-Escribe como si lo fueras a mandar a un tomador de decisión ocupado
-
-✅ INPUTS
-
-Info del contacto:
-Nombre: {row.get("First name", "-")}
-Puesto: {row.get("Title", "-")}
-Area: {row.get("Area", "(no se sabe)")}
-Departamento: {row.get("Departamento", "(no se sabe)")}
-Nivel Jerarquico: {row.get("Nivel Jerarquico", "(no se sabe)")}
-Company Name: {row.get("Company Name", "(no se sabe)")}
-Company Industry: {row.get("Company Industry", "-")}
-Location: {row.get("Location", "-")}
-scrapping de web del contacto: ({cortar_al_limite(str(row.get('scrapping', '-')), 3000)} {cortar_al_limite(str(row.get('Scrapping Adicional', '-')), 3000)})
-
-Info de nosotros:
-Propuesta de valor de mi empresa: {descripcion_proveedor}
-Caso de éxito: (Opcional, en base al scrapp del contacto)
-scrapping de nuestra web: {plan_estrategico}
-
-
-✅ EJEMPLO DE OUTPUT ESPERADO (no uses estos datos, son solo de ejemplo)
-Hola Jonathan,
-Vi que lideras Trade Marketing y Category Management en Alpura, una marca clave en la industria láctea mexicana.
-Desde MARKETPRO, ayudamos a directores como tú a mejorar la eficiencia en la ejecución y control en punto de venta, creando experiencias consistentes en canales físicos y digitales.
-Trabajamos con empresas de consumo como la tuya para perfeccionar la conexión con el shopper, reforzando estrategia de marca con ejecución en PDV, capacitación y marketing omnicanal.
-Tengo un plan que podría incrementar la visibilidad y conversión en tus principales cadenas de retail.
-¿Te va bien una llamada esta semana para mostrártelo?
-Saludos
-
-
-
-La salida debe ser únicamente el texto del cuerpo del correo, sin encabezado, sin firma, sin explicación.
-"""
 
 def prompt_one_sentence_email(row: pd.Series) -> str:
     return f"""creame un mail de one_sentence_email""" 
@@ -1111,6 +1158,8 @@ def index():
     global descripcion_proveedor, productos_proveedor, mercado_proveedor, icp_proveedor
     global prompt_actual
     global prompt_mails
+    global prompt_strategy
+    global prompt_mails
     status_msg = ""
     
     url_proveedor_global = ""  # Moveremos esto a variable local
@@ -1122,19 +1171,21 @@ def index():
             prompt_actual = nuevo_prompt
             status_msg += "✅ Prompt actualizado en memoria.<br>"
 
-        elif accion == "reiniciar_prompt_chatgpt":
-            prompt_actual = cargar_prompt_original()
-            status_msg += "♻️ Prompt reiniciado desde el archivo original.<br>"
+        elif accion == "guardar_prompt_strategy":
+            
+            prompt_strategy = request.form.get("prompt_strategy", "").strip()
         elif accion == "guardar_prompt_mails":
+            
+            prompt_strategy = request.form.get("prompt_strategy", "").strip()
             nuevo = request.form.get("prompt_mails", "").strip()
             prompt_mails = nuevo
             guardar_prompt_mails_en_archivo(nuevo)
             status_msg += "✅ Prompt de mails de estrategia actualizado.<br>"
 
-        elif accion == "reiniciar_prompt_mails":
-            prompt_mails = cargar_prompt_mails_original()
-            status_msg += "♻️ Prompt de mails de estrategia reiniciado.<br>"
-
+        elif accion == "reiniciar_prompt_strategy":
+            
+            prompt_strategy = prompt_strategy_default
+            status_msg += "♻️ Prompt strategy reiniciado a valor original.<br>"
         if accion == "clasificar_global":
             if os.path.exists("catalogopuesto.xlsx"):
                 try:
@@ -1265,7 +1316,18 @@ def index():
                     status_msg += "No hay datos para clasificar o falta el archivo catalogoindustrias.csv.<br>"
             except Exception as e:
                 status_msg += f"Error al clasificar industrias: {e}<br>"
-    
+        
+        #Gardar edición de prompt
+        if accion == "guardar_prompt_strategy":
+            nuevo_prompt = request.form.get("prompt_strategy", "").strip()
+            
+            prompt_strategy = nuevo_prompt
+            status_msg += "✅ Prompt de strategy guardado en memoria.<br>"
+        if accion == "reiniciar_prompt_strategy":
+            
+            prompt_strategy = prompt_strategy_default
+            status_msg += "Reiniciar Prompt.<br>"
+                
                 
         if accion == "guardar_custom_fields":
             propuesta_valor = request.form.get("propuesta_valor", "").strip()
@@ -1412,6 +1474,7 @@ def index():
 
                 for k in acciones_realizadas:
                     acciones_realizadas[k] = False
+                                   
                 orden_columnas = [
                     "Logo",
                     "Company Name",
@@ -1437,7 +1500,14 @@ def index():
                     "Company Linkedin Url"
                 ]
 
-                df_leads = df_leads[orden_columnas]                    
+                df_leads = df_leads[orden_columnas]  
+                if "scrapping" not in df_leads.columns:
+                    df_leads["scrapping"] = "-"
+                if "URLs on WEB" not in df_leads.columns:
+                    df_leads["URLs on WEB"] = "-"
+                if "Scrapping Adicional" not in df_leads.columns:
+                    df_leads["Scrapping Adicional"] = "-"
+                                                
                 
 
             except Exception as e:
@@ -1546,6 +1616,11 @@ def index():
   
         if accion == "scrapp_leads_on":
             print(f"[INFO] Scraping paralelo iniciado")
+            for col in ["scrapping", "URLs on WEB", "Scrapping Adicional",
+                        "Descripcion", "PyS", "Objetivo"]:
+                if col not in df_leads.columns:
+                    df_leads[col] = "-"
+        
             if df_leads.empty:
                 status_msg += "No hay leads para aplicar scraping tras scrap del proveedor.<br>"
             else:
@@ -1699,6 +1774,51 @@ def index():
     prompt_chatgpt = cargar_prompt_desde_archivo()   
     num_leads_cargados = len(df_leads) if not df_leads.empty else 0
 
+    #filtros
+    industrias = ["Finance","Technology","Education","Retail","Retail Manufacturing",
+                "Professional Services","Hotel and Travel","Health","Industrial Manufacturing",
+                "Construction","Logistics","Marketing Services","Automotive","Entertainment",
+                "Restaurants","Human Resources","Government","Real Estate","Consumer Services",
+                "Telco","Energy","ONG","Media","Industrial","Legal","Environmental","Public Services"]
+    industria_options_html = "".join([f'<option value="{i}">{i}</option>' for i in industrias])
+    areas = ["Comercial","Dirección General","Operaciones","Marketing","Recursos Humanos",
+            "Finanzas","Tecnología","Académica","Administración","Producto","Jurídico",
+            "Salud","Construcción","Producción Artistica","Municipio"]
+
+    area_options_html = "".join([f'<option value="{a}">{a}</option>' for a in areas])
+    departamentos = ["Ventas","Rectoria","Operaciones","Presidencia","Compras","Dirección General",
+                    "Marketing","Desarrollo de Software","Recursos Humanos","Ventas regionales",
+                    "Profesores","Retail","Finanzas","Ecommerce","Servicio al Cliente","Logística",
+                    "Administración","Consejo de Administración","Seguridad","Tecnología",
+                    "Contraloría","Practicas Profesionales","Calidad","Trade Marketing","Produccion",
+                    "Desarrollo de Personal","Contabilidad","Networker","Comercailización",
+                    "Business Intelligence","Branding","Contratos y Litigios","Mantenimiento",
+                    "Almacén","Tecnología de la Infromacion","Comunicación","Reclutamiento y Selección",
+                    "Cocina","Cuentas","Medios Publicitarios","Médico","Contenidos",
+                    "Regulatorio y Cumplimiento","Compensaciones","Eventos y Patrocinios",
+                    "SEO / SEM / Medios Digitales","Operaciones Aéreas","Cobranza","Farmacia",
+                    "Control de Riesgos","Infraestructura TI","Tesorería","Creativo",
+                    "Revenue Management","KAM","Inversiones","Growth Marketing","Expansión",
+                    "Construcción","Desarrollo de Producto","Producción Audiovisual",
+                    "Distribución y Transporte","Crédito","Innovación","Project Management",
+                    "CRM","Investigación","Nómina","Caja","Sustentabilidad","Seguridad e Higiene",
+                    "Recepción","Actuación","Desarrollo de Negocio","Seguridad de la Informacion",
+                    "Presidencia Municipal","Agente de Viajes","Desarrollo Web","Investigación y Desarrollo",
+                    "Psicología","Fiduciario","Transformación Digital","Ventas Mayoreo","Nutrición",
+                    "Agente Inmobiliario","Redes Sociales","Wellness","Digital Marketing","UX / UI",
+                    "Alianzas Estratégicas","Cuentas por Pagar","Planeacion Financiera","Profesor Decano",
+                    "Base de Datos","Pérdidas y Mermas","Preventa","Servicio al cliente","Doctorado",
+                    "Ventas Telefónicas","Mesa de Control","Relaciones Públicas","Finanzas Corporativas",
+                    "Planeación Estratégica","Soporte Técnico","Protección de Datos",
+                    "Investigación de Mercados","Agente de Seguros","Chofer","Ingeniería",
+                    "Desarrollo web","Dirección General Adjunta"]
+    tamanos = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001-10,000", "10,000+"]
+    departamento_options_html = "".join([f'<option value="{d}">{d}</option>' for d in departamentos])
+    industria_options_html = "".join([f'<option value="{i.strip()}">{i.strip()}</option>' for i in industrias])
+    area_options_html = "".join([f'<option value="{a.strip()}">{a.strip()}</option>' for a in areas])
+    departamento_options_html = "".join([f'<option value="{d.strip()}">{d.strip()}</option>' for d in departamentos])
+    tamano_options_html = "".join([f'<option value="{d.strip()}">{d.strip()}</option>' for d in tamanos])
+    
     page_html = f"""
     <html>
     <head>
@@ -1978,11 +2098,24 @@ def index():
             .custom-file-upload:hover {{
                 background: linear-gradient(45deg, #005599, #003366);
                 opacity: 0.9;
-            }}          
+            }}  
+            .select2-results__option {{
+                color: #000 !important;
+                background-color: #fff !important;
+            }}
+
+            .select2-results__option--highlighted {{
+                background-color: #888 !important;
+                color: #fff !important;
+            }}             
+
         </style>
     </head>
     <body>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
         <div style="
                 display: flex;
@@ -2269,6 +2402,9 @@ def index():
             <option value="2 - 10">2 - 10</option>
             <option value="1.0">1.0</option>
         </select>
+
+
+
         <label>Número máximo de filas:</label>
         <input type="number" name="max_rows" min="1" placeholder="100" />
 
@@ -2411,13 +2547,36 @@ def index():
     </form>
 
     </details>
+<details>
+    <summary style="cursor:pointer; font-weight: bold;"><img src="/static/icons/artificial-intelligence_atomic.png" class="icon" alt="icono db"> Edición Prompt </summary> 
+        <details>
+            <summary style="cursor:pointer; font-weight: bold;"><img src="/static/icons/artificial-intelligence_atomic.png" class="icon" alt="icono db"> Edición Prompt </summary>    
+            <div style="margin-top:30px;">
+                <h3>✍️ Prompt para Strategy - Reply Rate Email</h3>
+                <form method="POST">
+                    <input type="hidden" name="accion" value="guardar_prompt_strategy" />
+                    <textarea name="prompt_strategy" rows="10" style="width:100%;border-radius:10px;">{prompt_strategy}</textarea>
+                    <button type="submit" style="margin-top:10px;">
+                        💾 Guardar Strategy Prompt
+                    </button>
+                </form>
+                <form method="POST" style="flex:1;">
+                    <input type="hidden" name="accion" value="reiniciar_prompt_strategy" />
+                    <button type="submit" style="width:100%;">
+                        ♻️ Reiniciar prompt
+                    </button>
+                </form>
+            </div>
+        </details>
     <form method="POST">
         <input type="hidden" name="accion" value="generar_tabla"/>
         <button type="submit" style="background-color: {{ 'green' if acciones_realizadas['generar_tabla'] else '#1E90FF' }};">
             <img src="/static/icons/artificial-intelligence_atomic.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">
             Generar Mails con I.A.
         </button>
-    </form>    
+    </form> 
+</details>    
+   
     <!--
     <details>
     <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/db.png" class="icon" alt="icono db"> Edición de IA Prompts</summary>           
@@ -2477,6 +2636,7 @@ def index():
         <h3 style="color: white;">Total registros cargados: {num_leads_cargados}</h3>
         {tabla_html(df_leads,50)}
     </div>
+
     </div>
     <script>
     document.getElementById("pdf_plan_estrategico").addEventListener("change", function () {{
