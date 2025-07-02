@@ -22,9 +22,9 @@ from pdfminer.high_level import extract_text
 from PIL import Image
 import pytesseract
 from pdf2image import convert_from_path
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-
-global prompt_actual
 PROMPT_FILE = "prompt_chatgpt.txt"
 prompt_actual = ""  # se sobreescribe al inicio de la app
 # ───────── Prompt de Estrategia de Mails ─────────
@@ -267,33 +267,6 @@ def decrypt_api_key(encrypted_data: bytes) -> str:
     decrypted_bytes = f.decrypt(encrypted_data)
     return decrypted_bytes.decode("utf-8")
 
-def scrapear_linkedin_empresa(linkedin_url: str) -> str:
-    """
-    Hace scraping de un perfil público de empresa en LinkedIn.
-    Extrae texto visible en la descripción o secciones relevantes.
-    """
-    linkedin_url = _asegurar_https(linkedin_url)
-    try:
-        if "linkedin.com/company/" not in linkedin_url:
-            return "-"
-        headers = {
-            "User-Agent": "Mozilla/5.0",
-        }
-        resp = requests.get(linkedin_url, headers=headers, timeout=10)
-        if resp.status_code != 200:
-            print(f"[ERROR] LinkedIn HTTP {resp.status_code} para {linkedin_url}")
-            return "-"
-
-        soup = BeautifulSoup(resp.text, "html.parser")
-        texto = soup.get_text(separator=" ", strip=True)
-        limpio = _limpiar_caracteres_raros(texto)
-        return limpio[:1500]  # Puedes ajustar el tamaño máximo
-
-    except Exception as e:
-        print(f"[ERROR] al scrapear LinkedIn {linkedin_url}:", e)
-        return "-"
-
-
 def load_api_key_from_file(file_path: str) -> str:
     """
     Lee el contenido cifrado de 'api.txt' y lo desencripta.
@@ -317,8 +290,6 @@ except Exception as e:
     HARDCODED_API_KEY = ""
     print("[ERROR]", e)
     
-
-
 ###############################
 # Inicializar el cliente
 ###############################
@@ -339,6 +310,165 @@ acciones_realizadas = {
 }
 
 app.secret_key = "CLAVE_SECRETA_PARA_SESSION"  # si deseas usar session
+
+
+
+#Prompts
+prompt_strategy = """
+Quiero que actúes como un especialista en ventas B2B con enfoque en generación de citas de alto valor. 
+Tu tarea es redactar correos fríos personalizados, breves y efectivos, siguiendo la fórmula “25% Reply Rate Email Formula”.
+📌 CONTEXTO DE LOS DATOS (INPUTS)
+Estoy trabajando con una tabla que contiene información de prospectos, con las siguientes columnas clave:
+First name
+Last name
+Title → Puesto del prospecto (ej. Director de Marketing)
+Company Name
+Company Industry → Industria específica en la que opera
+Location → Ciudad, estado o país
+Propuesta de valor de mi empresa → Texto o resumen de la solución que quiero ofrecer (puede ser distinto por segmento)
+(Opcional, se obtiene del scrapping) Caso de éxito relevante → Referencia breve a un cliente similar con un resultado medible
+
+📩 OBJETIVO DEL CORREO
+El correo debe estar diseñado para obtener una respuesta que derive en una llamada o reunión.
+
+🧱 ESTRUCTURA QUE DEBES USAR
+[Personalización]
+ Comienza con una frase relevante basada en el puesto, empresa, logros públicos o tipo de industria del prospecto. Puede provenir de su LinkedIn, sitio web o de su contexto empresarial.
+
+[Nuestra propuesta de valor]
+ Resume qué hace nuestra empresa y cómo puede ayudar a ese tipo de perfil, industria o empresa.
+
+[Segmentación clara]
+ Menciona de forma específica el tipo de empresa, ubicación o función del prospecto para que sienta que el mensaje fue escrito para él.
+
+[Objetivo o desafío del prospecto]
+ Muestra que comprendes lo que esa persona quiere lograr (ej. más visibilidad, eficiencia, ventas, automatización, control, etc.).
+
+[Caso de uso o promesa] (opcional)
+ Si tienes un caso de éxito relevante o un resultado similar, menciona de forma breve el beneficio logrado.
+
+[Cliffhanger + CTA]
+ Cierra con una invitación clara y directa a agendar una llamada o revisar un plan diseñado para ese tipo de empresa.
+
+✍️ INSTRUCCIONES DE ESTILO
+Longitud máxima: 130 palabras
+Tono: Profesional, directo y personalizado
+Evita lenguaje genérico o plantillado
+Escribe como si lo fueras a mandar a un tomador de decisión ocupado
+
+✅ INPUTS
+
+Info del contacto:
+Nombre: {row.get("First name", "-")}
+Puesto: {row.get("Title", "-")}
+Area: {row.get("Area", "(no se sabe)")}
+Departamento: {row.get("Departamento", "(no se sabe)")}
+Nivel Jerarquico: {row.get("Nivel Jerarquico", "(no se sabe)")}
+Company Name: {row.get("Company Name", "(no se sabe)")}
+Company Industry: {row.get("Company Industry", "-")}
+Location: {row.get("Location", "-")}
+scrapping de web del contacto: ({cortar_al_limite(str(row.get('scrapping', '-')), 3000)} {cortar_al_limite(str(row.get('Scrapping Adicional', '-')), 3000)})
+
+Info de nosotros:
+Propuesta de valor de mi empresa: {descripcion_proveedor}
+Caso de éxito: (Opcional, en base al scrapp del contacto)
+scrapping de nuestra web: {plan_estrategico}
+
+
+✅ EJEMPLO DE OUTPUT ESPERADO (no uses estos datos, son solo de ejemplo)
+Hola Jonathan,
+Vi que lideras Trade Marketing y Category Management en Alpura, una marca clave en la industria láctea mexicana.
+Desde MARKETPRO, ayudamos a directores como tú a mejorar la eficiencia en la ejecución y control en punto de venta, creando experiencias consistentes en canales físicos y digitales.
+Trabajamos con empresas de consumo como la tuya para perfeccionar la conexión con el shopper, reforzando estrategia de marca con ejecución en PDV, capacitación y marketing omnicanal.
+Tengo un plan que podría incrementar la visibilidad y conversión en tus principales cadenas de retail.
+¿Te va bien una llamada esta semana para mostrártelo?
+Saludos
+
+
+
+La salida debe ser únicamente el texto del cuerpo del correo, sin encabezado, sin firma, sin explicación.
+"""
+
+# inicializar prompt strategy
+prompt_strategy_default = """
+Quiero que actúes como un especialista en ventas B2B con enfoque en generación de citas de alto valor. 
+Tu tarea es redactar correos fríos personalizados, breves y efectivos, siguiendo la fórmula “25% Reply Rate Email Formula”.
+📌 CONTEXTO DE LOS DATOS (INPUTS)
+Estoy trabajando con una tabla que contiene información de prospectos, con las siguientes columnas clave:
+First name
+Last name
+Title → Puesto del prospecto (ej. Director de Marketing)
+Company Name
+Company Industry → Industria específica en la que opera
+Location → Ciudad, estado o país
+Propuesta de valor de mi empresa → Texto o resumen de la solución que quiero ofrecer (puede ser distinto por segmento)
+(Opcional, se obtiene del scrapping) Caso de éxito relevante → Referencia breve a un cliente similar con un resultado medible
+
+📩 OBJETIVO DEL CORREO
+El correo debe estar diseñado para obtener una respuesta que derive en una llamada o reunión.
+
+🧱 ESTRUCTURA QUE DEBES USAR
+[Personalización]
+ Comienza con una frase relevante basada en el puesto, empresa, logros públicos o tipo de industria del prospecto. Puede provenir de su LinkedIn, sitio web o de su contexto empresarial.
+
+[Nuestra propuesta de valor]
+ Resume qué hace nuestra empresa y cómo puede ayudar a ese tipo de perfil, industria o empresa.
+
+[Segmentación clara]
+ Menciona de forma específica el tipo de empresa, ubicación o función del prospecto para que sienta que el mensaje fue escrito para él.
+
+[Objetivo o desafío del prospecto]
+ Muestra que comprendes lo que esa persona quiere lograr (ej. más visibilidad, eficiencia, ventas, automatización, control, etc.).
+
+[Caso de uso o promesa] (opcional)
+ Si tienes un caso de éxito relevante o un resultado similar, menciona de forma breve el beneficio logrado.
+
+[Cliffhanger + CTA]
+ Cierra con una invitación clara y directa a agendar una llamada o revisar un plan diseñado para ese tipo de empresa.
+
+✍️ INSTRUCCIONES DE ESTILO
+Longitud máxima: 130 palabras
+Tono: Profesional, directo y personalizado
+Evita lenguaje genérico o plantillado
+Escribe como si lo fueras a mandar a un tomador de decisión ocupado
+
+✅ INPUTS
+
+Info del contacto:
+Nombre: {row.get("First name", "-")}
+Puesto: {row.get("Title", "-")}
+Area: {row.get("Area", "(no se sabe)")}
+Departamento: {row.get("Departamento", "(no se sabe)")}
+Nivel Jerarquico: {row.get("Nivel Jerarquico", "(no se sabe)")}
+Company Name: {row.get("Company Name", "(no se sabe)")}
+Company Industry: {row.get("Company Industry", "-")}
+Location: {row.get("Location", "-")}
+scrapping de web del contacto: ({cortar_al_limite(str(row.get('scrapping', '-')), 3000)} {cortar_al_limite(str(row.get('Scrapping Adicional', '-')), 3000)})
+
+Info de nosotros:
+Propuesta de valor de mi empresa: {descripcion_proveedor}
+Caso de éxito: (Opcional, en base al scrapp del contacto)
+scrapping de nuestra web: {plan_estrategico}
+
+
+✅ EJEMPLO DE OUTPUT ESPERADO (no uses estos datos, son solo de ejemplo)
+Hola Jonathan,
+Vi que lideras Trade Marketing y Category Management en Alpura, una marca clave en la industria láctea mexicana.
+Desde MARKETPRO, ayudamos a directores como tú a mejorar la eficiencia en la ejecución y control en punto de venta, creando experiencias consistentes en canales físicos y digitales.
+Trabajamos con empresas de consumo como la tuya para perfeccionar la conexión con el shopper, reforzando estrategia de marca con ejecución en PDV, capacitación y marketing omnicanal.
+Tengo un plan que podría incrementar la visibilidad y conversión en tus principales cadenas de retail.
+¿Te va bien una llamada esta semana para mostrártelo?
+Saludos
+
+
+
+La salida debe ser únicamente el texto del cuerpo del correo, sin encabezado, sin firma, sin explicación.
+"""
+
+# inicializar con ese por default
+prompt_strategy = prompt_strategy_default
+
+
 
 # DataFrame principal
 df_leads = pd.DataFrame()
@@ -819,95 +949,46 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
         return {
 
         }
-#Prompts individuales
-def prompt_reply_rate_email(row: pd.Series) -> str:
-    return f"""
-Quiero que actúes como un especialista en ventas B2B con enfoque en generación de citas de alto valor. 
-Tu tarea es redactar correos fríos personalizados, breves y efectivos, siguiendo la fórmula “25% Reply Rate Email Formula”.
-📌 CONTEXTO DE LOS DATOS (INPUTS)
-Estoy trabajando con una tabla que contiene información de prospectos, con las siguientes columnas clave:
-First name
-Last name
-Title → Puesto del prospecto (ej. Director de Marketing)
-Company Name
-Company Industry → Industria específica en la que opera
-Location → Ciudad, estado o país
-Propuesta de valor de mi empresa → Texto o resumen de la solución que quiero ofrecer (puede ser distinto por segmento)
-(Opcional, se obtiene del scrapping) Caso de éxito relevante → Referencia breve a un cliente similar con un resultado medible
+#
+def prompt_reply_rate_email(row: dict) -> str:
+    return prompt_strategy.replace(
+        "{row.get(\"First name\", \"-\")}", row.get("First name", "-")
+    ).replace(
+        "{row.get(\"Title\", \"-\")}", row.get("Title", "-")
+    ).replace(
+        "{row.get(\"Area\", \"(no se sabe)\")}", row.get("Area", "(no se sabe)")
+    ).replace(
+        "{row.get(\"Departamento\", \"(no se sabe)\")}", row.get("Departamento", "(no se sabe)")
+    ).replace(
+        "{row.get(\"Nivel Jerarquico\", \"(no se sabe)\")}", row.get("Nivel Jerarquico", "(no se sabe)")
+    ).replace(
+        "{row.get(\"Company Name\", \"(no se sabe)\")}", row.get("Company Name", "(no se sabe)")
+    ).replace(
+        "{row.get(\"Company Industry\", \"-\")}", row.get("Company Industry", "-")
+    ).replace(
+        "{row.get(\"Location\", \"-\")}", row.get("Location", "-")
+    ).replace(
+        "{cortar_al_limite(str(row.get('scrapping', '-')), 3000)}", cortar_al_limite(str(row.get('scrapping', '-')), 3000)
+    ).replace(
+        "{cortar_al_limite(str(row.get('Scrapping Adicional', '-')), 3000)}", cortar_al_limite(str(row.get('Scrapping Adicional', '-')), 3000)
+    ).replace(
+        "{descripcion_proveedor}", descripcion_proveedor
+    ).replace(
+        "{plan_estrategico}", plan_estrategico
+    )
 
-📩 OBJETIVO DEL CORREO
-El correo debe estar diseñado para obtener una respuesta que derive en una llamada o reunión.
-
-🧱 ESTRUCTURA QUE DEBES USAR
-[Personalización]
- Comienza con una frase relevante basada en el puesto, empresa, logros públicos o tipo de industria del prospecto. Puede provenir de su LinkedIn, sitio web o de su contexto empresarial.
-
-[Nuestra propuesta de valor]
- Resume qué hace nuestra empresa y cómo puede ayudar a ese tipo de perfil, industria o empresa.
-
-[Segmentación clara]
- Menciona de forma específica el tipo de empresa, ubicación o función del prospecto para que sienta que el mensaje fue escrito para él.
-
-[Objetivo o desafío del prospecto]
- Muestra que comprendes lo que esa persona quiere lograr (ej. más visibilidad, eficiencia, ventas, automatización, control, etc.).
-
-[Caso de uso o promesa] (opcional)
- Si tienes un caso de éxito relevante o un resultado similar, menciona de forma breve el beneficio logrado.
-
-[Cliffhanger + CTA]
- Cierra con una invitación clara y directa a agendar una llamada o revisar un plan diseñado para ese tipo de empresa.
-
-✍️ INSTRUCCIONES DE ESTILO
-Longitud máxima: 130 palabras
-Tono: Profesional, directo y personalizado
-Evita lenguaje genérico o plantillado
-Escribe como si lo fueras a mandar a un tomador de decisión ocupado
-
-✅ INPUTS
-
-Info del contacto:
-Nombre: {row.get("First name", "-")}
-Puesto: {row.get("Title", "-")}
-Area: {row.get("Area", "(no se sabe)")}
-Departamento: {row.get("Departamento", "(no se sabe)")}
-Nivel Jerarquico: {row.get("Nivel Jerarquico", "(no se sabe)")}
-Company Name: {row.get("Company Name", "(no se sabe)")}
-Company Industry: {row.get("Company Industry", "-")}
-Location: {row.get("Location", "-")}
-scrapping de web del contacto: ({cortar_al_limite(str(row.get('scrapping', '-')), 3000)} {cortar_al_limite(str(row.get('Scrapping Adicional', '-')), 3000)})
-
-Info de nosotros:
-Propuesta de valor de mi empresa: {descripcion_proveedor}
-Caso de éxito: (Opcional, en base al scrapp del contacto)
-scrapping de nuestra web: {plan_estrategico}
-
-
-✅ EJEMPLO DE OUTPUT ESPERADO (no uses estos datos, son solo de ejemplo)
-Hola Jonathan,
-Vi que lideras Trade Marketing y Category Management en Alpura, una marca clave en la industria láctea mexicana.
-Desde MARKETPRO, ayudamos a directores como tú a mejorar la eficiencia en la ejecución y control en punto de venta, creando experiencias consistentes en canales físicos y digitales.
-Trabajamos con empresas de consumo como la tuya para perfeccionar la conexión con el shopper, reforzando estrategia de marca con ejecución en PDV, capacitación y marketing omnicanal.
-Tengo un plan que podría incrementar la visibilidad y conversión en tus principales cadenas de retail.
-¿Te va bien una llamada esta semana para mostrártelo?
-Saludos
-
-
-
-La salida debe ser únicamente el texto del cuerpo del correo, sin encabezado, sin firma, sin explicación.
-"""
-
-def prompt_one_sentence_email(row: pd.Series) -> str:
+def prompt_one_sentence_email(row: dict) -> str:
     return f"""creame un mail de one_sentence_email""" 
-def prompt_asking_for_introduction(row: pd.Series) -> str:
+def prompt_asking_for_introduction(row: dict) -> str:
     return f"""creame un mail de asking_for_introduction""" 
-def prompt_ask_for_permission(row: pd.Series) -> str:
+def prompt_ask_for_permission(row: dict) -> str:
     return f"""creame un mail de ask_for_permission""" 
-def prompt_loom_video(row: pd.Series) -> str:
+def prompt_loom_video(row: dict) -> str:
     return f"""creame un mail de loom_video""" 
-def prompt_free_sample_list(row: pd.Series) -> str:
+def prompt_free_sample_list(row: dict) -> str:
     return f"""creame un mail de loom_video""" 
 
-def generar_email_por_estrategia(row: pd.Series, prompt_func, col_name: str) -> str:
+def generar_email_por_estrategia(row: dict, prompt_func, col_name: str) -> str:
     if pd.notnull(row.get(col_name)) and row.get(col_name) != "-":
         return row.get(col_name)  # ya está generado
 
@@ -998,11 +1079,12 @@ def generar_contenido_para_todos(batch_size=10):
     for i in range(0, len(df_leads), batch_size):
         batch = df_leads.iloc[i:i+batch_size]
         for idx, row in batch.iterrows():
+            row_dict = row.to_dict()
             for col_name, prompt_func in estrategias:
                 try:
                     if pd.notnull(df_leads.at[idx, col_name]) and df_leads.at[idx, col_name] != "-":
                         continue  # Ya existe
-                    df_leads.at[idx, col_name] = generar_email_por_estrategia(row, prompt_func, col_name)
+                    df_leads.at[idx, col_name] = generar_email_por_estrategia(row_dict, prompt_func, col_name)
                 except Exception as e:
                     print(f"[ERROR] Falló idx={idx}, col={col_name}: {e}")
         print(f"[INFO] Procesado batch {i} a {i+batch_size-1}")
@@ -1066,18 +1148,20 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
     for _, row in subset.iterrows():
         row_html = ""
         for col in cols:
-            valor = str(row[col])
+            valor = str(row.get(col, "")).strip()
 
-            # Aquí adaptamos específicamente Linkedin y Company Linkedin Url
             if col in ["Linkedin", "Company Linkedin Url"]:
-                if pd.notnull(valor) and valor != "-" and valor.strip() != "":
+                if valor and pd.notna(valor) and valor != "-":
                     row_html += f"""<td><a href="{valor}" target="_blank">
                         <img src="/static/icons/linkedin.png" alt="LinkedIn" style="width:24px; height:24px;">
                     </a></td>"""
                 else:
                     row_html += "<td>-</td>"
-            elif col == "Logo" and pd.notnull(row[col]) and valor.strip().lower().startswith("http"):
-                row_html += f"<td><img src='{valor}' alt='Logo' style='max-height:40px;'/></td>"
+            elif col == "Logo":
+                if valor and pd.notna(valor) and valor.lower().startswith("http"):
+                    row_html += f"<td><img src='{valor}' alt='Logo' style='max-height:40px;'/></td>"
+                else:
+                    row_html += "<td>-</td>"
             else:
                 row_html += (
                     f"<td class='col-ancha'><div class='cell-collapsible'>{valor}</div></td>"
@@ -1085,6 +1169,7 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
                     f"<td><div class='cell-collapsible'>{valor}</div></td>"
                 )
         rows_html += f"<tr>{row_html}</tr>"
+
 
 
 
@@ -1111,6 +1196,8 @@ def index():
     global descripcion_proveedor, productos_proveedor, mercado_proveedor, icp_proveedor
     global prompt_actual
     global prompt_mails
+    global prompt_strategy
+    global prompt_mails
     status_msg = ""
     
     url_proveedor_global = ""  # Moveremos esto a variable local
@@ -1122,19 +1209,22 @@ def index():
             prompt_actual = nuevo_prompt
             status_msg += "✅ Prompt actualizado en memoria.<br>"
 
-        elif accion == "reiniciar_prompt_chatgpt":
-            prompt_actual = cargar_prompt_original()
-            status_msg += "♻️ Prompt reiniciado desde el archivo original.<br>"
+        elif accion == "guardar_prompt_strategy":
+            
+            prompt_strategy = request.form.get("prompt_strategy", "").strip()
         elif accion == "guardar_prompt_mails":
+            
+            prompt_strategy = request.form.get("prompt_strategy", "").strip()
             nuevo = request.form.get("prompt_mails", "").strip()
             prompt_mails = nuevo
             guardar_prompt_mails_en_archivo(nuevo)
             status_msg += "✅ Prompt de mails de estrategia actualizado.<br>"
 
-        elif accion == "reiniciar_prompt_mails":
-            prompt_mails = cargar_prompt_mails_original()
-            status_msg += "♻️ Prompt de mails de estrategia reiniciado.<br>"
-
+        elif accion == "reiniciar_prompt_strategy":
+            
+            prompt_strategy = prompt_strategy_default
+            status_msg += "♻️ Prompt strategy reiniciado a valor original.<br>"
+        
         if accion == "clasificar_global":
             if os.path.exists("catalogopuesto.xlsx"):
                 try:
@@ -1265,7 +1355,18 @@ def index():
                     status_msg += "No hay datos para clasificar o falta el archivo catalogoindustrias.csv.<br>"
             except Exception as e:
                 status_msg += f"Error al clasificar industrias: {e}<br>"
-    
+        
+        #Gardar edición de prompt
+        if accion == "guardar_prompt_strategy":
+            nuevo_prompt = request.form.get("prompt_strategy", "").strip()
+            
+            prompt_strategy = nuevo_prompt
+            status_msg += "✅ Prompt de strategy guardado en memoria.<br>"
+        if accion == "reiniciar_prompt_strategy":
+            
+            prompt_strategy = prompt_strategy_default
+            status_msg += "Reiniciar Prompt.<br>"
+                
                 
         if accion == "guardar_custom_fields":
             propuesta_valor = request.form.get("propuesta_valor", "").strip()
@@ -1295,21 +1396,6 @@ def index():
                 status_msg += f"Texto extraído desde {url_scrap_plan} para Plan Estratégico.<br>"
             except Exception as e:
                 status_msg += f"Error al hacer scraping de {url_scrap_plan}: {e}<br>"
-        
-        
-        if accion == "scrapear_linkedin_empresas":
-            if not df_leads.empty and "Company Linkedin Url" in df_leads.columns:
-                if "linkedin_description" not in df_leads.columns:
-                    df_leads["linkedin_description"] = "-"
-
-                for idx, row in df_leads.iterrows():
-                    linkedin_url = str(row.get("Company Linkedin Url", "")).strip()
-                    if linkedin_url:
-                        descripcion = scrapear_linkedin_empresa(linkedin_url)
-                        df_leads.at[idx, "linkedin_description"] = descripcion
-                status_msg += "Scraping de LinkedIn completado y guardado en 'linkedin_description'.<br>"
-            else:
-                status_msg += "No se encontró la columna 'Company Linkedin Url' o no hay datos.<br>"
 
         if accion == "extraer_redes_y_telefono":
             if not df_leads.empty:
@@ -1326,6 +1412,22 @@ def index():
                 status_msg += "Redes sociales y teléfonos extraídos desde los sitios web.<br>"
             else:
                 status_msg += "Carga primero tu base de leads para extraer redes y teléfonos.<br>"
+
+        if accion == "eliminar_columnas_emails":
+            columnas_a_borrar = [
+                "Strategy - Reply Rate Email",
+                "Strategy - One Sentence Email",
+                "Strategy - Asking for an Introduction",
+                "Strategy - Ask for Permission",
+                "Strategy - Loom Video",
+                "Strategy - Free Sample List"
+            ]
+            eliminadas = []
+            for col in columnas_a_borrar:
+                if col in df_leads.columns:
+                    df_leads.drop(columns=[col], inplace=True)
+                    eliminadas.append(col)
+            status_msg += f"🗑️ Columnas eliminadas: {', '.join(eliminadas)}<br>" if eliminadas else "No se encontraron columnas para eliminar.<br>"
 
        
         if accion == "cargar_contactos_db":
@@ -1412,6 +1514,7 @@ def index():
 
                 for k in acciones_realizadas:
                     acciones_realizadas[k] = False
+                                   
                 orden_columnas = [
                     "Logo",
                     "Company Name",
@@ -1437,7 +1540,30 @@ def index():
                     "Company Linkedin Url"
                 ]
 
-                df_leads = df_leads[orden_columnas]                    
+                # Solo las que existan en el dataframe
+                columnas_presentes = [col for col in orden_columnas if col in df_leads.columns]
+                otras_columnas = [col for col in df_leads.columns if col not in columnas_presentes]
+
+                # Reordenar el dataframe
+                df_leads = df_leads[columnas_presentes + otras_columnas]
+
+                # CHECAR MAPEOS
+                if 'First name' in df_leads.columns:
+                    mapeo_nombre_contacto = 'First name'
+                if 'Title' in df_leads.columns:
+                    mapeo_puesto = 'Title'
+                if 'Company Name' in df_leads.columns:
+                    mapeo_empresa = 'Company Name'
+                if 'Company Industry' in df_leads.columns:
+                    mapeo_industria = 'Company Industry'
+                if 'Company Website' in df_leads.columns:
+                    mapeo_website = 'Company Website'
+                if 'Location' in df_leads.columns:
+                    mapeo_location = 'Location'
+
+                for k in acciones_realizadas:
+                    acciones_realizadas[k] = False
+                                                
                 
 
             except Exception as e:
@@ -1478,7 +1604,68 @@ def index():
             if start_row > end_row:
                 start_row, end_row = 0, len(df_full) - 1
 
+
+
             df_leads = df_full.iloc[start_row:end_row+1].copy()
+            # Diccionario de mapeo
+            mapeo_columnas = {
+                "Company Name": "Company Name",
+                "Name": "Nombre",
+                "Title": "Title",
+                "First name": "First name",
+                "Last name": "Last name",
+                "Email": "Email",
+                "Linkedin": "Linkedin",
+                "Location": "Location",
+                "Company Domain": "Company Domain",
+                "Company Website": "Company Website",
+                "Company Employee Count Range": "Company Employee Count Range",
+                "Company Founded": "Company Founded",
+                "Company Industry": "Company Industry",
+                "Company Type": "Company Type",
+                "Company Headquarters": "Company Headquarters",
+                "Company Revenue Range": "Company Revenue Range",
+                "Company Linkedin Url": "Company Linkedin Url",
+                "Company Employee Count": "Company Employee Count",  # si quieres que estos unifiquen
+                "Company Crunchbase Url": "Company Crunchbase Url", # ejemplo (si quieres otro destino, cámbialo)
+                "Company Funding Rounds": "Company Funding Rounds", # lo mismo, cámbialo según tus reglas
+                "Company Last Funding Round Amount": "Company Last Funding Round Amount",
+                "Company Logo Url Primary": "Company Logo Url Primary",
+                "Company Logo Url Secondary": "Logo"
+            }
+
+            # Renombrar columnas existentes
+            df_leads.rename(columns={col: mapeo_columnas[col] for col in df_leads.columns if col in mapeo_columnas}, inplace=True)
+            
+            orden_columnas = [
+                "Logo",
+                "Company Name",
+                "Nombre",
+                "First name",
+                "Last name",
+                "Title",
+                "Nivel Jerarquico",
+                "Area",
+                "Departamento",
+                "Email",
+                "Linkedin",
+                "Location",
+                "Company Domain",
+                "Company Website",
+                "Company Employee Count Range",
+                "Company Founded",
+                "Company Industry",
+                "Industria Mayor",
+                "Company Type",
+                "Company Headquarters",
+                "Company Revenue Range",
+                "Company Linkedin Url"
+            ]
+            columnas_presentes = [col for col in orden_columnas if col in df_leads.columns]
+            otras_columnas = [col for col in df_leads.columns if col not in columnas_presentes]
+
+            # Aplicar el orden definitivo
+            df_leads = df_leads[columnas_presentes + otras_columnas].copy()
             for k in acciones_realizadas:
                 acciones_realizadas[k] = False
 
@@ -1546,23 +1733,24 @@ def index():
   
         if accion == "scrapp_leads_on":
             print(f"[INFO] Scraping paralelo iniciado")
+            df_leads.reset_index(drop=True, inplace=True)
+            for col in ["scrapping", "URLs on WEB", "Scrapping Adicional", "Descripcion", "PyS", "Objetivo"]:
+                if col not in df_leads.columns:
+                    df_leads[col] = "-"
+
             if df_leads.empty:
                 status_msg += "No hay leads para aplicar scraping tras scrap del proveedor.<br>"
             else:
-                if "scrapping" not in df_leads.columns:
-                    df_leads["scrapping"] = "-"
-                if "URLs on WEB" not in df_leads.columns:
-                    df_leads["URLs on WEB"] = "-"
-                if "Scrapping Adicional" not in df_leads.columns:
-                    df_leads["Scrapping Adicional"] = "-"
                 scraping_progress["total"] = len(df_leads)
                 scraping_progress["procesados"] = 0
-                scrap_cache = {}          # cache para scrapping de sitio
-                urls_cache = {}           # cache para URLs on WEB
-                adicional_cache = {}      # cache para scraping adicional
-                # ───────── FUNCIÓN: Scraping principal y URLs ─────────
+                scrap_cache = {}
+                urls_cache = {}
+                adicional_cache = {}
+
+                # Función principal
                 def scrapear_lead(idx_row_tuple):
-                    idx, row = idx_row_tuple
+                    idx, row_data = idx_row_tuple
+                    row = dict(zip(df_leads.columns, row_data))
                     url = str(row.get(mapeo_website, "")).strip()
                     resultado = {"scrapping": "-", "urls": "-"}
 
@@ -1586,10 +1774,11 @@ def index():
                                 print(f"[ERROR] Extrayendo URLs idx={idx}: {e}")
 
                     return (idx, resultado)
-                                                
-                # ───────── FUNCIÓN: Scraping Adicional ─────────
+
+                # Función scraping adicional
                 def scrapear_adicional(idx_row_tuple):
-                    idx, row = idx_row_tuple
+                    idx, row_data = idx_row_tuple
+                    row = dict(zip(df_leads.columns, row_data))
                     urls_csv = str(row.get("URLs on WEB", "")).strip()
 
                     if urls_csv in adicional_cache:
@@ -1604,10 +1793,9 @@ def index():
                             print(f"[ERROR] Scraping adicional idx={idx}: {e}")
                     return (idx, resultado)
 
-
-                # ───────── Ejecutar scraping en paralelo ─────────
+                # Ejecutar scraping principal
                 with ThreadPoolExecutor(max_workers=10) as executor:
-                    resultados = list(executor.map(scrapear_lead, df_leads.iterrows()))
+                    resultados = list(executor.map(scrapear_lead, list(enumerate(df_leads.itertuples(index=False, name=None)))))
                 for idx, res in resultados:
                     df_leads.at[idx, "scrapping"] = res["scrapping"]
                     df_leads.at[idx, "URLs on WEB"] = res["urls"]
@@ -1615,29 +1803,22 @@ def index():
 
                 status_msg += "✅ Scraping de leads y URLs ejecutado en paralelo.<br>"
 
-                # ───────── Scraping adicional ─────────
+                # Ejecutar scraping adicional
                 with ThreadPoolExecutor(max_workers=10) as executor:
-                    adicionales = list(executor.map(scrapear_adicional, df_leads.iterrows()))
+                    adicionales = list(executor.map(scrapear_adicional, list(enumerate(df_leads.itertuples(index=False, name=None)))))
                 for idx, texto in adicionales:
                     df_leads.at[idx, "Scrapping Adicional"] = texto
 
                 status_msg += "✅ Scraping adicional ejecutado en paralelo.<br>"
 
-                # ───────── Generar info de empresa con ChatGPT ─────────
-                if "Descripcion" not in df_leads.columns:
-                    df_leads["Descripcion"] = "-"
-                if "PyS" not in df_leads.columns:
-                    df_leads["PyS"] = "-"
-                if "Objetivo" not in df_leads.columns:
-                    df_leads["Objetivo"] = "-"
-
-                for idx, row in df_leads.iterrows():
+                # Generar info con ChatGPT
+                for idx, row_data in enumerate(df_leads.itertuples(index=False, name=None)):
+                    row = dict(zip(df_leads.columns, row_data))
                     result = generar_info_empresa_chatgpt(row)
                     for key, val in result.items():
                         df_leads.at[idx, key] = val
 
                 status_msg += "✅ Información de empresa generada con éxito.<br>"
-
 
         elif accion == "generar_tabla":
             procesar_leads()
@@ -1699,6 +1880,51 @@ def index():
     prompt_chatgpt = cargar_prompt_desde_archivo()   
     num_leads_cargados = len(df_leads) if not df_leads.empty else 0
 
+    #filtros
+    industrias = ["Finance","Technology","Education","Retail","Retail Manufacturing",
+                "Professional Services","Hotel and Travel","Health","Industrial Manufacturing",
+                "Construction","Logistics","Marketing Services","Automotive","Entertainment",
+                "Restaurants","Human Resources","Government","Real Estate","Consumer Services",
+                "Telco","Energy","ONG","Media","Industrial","Legal","Environmental","Public Services"]
+    industria_options_html = "".join([f'<option value="{i}">{i}</option>' for i in industrias])
+    areas = ["Comercial","Dirección General","Operaciones","Marketing","Recursos Humanos",
+            "Finanzas","Tecnología","Académica","Administración","Producto","Jurídico",
+            "Salud","Construcción","Producción Artistica","Municipio"]
+
+    area_options_html = "".join([f'<option value="{a}">{a}</option>' for a in areas])
+    departamentos = ["Ventas","Rectoria","Operaciones","Presidencia","Compras","Dirección General",
+                    "Marketing","Desarrollo de Software","Recursos Humanos","Ventas regionales",
+                    "Profesores","Retail","Finanzas","Ecommerce","Servicio al Cliente","Logística",
+                    "Administración","Consejo de Administración","Seguridad","Tecnología",
+                    "Contraloría","Practicas Profesionales","Calidad","Trade Marketing","Produccion",
+                    "Desarrollo de Personal","Contabilidad","Networker","Comercailización",
+                    "Business Intelligence","Branding","Contratos y Litigios","Mantenimiento",
+                    "Almacén","Tecnología de la Infromacion","Comunicación","Reclutamiento y Selección",
+                    "Cocina","Cuentas","Medios Publicitarios","Médico","Contenidos",
+                    "Regulatorio y Cumplimiento","Compensaciones","Eventos y Patrocinios",
+                    "SEO / SEM / Medios Digitales","Operaciones Aéreas","Cobranza","Farmacia",
+                    "Control de Riesgos","Infraestructura TI","Tesorería","Creativo",
+                    "Revenue Management","KAM","Inversiones","Growth Marketing","Expansión",
+                    "Construcción","Desarrollo de Producto","Producción Audiovisual",
+                    "Distribución y Transporte","Crédito","Innovación","Project Management",
+                    "CRM","Investigación","Nómina","Caja","Sustentabilidad","Seguridad e Higiene",
+                    "Recepción","Actuación","Desarrollo de Negocio","Seguridad de la Informacion",
+                    "Presidencia Municipal","Agente de Viajes","Desarrollo Web","Investigación y Desarrollo",
+                    "Psicología","Fiduciario","Transformación Digital","Ventas Mayoreo","Nutrición",
+                    "Agente Inmobiliario","Redes Sociales","Wellness","Digital Marketing","UX / UI",
+                    "Alianzas Estratégicas","Cuentas por Pagar","Planeacion Financiera","Profesor Decano",
+                    "Base de Datos","Pérdidas y Mermas","Preventa","Servicio al cliente","Doctorado",
+                    "Ventas Telefónicas","Mesa de Control","Relaciones Públicas","Finanzas Corporativas",
+                    "Planeación Estratégica","Soporte Técnico","Protección de Datos",
+                    "Investigación de Mercados","Agente de Seguros","Chofer","Ingeniería",
+                    "Desarrollo web","Dirección General Adjunta"]
+    tamanos = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001-10,000", "10,000+"]
+    departamento_options_html = "".join([f'<option value="{d}">{d}</option>' for d in departamentos])
+    industria_options_html = "".join([f'<option value="{i.strip()}">{i.strip()}</option>' for i in industrias])
+    area_options_html = "".join([f'<option value="{a.strip()}">{a.strip()}</option>' for a in areas])
+    departamento_options_html = "".join([f'<option value="{d.strip()}">{d.strip()}</option>' for d in departamentos])
+    tamano_options_html = "".join([f'<option value="{d.strip()}">{d.strip()}</option>' for d in tamanos])
+    
     page_html = f"""
     <html>
     <head>
@@ -1978,11 +2204,24 @@ def index():
             .custom-file-upload:hover {{
                 background: linear-gradient(45deg, #005599, #003366);
                 opacity: 0.9;
-            }}          
+            }}  
+            .select2-results__option {{
+                color: #000 !important;
+                background-color: #fff !important;
+            }}
+
+            .select2-results__option--highlighted {{
+                background-color: #888 !important;
+                color: #fff !important;
+            }}             
+
         </style>
     </head>
     <body>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
         <div style="
                 display: flex;
@@ -2269,6 +2508,9 @@ def index():
             <option value="2 - 10">2 - 10</option>
             <option value="1.0">1.0</option>
         </select>
+
+
+
         <label>Número máximo de filas:</label>
         <input type="number" name="max_rows" min="1" placeholder="100" />
 
@@ -2286,7 +2528,7 @@ def index():
         <label>Base de Datos:</label>
         <label class="custom-file-upload">
             📁 Seleccionar archivo
-            <input type="file" name="leads_csv" style="display:none;"/>
+            <input type="file" name="leads_csv" />
         </label>
         <div style="display: flex; gap: 10px; align-items: center; justify-content: center;">
         <label for="start_row">Filas:</label>
@@ -2341,7 +2583,7 @@ def index():
         <form method="POST">
             <input type="hidden" name="accion" value="scrapp_leads_on"/>
             <button type="submit" style="background-color: {color_scrap};">
-                <img src="/static/icons/hacker.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">Análisis de Contactos
+                <img src="/static/icons/hacker.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">Análisis de Empresas
             </button>
         </form>   
         <form method="POST">
@@ -2411,13 +2653,40 @@ def index():
     </form>
 
     </details>
+<details>
+    <summary style="cursor:pointer; font-weight: bold;"><img src="/static/icons/artificial-intelligence_atomic.png" class="icon" alt="icono db"> Motor IA </summary> 
+        <details>
+            <summary style="cursor:pointer; font-weight: bold;"><img src="/static/icons/artificial-intelligence_atomic.png" class="icon" alt="icono db"> Edición Prompt </summary>    
+            <div style="margin-top:30px;">
+                <h3>✍️ Prompt para Strategy - Reply Rate Email</h3>
+                <form method="POST">
+                    <input type="hidden" name="accion" value="guardar_prompt_strategy" />
+                    <textarea name="prompt_strategy" rows="10" style="width:100%;border-radius:10px;">{prompt_strategy}</textarea>
+                    <button type="submit" style="margin-top:10px;">
+                        💾 Guardar Strategy Prompt
+                    </button>
+                </form>
+                <form method="POST" style="flex:1;">
+                    <input type="hidden" name="accion" value="reiniciar_prompt_strategy" />
+                    <button type="submit" style="width:100%;">
+                        ♻️ Reiniciar prompt
+                    </button>
+                </form>
+                <form method="POST">
+                    <input type="hidden" name="accion" value="eliminar_columnas_emails">
+                    <button type="submit">🗑️ Eliminar columnas de estrategias</button>
+                </form>
+            </div>
+        </details>
     <form method="POST">
         <input type="hidden" name="accion" value="generar_tabla"/>
         <button type="submit" style="background-color: {{ 'green' if acciones_realizadas['generar_tabla'] else '#1E90FF' }};">
             <img src="/static/icons/artificial-intelligence_atomic.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">
             Generar Mails con I.A.
         </button>
-    </form>    
+    </form> 
+</details>    
+   
     <!--
     <details>
     <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/db.png" class="icon" alt="icono db"> Edición de IA Prompts</summary>           
@@ -2477,6 +2746,7 @@ def index():
         <h3 style="color: white;">Total registros cargados: {num_leads_cargados}</h3>
         {tabla_html(df_leads,50)}
     </div>
+
     </div>
     <script>
     document.getElementById("pdf_plan_estrategico").addEventListener("change", function () {{
