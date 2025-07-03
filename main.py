@@ -610,6 +610,7 @@ def _limpiar_caracteres_raros(texto: str) -> str:
 
     return texto.strip()
 
+
 def _asegurar_https(url: str) -> str:
     """Asegura que la URL comience con https://"""
     url = url.strip()
@@ -690,6 +691,65 @@ def realizar_scraping(url: str) -> str:
             break
 
     return texto_total[:MAX_SCRAPING_CHARS] if texto_total.strip() else "-"
+
+
+def realizar_scrapingProv(url: str) -> str:
+    import requests
+    from bs4 import BeautifulSoup
+
+    url = _asegurar_https(url)
+    if not url:
+        return "-"
+
+    rutas = [""]  # solo raíz
+    texto_total = ""
+
+    for path in rutas:
+        try:
+            full_url = url.rstrip("/") + path
+
+            headers = {
+                "Host": full_url.replace("https://", "").replace("http://", "").split("/")[0],
+                "Connection": "keep-alive",
+                "Cache-Control": "max-age=0",
+                "Upgrade-Insecure-Requests": "1",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Accept-Language": "es-ES,es;q=0.9"
+            }
+
+            print(f"[SCRAPING] Visitando: {full_url}")
+            resp = requests.get(full_url, headers=headers, timeout=5, verify=False)
+
+            if resp.status_code == 200:
+                sopa = BeautifulSoup(resp.text, "html.parser")
+                texto_total = sopa.get_text()
+                print("[SCRAPING COMPLETO RAW]")
+                print(texto_total[:2000])  # los primeros 2000 chars para debug
+
+            else:
+                print(f"[SKIP] Código HTTP {resp.status_code} en {full_url}")
+
+        except Exception as e:
+            print(f"[ERROR] al scrapear {full_url}:", e)
+
+        if len(texto_total) >= MAX_SCRAPING_CHARS:
+            break
+
+    texto_total = _limpiar_caracteres_raros(texto_total)
+
+    if texto_total.strip():
+        print(f"[DEBUG] Retornando scraping completo de longitud: {len(texto_total)}")
+        return texto_total[:MAX_SCRAPING_CHARS]
+    else:
+        print("[DEBUG] Texto vacío tras limpiar, retorna '-'")
+        return "-"
+
+
+
+
+
 
 #Scrapping de urls
 def extraer_urls_de_web(base_url: str) -> str:
@@ -1707,11 +1767,11 @@ def index():
         mapeo_empleados = request.form.get("col_employees", mapeo_empleados).strip() or mapeo_empleados
 
 
-        # Acción
+        # Acción scrap proveedor scrapp proveedor
         accion = request.form.get("accion", "")
         if accion == "scrap_proveedor" and url_proveedor_global:
             # Scrapeo y análisis del proveedor
-            sc = realizar_scraping(url_proveedor_global)
+            sc = realizar_scrapingProv(url_proveedor_global)
             plan_estrategico = sc  
             scrap_proveedor_text = sc
 
