@@ -321,40 +321,117 @@ Tu tarea es redactar correos fríos personalizados, breves y efectivos, siguiend
 Estoy trabajando con una tabla que contiene información de prospectos, con las siguientes columnas clave:
 First name
 Last name
-Title → Puesto del prospecto (ej. Director de Marketing)
-Company Name
-Company Industry → Industria específica en la que opera
+Title → Puesto del prospecto (ej. Director de Marketing Digital)
+Area → Area dentro de la empresa
+Departamento → Departamento delntro del area de la empresa
+Nivel Jerarquico → Si es Director General, Director, Gerente, Ejecutivo o Colaborador dentro de la empresa
+Company Name → Empresa del prospecto
+Company Industry → Industria específica en la que opera la empresa del prospecto
 Location → Ciudad, estado o país
+Descripcion → A que se dedica la Empresa; se obtiene del scrapping de web del contacto
+PyS → Que productos o servicios ofrece; se obtiene del scrapping de web del contacto
+Objetivo → A que mercado objetivo se dirige; se obtiene del scrapping de web del contacto
+
 Propuesta de valor de mi empresa → Texto o resumen de la solución que quiero ofrecer (puede ser distinto por segmento)
 (Opcional, se obtiene del scrapping) Caso de éxito relevante → Referencia breve a un cliente similar con un resultado medible
 
+
 📩 OBJETIVO DEL CORREO
-El correo debe estar diseñado para obtener una respuesta que derive en una llamada o reunión.
+El objetivo es obtener una respuesta que derive en responder el mail, una llamada o reunión con el prospecto.
 
-🧱 ESTRUCTURA QUE DEBES USAR
-[Personalización]
- Comienza con una frase relevante basada en el puesto, empresa, logros públicos o tipo de industria del prospecto. Puede provenir de su LinkedIn, sitio web o de su contexto empresarial.
+🧱 ESTRUCTURA OBLIGATORIA DEL CORREO (5 PÁRRAFOS)
+El correo debe tener exactamente 5 párrafos separados por doble salto de línea (\n\n). Cada párrafo debe contener una sola idea. No mezcles ideas ni omitas líneas en blanco.
 
-[Nuestra propuesta de valor]
- Resume qué hace nuestra empresa y cómo puede ayudar a ese tipo de perfil, industria o empresa.
+🔒 INSTRUCCIÓN ESTRICTA DE FORMATO
+Siempre incluye el Párrafo 1 (saludo y personalización). Nunca lo omitas.
 
-[Segmentación clara]
- Menciona de forma específica el tipo de empresa, ubicación o función del prospecto para que sienta que el mensaje fue escrito para él.
+Nunca fusiones el saludo con el segundo párrafo.
 
-[Objetivo o desafío del prospecto]
- Muestra que comprendes lo que esa persona quiere lograr (ej. más visibilidad, eficiencia, ventas, automatización, control, etc.).
+Si algún dato falta, escribe una frase neutra, pero nunca elimines el párrafo.
 
-[Caso de uso o promesa] (opcional)
- Si tienes un caso de éxito relevante o un resultado similar, menciona de forma breve el beneficio logrado.
+El modelo debe generar 5 bloques visuales claramente separados.
 
-[Cliffhanger + CTA]
- Cierra con una invitación clara y directa a agendar una llamada o revisar un plan diseñado para ese tipo de empresa.
+1. PÁRRAFO 1: Saludo + Personalización del Prospecto (natural, sin sonar robótico)
+Saluda por su nombre.
+
+Menciona su rol y contribución según el título:
+
+Si el título contiene “Director”, “Head”, “VP”, “CEO”, “General Manager”, etc.: Destaca que su liderazgo o visión es clave para la estrategia de la empresa, pero sin exagerar ni usar adjetivos subjetivos.
+
+Si el título contiene “Manager”, "Gerente": Enfócate en su impacto operativo o contribución al área, sin atribuirle decisiones estratégicas generales.
+
+Si la empresa es reconocida, puedes mencionar brevemente su posición destacada, sin usar palabras como “impresionante” o “admirable”.
+
+🔄 Tono natural y conversacional:
+Evita frases genéricas como “Vi que lideras…”, “empresa destacada…”, “seguro es fundamental…”.
+Usa frases más reales y humanas como:
+
+“Imagino que desde tu rol has impulsado…”
+
+“Debe ser muy interesante liderar…”
+
+“Veo que están haciendo un gran trabajo en…”
+
+
+PÁRRAFO 2: Motivo de contacto + Propuesta de Valor + Objetivo del Prospecto + Productos o Mercado
+
+Inicia siempre con:
+
+“Te contacto porque ofrecemos un servicio integral...”
+o una variante natural que indique el motivo del mensaje.
+
+Describe qué haces y cómo has ayudado a empresas similares, sin sonar vendedor ni mencionar el nombre de tu empresa.
+
+Refuerza que entiendes lo que esa persona quiere lograr (visibilidad, eficiencia, ventas, automatización, etc.), a resolver desafíos como los suyos.
+
+Cuando sea posible, menciona de forma natural alguno de los siguientes elementos del prospecto (basado en el scrapping):
+
+Productos o líneas clave
+
+Servicios ofrecidos
+
+Tipo de clientes o mercados objetivo
+
+PÁRRAFO 3: Gancho o Prueba Social
+
+Menciona que tienes un plan concreto que ya ha funcionado con empresas similares.
+
+Si hay un caso de éxito específico, inclúyelo brevemente.
+
+PÁRRAFO 4: Llamado a la Acción (CTA)
+
+Invita directamente a agendar una llamada o revisar el plan.
+
+Ejemplos:
+
+¿Te va bien una llamada esta semana para mostrártelo?
+
+¿Te puedo enseñar cómo funcionaría en tu operación?
+
+¿Lo revisamos juntos esta semana?
+
+PÁRRAFO 5: Despedida limpia (sin firma)
+
+Incluye solamente una frase de cierre profesional como:
+
+Saludos
+
+Será un gusto platicar contigo
+
+Estoy a tus órdenes
+
+Gracias por tu tiempo
+
+❌ No incluyas tu nombre, empresa, cargo ni ningún dato de contacto.
 
 ✍️ INSTRUCCIONES DE ESTILO
 Longitud máxima: 130 palabras
+
 Tono: Profesional, directo y personalizado
-Evita lenguaje genérico o plantillado
-Escribe como si lo fueras a mandar a un tomador de decisión ocupado
+
+Evita lenguaje genérico, frases cliché o plantilladas
+
+Escribe como si fuera para un tomador de decisión ocupado
 
 ✅ INPUTS
 
@@ -376,14 +453,17 @@ scrapping de nuestra web: {plan_estrategico}
 
 
 ✅ EJEMPLO DE OUTPUT ESPERADO (no uses estos datos, son solo de ejemplo)
-Hola Jonathan,
-Vi que lideras Trade Marketing y Category Management en Alpura, una marca clave en la industria láctea mexicana.
-Desde MARKETPRO, ayudamos a directores como tú a mejorar la eficiencia en la ejecución y control en punto de venta, creando experiencias consistentes en canales físicos y digitales.
-Trabajamos con empresas de consumo como la tuya para perfeccionar la conexión con el shopper, reforzando estrategia de marca con ejecución en PDV, capacitación y marketing omnicanal.
-Tengo un plan que podría incrementar la visibilidad y conversión en tus principales cadenas de retail.
-¿Te va bien una llamada esta semana para mostrártelo?
-Saludos
+Hola Mónica,
 
+Imagino que desde tu rol al frente de Trade Marketing en Industrias Tajín has impulsado iniciativas clave para fortalecer la ejecución en tienda y conectar mejor con el shopper, especialmente en una marca con tanta presencia en alimentos y bebidas.
+
+Te contacto porque ofrecemos un servicio integral de Publicidad en Punto de Venta, incluyendo producción, instalación y mantenimiento de materiales a nivel nacional. Hemos ayudado a marcas como la tuya a incrementar visibilidad y consistencia en puntos de venta clave.
+
+Contamos con un plan probado que ya ha generado buenos resultados en empresas similares del sector.
+
+¿Te gustaría agendar una llamada esta semana para mostrarte cómo podríamos aplicarlo en tu operación?
+
+Será un gusto conversar
 
 
 La salida debe ser únicamente el texto del cuerpo del correo, sin encabezado, sin firma, sin explicación.
@@ -397,40 +477,117 @@ Tu tarea es redactar correos fríos personalizados, breves y efectivos, siguiend
 Estoy trabajando con una tabla que contiene información de prospectos, con las siguientes columnas clave:
 First name
 Last name
-Title → Puesto del prospecto (ej. Director de Marketing)
-Company Name
-Company Industry → Industria específica en la que opera
+Title → Puesto del prospecto (ej. Director de Marketing Digital)
+Area → Area dentro de la empresa
+Departamento → Departamento delntro del area de la empresa
+Nivel Jerarquico → Si es Director General, Director, Gerente, Ejecutivo o Colaborador dentro de la empresa
+Company Name → Empresa del prospecto
+Company Industry → Industria específica en la que opera la empresa del prospecto
 Location → Ciudad, estado o país
+Descripcion → A que se dedica la Empresa; se obtiene del scrapping de web del contacto
+PyS → Que productos o servicios ofrece; se obtiene del scrapping de web del contacto
+Objetivo → A que mercado objetivo se dirige; se obtiene del scrapping de web del contacto
+
 Propuesta de valor de mi empresa → Texto o resumen de la solución que quiero ofrecer (puede ser distinto por segmento)
 (Opcional, se obtiene del scrapping) Caso de éxito relevante → Referencia breve a un cliente similar con un resultado medible
 
+
 📩 OBJETIVO DEL CORREO
-El correo debe estar diseñado para obtener una respuesta que derive en una llamada o reunión.
+El objetivo es obtener una respuesta que derive en responder el mail, una llamada o reunión con el prospecto.
 
-🧱 ESTRUCTURA QUE DEBES USAR
-[Personalización]
- Comienza con una frase relevante basada en el puesto, empresa, logros públicos o tipo de industria del prospecto. Puede provenir de su LinkedIn, sitio web o de su contexto empresarial.
+🧱 ESTRUCTURA OBLIGATORIA DEL CORREO (5 PÁRRAFOS)
+El correo debe tener exactamente 5 párrafos separados por doble salto de línea (\n\n). Cada párrafo debe contener una sola idea. No mezcles ideas ni omitas líneas en blanco.
 
-[Nuestra propuesta de valor]
- Resume qué hace nuestra empresa y cómo puede ayudar a ese tipo de perfil, industria o empresa.
+🔒 INSTRUCCIÓN ESTRICTA DE FORMATO
+Siempre incluye el Párrafo 1 (saludo y personalización). Nunca lo omitas.
 
-[Segmentación clara]
- Menciona de forma específica el tipo de empresa, ubicación o función del prospecto para que sienta que el mensaje fue escrito para él.
+Nunca fusiones el saludo con el segundo párrafo.
 
-[Objetivo o desafío del prospecto]
- Muestra que comprendes lo que esa persona quiere lograr (ej. más visibilidad, eficiencia, ventas, automatización, control, etc.).
+Si algún dato falta, escribe una frase neutra, pero nunca elimines el párrafo.
 
-[Caso de uso o promesa] (opcional)
- Si tienes un caso de éxito relevante o un resultado similar, menciona de forma breve el beneficio logrado.
+El modelo debe generar 5 bloques visuales claramente separados.
 
-[Cliffhanger + CTA]
- Cierra con una invitación clara y directa a agendar una llamada o revisar un plan diseñado para ese tipo de empresa.
+1. PÁRRAFO 1: Saludo + Personalización del Prospecto (natural, sin sonar robótico)
+Saluda por su nombre.
+
+Menciona su rol y contribución según el título:
+
+Si el título contiene “Director”, “Head”, “VP”, “CEO”, “General Manager”, etc.: Destaca que su liderazgo o visión es clave para la estrategia de la empresa, pero sin exagerar ni usar adjetivos subjetivos.
+
+Si el título contiene “Manager”, "Gerente": Enfócate en su impacto operativo o contribución al área, sin atribuirle decisiones estratégicas generales.
+
+Si la empresa es reconocida, puedes mencionar brevemente su posición destacada, sin usar palabras como “impresionante” o “admirable”.
+
+🔄 Tono natural y conversacional:
+Evita frases genéricas como “Vi que lideras…”, “empresa destacada…”, “seguro es fundamental…”.
+Usa frases más reales y humanas como:
+
+“Imagino que desde tu rol has impulsado…”
+
+“Debe ser muy interesante liderar…”
+
+“Veo que están haciendo un gran trabajo en…”
+
+
+PÁRRAFO 2: Motivo de contacto + Propuesta de Valor + Objetivo del Prospecto + Productos o Mercado
+
+Inicia siempre con:
+
+“Te contacto porque ofrecemos un servicio integral...”
+o una variante natural que indique el motivo del mensaje.
+
+Describe qué haces y cómo has ayudado a empresas similares, sin sonar vendedor ni mencionar el nombre de tu empresa.
+
+Refuerza que entiendes lo que esa persona quiere lograr (visibilidad, eficiencia, ventas, automatización, etc.), a resolver desafíos como los suyos.
+
+Cuando sea posible, menciona de forma natural alguno de los siguientes elementos del prospecto (basado en el scrapping):
+
+Productos o líneas clave
+
+Servicios ofrecidos
+
+Tipo de clientes o mercados objetivo
+
+PÁRRAFO 3: Gancho o Prueba Social
+
+Menciona que tienes un plan concreto que ya ha funcionado con empresas similares.
+
+Si hay un caso de éxito específico, inclúyelo brevemente.
+
+PÁRRAFO 4: Llamado a la Acción (CTA)
+
+Invita directamente a agendar una llamada o revisar el plan.
+
+Ejemplos:
+
+¿Te va bien una llamada esta semana para mostrártelo?
+
+¿Te puedo enseñar cómo funcionaría en tu operación?
+
+¿Lo revisamos juntos esta semana?
+
+PÁRRAFO 5: Despedida limpia (sin firma)
+
+Incluye solamente una frase de cierre profesional como:
+
+Saludos
+
+Será un gusto platicar contigo
+
+Estoy a tus órdenes
+
+Gracias por tu tiempo
+
+❌ No incluyas tu nombre, empresa, cargo ni ningún dato de contacto.
 
 ✍️ INSTRUCCIONES DE ESTILO
 Longitud máxima: 130 palabras
+
 Tono: Profesional, directo y personalizado
-Evita lenguaje genérico o plantillado
-Escribe como si lo fueras a mandar a un tomador de decisión ocupado
+
+Evita lenguaje genérico, frases cliché o plantilladas
+
+Escribe como si fuera para un tomador de decisión ocupado
 
 ✅ INPUTS
 
@@ -452,14 +609,17 @@ scrapping de nuestra web: {plan_estrategico}
 
 
 ✅ EJEMPLO DE OUTPUT ESPERADO (no uses estos datos, son solo de ejemplo)
-Hola Jonathan,
-Vi que lideras Trade Marketing y Category Management en Alpura, una marca clave en la industria láctea mexicana.
-Desde MARKETPRO, ayudamos a directores como tú a mejorar la eficiencia en la ejecución y control en punto de venta, creando experiencias consistentes en canales físicos y digitales.
-Trabajamos con empresas de consumo como la tuya para perfeccionar la conexión con el shopper, reforzando estrategia de marca con ejecución en PDV, capacitación y marketing omnicanal.
-Tengo un plan que podría incrementar la visibilidad y conversión en tus principales cadenas de retail.
-¿Te va bien una llamada esta semana para mostrártelo?
-Saludos
+Hola Mónica,
 
+Imagino que desde tu rol al frente de Trade Marketing en Industrias Tajín has impulsado iniciativas clave para fortalecer la ejecución en tienda y conectar mejor con el shopper, especialmente en una marca con tanta presencia en alimentos y bebidas.
+
+Te contacto porque ofrecemos un servicio integral de Publicidad en Punto de Venta, incluyendo producción, instalación y mantenimiento de materiales a nivel nacional. Hemos ayudado a marcas como la tuya a incrementar visibilidad y consistencia en puntos de venta clave.
+
+Contamos con un plan probado que ya ha generado buenos resultados en empresas similares del sector.
+
+¿Te gustaría agendar una llamada esta semana para mostrarte cómo podríamos aplicarlo en tu operación?
+
+Será un gusto conversar
 
 
 La salida debe ser únicamente el texto del cuerpo del correo, sin encabezado, sin firma, sin explicación.
