@@ -1,5 +1,5 @@
 # login.py
-from flask import Flask, request, redirect, url_for, session, render_template_string
+from flask import Flask, request, redirect, url_for, session, render_template_string, render_template
 from sqlalchemy import create_engine, text
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import timedelta
@@ -1172,21 +1172,21 @@ def generar_contenido_chatgpt_por_fila(row: pd.Series) -> dict:
 #
 def prompt_reply_rate_email(row: dict) -> str:
     return prompt_strategy.replace(
-        "{row.get(\"First name\", \"-\")}", row.get("First name", "-")
+        "{row.get(\"First name\", \"-\")}", str(row.get("First name", "-") or "-")
     ).replace(
-        "{row.get(\"Title\", \"-\")}", row.get("Title", "-")
+        "{row.get(\"Title\", \"-\")}", str(row.get("Title", "-") or "-")
     ).replace(
-        "{row.get(\"Area\", \"(no se sabe)\")}", row.get("Area", "(no se sabe)")
+        "{row.get(\"Area\", \"(no se sabe)\")}", str(row.get("Area", "(no se sabe)") or "-")
     ).replace(
-        "{row.get(\"Departamento\", \"(no se sabe)\")}", row.get("Departamento", "(no se sabe)")
+        "{row.get(\"Departamento\", \"(no se sabe)\")}", str(row.get("Departamento", "(no se sabe)") or "-")
     ).replace(
-        "{row.get(\"Nivel Jerarquico\", \"(no se sabe)\")}", row.get("Nivel Jerarquico", "(no se sabe)")
+        "{row.get(\"Nivel Jerarquico\", \"(no se sabe)\")}", str(row.get("Nivel Jerarquico", "(no se sabe)") or "-")
     ).replace(
-        "{row.get(\"Company Name\", \"(no se sabe)\")}", row.get("Company Name", "(no se sabe)")
+        "{row.get(\"Company Name\", \"(no se sabe)\")}", str(row.get("Company Name", "(no se sabe)") or "-")
     ).replace(
-        "{row.get(\"Company Industry\", \"-\")}", row.get("Company Industry", "-")
+        "{row.get(\"Company Industry\", \"-\")}", str(row.get("Company Industry", "-") or "-")
     ).replace(
-        "{row.get(\"Location\", \"-\")}", row.get("Location", "-")
+        "{row.get(\"Location\", \"-\")}", str(row.get("Location", "-") or "-")
     ).replace(
         "{cortar_al_limite(str(row.get('scrapping', '-')), 3000)}", cortar_al_limite(str(row.get('scrapping', '-')), 3000)
     ).replace(
@@ -1196,6 +1196,7 @@ def prompt_reply_rate_email(row: dict) -> str:
     ).replace(
         "{plan_estrategico}", plan_estrategico
     )
+
 
 def prompt_one_sentence_email(row: dict) -> str:
     return f"""creame un mail de one_sentence_email""" 
@@ -1295,6 +1296,7 @@ def generar_contenido_para_todos(batch_size=10):
         # ("Strategy - Loom Video", prompt_loom_video),
         # ("Strategy - Free Sample List", prompt_free_sample_list),
     ]
+    
 
     for i in range(0, len(df_leads), batch_size):
         batch = df_leads.iloc[i:i+batch_size]
@@ -1302,16 +1304,19 @@ def generar_contenido_para_todos(batch_size=10):
             row_dict = row.to_dict()
             for col_name, prompt_func in estrategias:
                 try:
-                    if pd.notnull(df_leads.at[idx, col_name]) and df_leads.at[idx, col_name] != "-":
-                        continue  # Ya existe
-                    df_leads.at[idx, col_name] = generar_email_por_estrategia(row_dict, prompt_func, col_name)
+                    result = generar_email_por_estrategia(row_dict, prompt_func, col_name)
+                    # Sanitizar para evitar floats o None
+                    if pd.isnull(result):
+                        result = "-"
+                    else:
+                        result = str(result)
+                    df_leads.at[idx, col_name] = result
                 except Exception as e:
                     print(f"[ERROR] Falló idx={idx}, col={col_name}: {e}")
         print(f"[INFO] Procesado batch {i} a {i+batch_size-1}")
 
 
 def cleanup_leads():
-    """Reemplaza NaN, None y corchetes en las columnas de texto final."""
     global df_leads
     if df_leads.empty:
         return
@@ -1323,12 +1328,15 @@ def cleanup_leads():
 
     for col in cols_to_clean:
         if col in df_leads.columns:
+            # Convierte todo a str explícito
             df_leads[col] = df_leads[col].astype(str)
+            # Ahora ya es seguro usar replace
             df_leads[col] = df_leads[col].replace(
                 ["NaN", "nan", "None", "none"], "-", regex=True
             )
-            # Quitar corchetes de array si aparecieran
+            # Quitar corchetes si aparecen
             df_leads[col] = df_leads[col].replace(r"\[|\]", "", regex=True)
+
 
 def remove_illegal_chars(val):
     if isinstance(val, str):
@@ -1397,15 +1405,22 @@ def tabla_html(df: pd.DataFrame, max_filas=50) -> str:
     #return f"<p><strong>📊 Total Registros: {len(subset)}</strong></p>" + f"<table><tr>{thead}</tr>{rows_html}</table>"
 
 
-
+df_temp_upload = pd.DataFrame()
+df_leads = pd.DataFrame()
 ##########################################
 # Rutas Flask
 ##########################################
 @app.route("/", methods=["GET","POST"])
 def index():
+    global df_temp_upload, df_leads, mapeo_nombre_contacto, mapeo_puesto, mapeo_empresa, mapeo_industria, mapeo_website, mapeo_location    
     if "user" not in session:
         return redirect("/login")  # redirige al login principal
-   
+    if request.method == "POST":
+        leadf = request.files.get("leads_csv")
+        if leadf and leadf.filename:
+            df_temp_upload = pd.read_csv(leadf)
+            return redirect("/map_columns")
+        
     global df_leads
     global scrap_proveedor_text
     global info_proveedor_global
@@ -1418,10 +1433,19 @@ def index():
     global prompt_mails
     global prompt_strategy
     global prompt_mails
+
     status_msg = ""
     
     url_proveedor_global = ""  # Moveremos esto a variable local
     accion = request.form.get("accion", "")
+        # Asignar los mapeos con tolerancia a campos vacíos o None
+    mapeo_nombre_contacto = (request.form.get("col_nombre") or mapeo_nombre_contacto or "").strip() or mapeo_nombre_contacto
+    mapeo_puesto = (request.form.get("col_puesto") or mapeo_puesto or "").strip() or mapeo_puesto
+    mapeo_empresa = (request.form.get("col_empresa") or mapeo_empresa or "").strip() or mapeo_empresa
+    mapeo_industria = (request.form.get("col_industria") or mapeo_industria or "").strip() or mapeo_industria
+    mapeo_website = (request.form.get("col_website") or mapeo_website or "").strip() or mapeo_website
+    mapeo_location = (request.form.get("col_location") or mapeo_location or "").strip() or mapeo_location
+
     if request.method == "POST":
          
         if accion == "guardar_prompt_chatgpt":
@@ -1446,6 +1470,10 @@ def index():
             status_msg += "♻️ Prompt strategy reiniciado a valor original.<br>"
         
         if accion == "clasificar_global":
+            print("[DEBUG] ENTRÓ A CLASIFICAR_GLOBAL con accion =", accion)
+            print("COLUMNAS EN DF_LEADS:", df_leads.columns.tolist())
+            print("MAPEO PUESTO:", mapeo_puesto)
+            print("MAPEO INDUSTRIA:", mapeo_industria)
             if os.path.exists("catalogopuesto.xlsx"):
                 try:
                     global catalogo_df
@@ -1467,7 +1495,7 @@ def index():
 
                     if not df_leads.empty:
                         df_leads["Nivel Jerarquico"] = df_leads[mapeo_puesto].apply(clasificar_puesto)
-
+                        print("[DEBUG] Después de clasificar puestos columnas:", df_leads.columns.tolist())
                         cols = list(df_leads.columns)
                         if mapeo_puesto in cols and "Nivel Jerarquico" in cols:
                             cols.remove("Nivel Jerarquico")
@@ -1518,7 +1546,7 @@ def index():
                     if not df_leads.empty:
                         # Asignar área y departamento
                         df_leads["Departamento"], df_leads["Area"] = zip(*df_leads[mapeo_puesto].map(asignar_areas))
-
+                        print("[DEBUG] Después de clasificar áreas columnas:", df_leads.columns.tolist())
                         # Asegurar que estén justo después de la columna del puesto
                         cols = list(df_leads.columns)
                         for col in ["departamento", "area"]:
@@ -1547,10 +1575,11 @@ def index():
 
                     # Hacemos merge left para mantener todas las filas originales
                     df_leads = df_leads.merge(df_cat, how='left', left_on=mapeo_industria, right_on='company_industry')
+                    print("[DEBUG] Después de merge industrias columnas:", df_leads.columns.tolist())
                     # Crear columna si no existe
                     if 'Industria Mayor' not in df_leads.columns:
                         df_leads['Industria Mayor'] = ""
-
+                        
                     # Crear columna si no existe
                     if 'Industria Mayor' not in df_leads.columns:
                         df_leads['Industria Mayor'] = ""
@@ -1571,6 +1600,8 @@ def index():
                         df_leads = df_leads[cols]
                     acciones_realizadas["clasificar_industrias"] = True
                     status_msg += "Clasificación de industrias aplicada desde catalogoindustrias.csv.<br>"
+                    print("[DEBUG] Columnas finales tras clasificar_global:", df_leads.columns.tolist())
+
                 else:
                     status_msg += "No hay datos para clasificar o falta el archivo catalogoindustrias.csv.<br>"
             except Exception as e:
@@ -1802,61 +1833,52 @@ def index():
         # Subir CSV de leads
         leadf = request.files.get("leads_csv")
         if leadf and leadf.filename:
-            # Leer sin filtrar primero
+            # Leer todo el archivo primero en un DataFrame
             df_full = pd.read_csv(leadf)
-            # Rango de filas
+            
+            # Obtener el rango
             start_row_str = request.form.get("start_row", "").strip()
             end_row_str = request.form.get("end_row", "").strip()
-
+            
             try:
                 start_row = int(start_row_str) if start_row_str else 0
             except:
                 start_row = 0
             try:
-                end_row = int(end_row_str) if end_row_str else (len(df_full) - 1)
+                end_row = int(end_row_str) if end_row_str else len(df_full) - 1
             except:
                 end_row = len(df_full) - 1
-
+            
+            # Corregir rangos fuera de límites
             if start_row < 0:
                 start_row = 0
             if end_row >= len(df_full):
                 end_row = len(df_full) - 1
-            if start_row > end_row:
-                start_row, end_row = 0, len(df_full) - 1
-
-
-
-            df_leads = df_full.iloc[start_row:end_row+1].copy()
-            # Diccionario de mapeo
-            mapeo_columnas = {
-                "Company Name": "Company Name",
-                "Name": "Nombre",
-                "Title": "Title",
-                "First name": "First name",
-                "Last name": "Last name",
-                "Email": "Email",
-                "Linkedin": "Linkedin",
-                "Location": "Location",
-                "Company Domain": "Company Domain",
-                "Company Website": "Company Website",
-                "Company Employee Count Range": "Company Employee Count Range",
-                "Company Founded": "Company Founded",
-                "Company Industry": "Company Industry",
-                "Company Type": "Company Type",
-                "Company Headquarters": "Company Headquarters",
-                "Company Revenue Range": "Company Revenue Range",
-                "Company Linkedin Url": "Company Linkedin Url",
-                "Company Employee Count": "Company Employee Count",  # si quieres que estos unifiquen
-                "Company Crunchbase Url": "Company Crunchbase Url", # ejemplo (si quieres otro destino, cámbialo)
-                "Company Funding Rounds": "Company Funding Rounds", # lo mismo, cámbialo según tus reglas
-                "Company Last Funding Round Amount": "Company Last Funding Round Amount",
-                "Company Logo Url Primary": "Company Logo Url Primary",
-                "Company Logo Url Secondary": "Logo"
-            }
-
-            # Renombrar columnas existentes
-            df_leads.rename(columns={col: mapeo_columnas[col] for col in df_leads.columns if col in mapeo_columnas}, inplace=True)
             
+            if start_row > end_row:
+                # Si el rango es inválido, crea un DataFrame vacío con las mismas columnas
+                df_leads = pd.DataFrame(columns=df_full.columns)
+                status_msg += f"⚠️ Rango inválido: start_row={start_row}, end_row={end_row}. Se cargaron 0 filas.<br>"
+            else:
+                # Si el rango es válido, filtra solo esas filas
+                df_leads = df_full.iloc[start_row:end_row+1].copy()
+                status_msg += f"✅ Leads cargados del {start_row} al {end_row}: {len(df_leads)} filas.<br>"
+
+                                                                
+
+            # Si quieres dejarlo como antes:
+            # -> Nada de mapeo temporal, solo directo
+
+            # Asegurar banderas
+            for k in acciones_realizadas:
+                acciones_realizadas[k] = False
+
+            status_msg += (
+                f"Leads CSV cargado. Filas totales={len(df_full)}. "
+                f"Rango aplicado [{start_row}, {end_row}] => {len(df_leads)} filas cargadas.<br>"
+            )
+
+            # Si quieres el orden de columnas original
             orden_columnas = [
                 "Logo",
                 "Company Name",
@@ -1883,18 +1905,9 @@ def index():
             ]
             columnas_presentes = [col for col in orden_columnas if col in df_leads.columns]
             otras_columnas = [col for col in df_leads.columns if col not in columnas_presentes]
-
-            # Aplicar el orden definitivo
             df_leads = df_leads[columnas_presentes + otras_columnas].copy()
-            for k in acciones_realizadas:
-                acciones_realizadas[k] = False
 
-            status_msg += (
-                f"Leads CSV cargado. Filas totales={len(df_full)}. "
-                f"Rango aplicado [{start_row}, {end_row}] => {len(df_leads)} filas cargadas.<br>"
-            )
-
-            # (AÑADIDO) Checar si existen columnas específicas y reasignar por default
+            # Asignar mapeos automáticos
             if 'First name' in df_leads.columns:
                 mapeo_nombre_contacto = 'First name'
             if 'Title' in df_leads.columns:
@@ -2148,7 +2161,7 @@ def index():
     page_html = f"""
     <html>
     <head>
-        <title>ClickerMatch</title>
+        <title>ClickerMatch Beta</title>
         <style>
             body {{
                 background: url('/static/background.png') no-repeat center center fixed;
@@ -2729,11 +2742,6 @@ def index():
             <option value="1.0">1.0</option>
         </select>
 
-
-
-        <label>Número máximo de filas:</label>
-        <input type="number" name="max_rows" min="1" placeholder="100" />
-
         <button type="submit">📥 Buscar y Cargar</button>
     </form>
     </details>
@@ -2750,37 +2758,13 @@ def index():
             📁 Seleccionar archivo
             <input type="file" name="leads_csv" />
         </label>
-        <div style="display: flex; gap: 10px; align-items: center; justify-content: center;">
-        <label for="start_row">Filas:</label>
-        <input type="text" name="start_row" placeholder="Inicio" style="width: 80px;" />
-        <span>a</span>
-        <input type="text" name="end_row" placeholder="Fin" style="width: 80px;" />
-        </div>
+        
     
-    <details>
-    <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/mapping.png" class="icon" alt="icono db"> Mapeo de columnas</summary>
-        <p>Mapeo de columnas:</p>
-        <div style="margin-top:10px;">
-        <label>Nombre del contacto:</label>
-        <select name="col_nombre">{build_select_options(mapeo_nombre_contacto, df_leads.columns if not df_leads.empty else [])}</select>
-        <label>Puesto/Title:</label>
-        <select name="col_puesto">{build_select_options(mapeo_puesto, df_leads.columns if not df_leads.empty else [])}</select>
-        <label>Nombre de la empresa:</label>
-        <select name="col_empresa">{build_select_options(mapeo_empresa, df_leads.columns if not df_leads.empty else [])}</select>
-        <label>Industria:</label>
-        <select name="col_industria">{build_select_options(mapeo_industria, df_leads.columns if not df_leads.empty else [])}</select>
-        <label>Website:</label>
-        <select name="col_website">{build_select_options(mapeo_website, df_leads.columns if not df_leads.empty else [])}</select>
-        <label>Rango de empleados:</label>
-        <select name="col_employees">{build_select_options(mapeo_empleados, df_leads.columns if not df_leads.empty else [])}</select>
-        <label>Ubicación:</label>
-        <select name="col_location">{build_select_options(mapeo_location, df_leads.columns if not df_leads.empty else [])}</select>
-        </div>
-        </details>
+   
 
         <button type="submit">
             <img src="/static/icons/diskette.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">
-            Guardar Mapeo
+            Subir Archivo
         </button>               
         </form>
     </details>    
@@ -3152,6 +3136,75 @@ def progreso_scrap():
         porcentaje = int(scraping_progress["procesados"] / scraping_progress["total"] * 100)
     return {"porcentaje": porcentaje, "total": scraping_progress["total"], "procesados": scraping_progress["procesados"]}
 
+@app.route("/map_columns", methods=["GET", "POST"])
+def map_columns():
+    global df_temp_upload, df_leads
+    global mapeo_nombre_contacto, mapeo_puesto, mapeo_empresa
+    global mapeo_industria, mapeo_website, mapeo_location
+
+    columnas = list(df_temp_upload.columns)
+
+    if request.method == "POST":
+        # Obtener rango
+        start_row_str = request.form.get("start_row", "").strip()
+        end_row_str = request.form.get("end_row", "").strip()
+        
+        try:
+            start_row = int(start_row_str) if start_row_str else 0
+        except:
+            start_row = 0
+        try:
+            end_row = int(end_row_str) if end_row_str else len(df_temp_upload) - 1
+        except:
+            end_row = len(df_temp_upload) - 1
+
+        if start_row < 0:
+            start_row = 0
+        if end_row >= len(df_temp_upload):
+            end_row = len(df_temp_upload) - 1
+
+        if start_row > end_row:
+            df_leads = pd.DataFrame(columns=df_temp_upload.columns)
+        else:
+            df_leads = df_temp_upload.iloc[start_row:end_row+1].copy()
+
+        # Obtener selecciones
+        mapeo_nombre_contacto = (request.form.get("col_nombre") or "").strip()
+        mapeo_puesto = (request.form.get("col_puesto") or "").strip()
+        mapeo_empresa = (request.form.get("col_empresa") or "").strip()
+        mapeo_industria = (request.form.get("col_industria") or "").strip()
+        mapeo_website = (request.form.get("col_website") or "").strip()
+        mapeo_location = (request.form.get("col_location") or "").strip()
+
+        # Renombrar columnas
+        renames = {}
+        if mapeo_nombre_contacto: renames[mapeo_nombre_contacto] = "First name"
+        if mapeo_puesto: renames[mapeo_puesto] = "Title"
+        if mapeo_empresa: renames[mapeo_empresa] = "Company Name"
+        if mapeo_industria: renames[mapeo_industria] = "Company Industry"
+        if mapeo_website: renames[mapeo_website] = "Company Website"
+        if mapeo_location: renames[mapeo_location] = "Location"
+
+        if renames:
+            df_leads.rename(columns=renames, inplace=True)
+
+        # ACTUALIZAR mapeos a los nombres finales
+        if "First name" in df_leads.columns:
+            mapeo_nombre_contacto = "First name"
+        if "Title" in df_leads.columns:
+            mapeo_puesto = "Title"
+        if "Company Name" in df_leads.columns:
+            mapeo_empresa = "Company Name"
+        if "Company Industry" in df_leads.columns:
+            mapeo_industria = "Company Industry"
+        if "Company Website" in df_leads.columns:
+            mapeo_website = "Company Website"
+        if "Location" in df_leads.columns:
+            mapeo_location = "Location"
+
+        return redirect("/")
+
+    return render_template("map_columns.html", columnas=columnas)
 
 
 if __name__ == "__main__":
