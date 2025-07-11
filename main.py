@@ -1694,14 +1694,13 @@ def index():
 
                 if filtro:
                     condiciones.append(f"""(
-                        LOWER(c.name) LIKE '%{filtro}%' OR
                         LOWER(c.first_name) LIKE '%{filtro}%' OR
                         LOWER(c.last_name) LIKE '%{filtro}%' OR
-                        LOWER(e.company_name) LIKE '%{filtro}%' OR
-                        LOWER(e.company_domain) LIKE '%{filtro}%'
+                        LOWER(c.company_name) LIKE '%{filtro}%' OR
+                        LOWER(c.company_website) LIKE '%{filtro}%'
                     )""")
                 if source:
-                    condiciones.append(f"LOWER(c.source) LIKE '%{source}%'")
+                    condiciones.append(f"LOWER(c.search) LIKE '%{source}%'")
                 if industria:
                     condiciones.append(f"LOWER(e.industria_mayor) LIKE '%{industria}%'")
                 if area:
@@ -1709,45 +1708,47 @@ def index():
                 if departamento:
                     condiciones.append(f"LOWER(c.departamento) LIKE '%{departamento}%'")
                 if tamano:
-                    condiciones.append(f"LOWER(e.company_employee_count_range) LIKE '%{tamano}%'")
+                    condiciones.append(f"LOWER(c.company_employee_count_range) LIKE '%{tamano}%'")
 
                 where_clause = "WHERE " + " AND ".join(condiciones) if condiciones else ""
 
                 # Control del límite
-                max_rows_str = request.form.get("max_rows", "100")
+                max_rows_str = request.form.get("max_rows", "10000")
                 try:
                     max_rows = int(max_rows_str)
                     if max_rows <= 0:
-                        max_rows = 100
+                        max_rows = 10000
                 except:
-                    max_rows = 100
+                    max_rows = 10000
 
                 query_str = f"""
                     SELECT 
-                        e.company_logo_url_secondary AS "Logo",
-                        e.company_name AS "Company Name",
-                        c.name AS "Nombre",
+                        c.image_link AS "Logo",
+                        c.company_name AS "Company Name",
                         c.first_name AS "First name",
                         c.last_name AS "Last name",
-                        c.title AS "Title",
+                        c.job_title AS "Title",
                         c.area AS "Area",
                         c.departamento AS "Departamento",
                         c.niveljerarquico AS "Nivel Jerarquico",
                         c.email AS "Email",
-                        c.linkedin AS "Linkedin",
+                        c.profile_link AS "Linkedin",
                         c.location AS "Location",
-                        e.company_domain AS "Company Domain",
-                        e.company_website AS "Company Website",
-                        e.company_employee_count_range AS "Company Employee Count Range",
-                        e.company_founded AS "Company Founded",
-                        e.company_industry AS "Company Industry",
-                        e.industria_mayor AS "Industria Mayor",
-                        e.company_type AS "Company Type",
-                        e.company_headquarters AS "Company Headquarters",
-                        e.company_revenue_range AS "Company Revenue Range",
-                        e.company_linkedin_url AS "Company Linkedin Url"
-                    FROM contactos c
-                    LEFT JOIN empresas e ON c.empresa_id = e.id
+                        c.company_website AS "Company Website",
+                        c.employee_count_start AS "Company Employee Start",
+                        c.employee_count_end AS "Company Employee End",
+                        c.industries AS "Company Industry",
+                        c.industria_mayor AS "Industria Mayor",
+                        c.scrapping AS "scrapping",
+                        c.urlsonweb AS "URLs on WEB",
+                        c.scrappingadicional AS "Scrapping Adicional",
+                        c.descripcion AS "Descripcion",
+                        c.productos AS "PyS",
+                        c.mercado AS "Objetivo",
+                        c.mail_strategy AS "Strategy - Reply Rate Email",
+                        c.search AS "Lista Search",
+                        c.id AS "ID"
+                    FROM contactos_expandi_historico c
                     {where_clause}
                     ORDER BY c.id ASC
                     LIMIT {max_rows}
@@ -1760,6 +1761,9 @@ def index():
                 with engine.connect() as conn:
                     result = conn.execute(text(query_str)).mappings().all()
                     df_leads = pd.DataFrame(result)
+                    # Reemplazar None / NaN por vacío
+                    df_leads = df_leads.fillna("")
+                    df_leads = df_leads.applymap(lambda x: "" if x is None else x)
                     num_registros = len(df_leads)
                     status_msg += f"✅ Se cargaron {num_registros} contactos desde la DB.<br>"
 
@@ -1767,28 +1771,31 @@ def index():
                     acciones_realizadas[k] = False
                                    
                 orden_columnas = [
-                    "Logo",
-                    "Company Name",
-                    "Nombre",
-                    "First name",
-                    "Last name",
-                    "Title",
-                    "Nivel Jerarquico",
-                    "Area",
-                    "Departamento",
-                    "Email",
-                    "Linkedin",
-                    "Location",
-                    "Company Domain",
-                    "Company Website",
-                    "Company Employee Count Range",
-                    "Company Founded",
-                    "Company Industry",
-                    "Industria Mayor",
-                    "Company Type",
-                    "Company Headquarters",
-                    "Company Revenue Range",
-                    "Company Linkedin Url"
+                        "Logo",
+                        "Company Name",
+                        "First name",
+                        "Last name",
+                        "Title",
+                        "Area",
+                        "Departamento",
+                        "Nivel Jerarquico",
+                        "Email",
+                        "Linkedin",
+                        "Location",
+                        "Company Website",
+                        "Company Employee Start",
+                        "Company Employee End",
+                        "Company Industry",
+                        "Industria Mayor",
+                        "scrapping",
+                        "URLs on WEB",
+                        "Scrapping Adicional",
+                        "Descripcion",
+                        "PyS",
+                        "Objetivo",
+                        "Strategy - Reply Rate Email",
+                        "Lista Search",
+                        "ID"
                 ]
 
                 # Solo las que existan en el dataframe
@@ -1819,6 +1826,101 @@ def index():
 
             except Exception as e:
                 status_msg += f"❌ Error al cargar desde la base de datos: {e}<br>"
+
+        if accion == "cargar_y_mapear_csv":
+            try:
+                csv_file = request.files.get("csv_file")
+                if csv_file and csv_file.filename.endswith(".csv"):
+                    df_temp = pd.read_csv(csv_file)
+                    columnas_csv = list(df_temp.columns)
+                    columnas_db = [
+                        "id", "first_name", "last_name", "profile_link", "job_title",
+                        "company_name", "email", "phone", "address", "image_link",
+                        "follower_count", "tags", "contact_status", "conversation_status",
+                        "object_urn", "public_identifier", "profile_link_public_identifier",
+                        "thread", "invited_at", "connected_at", "company_universal_name",
+                        "company_website", "employee_count_start", "employee_count_end",
+                        "industries", "location", "name", "imported_profile_link", "search"
+                    ]
+                    # Guardar en sesión temporal
+                    session["df_temp_csv"] = df_temp.to_json(orient="split")
+                    session["columnas_csv"] = columnas_csv
+                    session["columnas_db"] = columnas_db
+
+                    status_msg += f"✅ CSV cargado. Ahora mapea las columnas.<br>"
+                    return render_template("mapeo.html", columnas_csv=columnas_csv, columnas_db=columnas_db, status_msg=status_msg)
+                else:
+                    status_msg += "❌ Sube un archivo CSV válido.<br>"
+            except Exception as e:
+                status_msg += f"❌ Error al cargar CSV: {e}<br>"
+
+        if accion == "subir_csv_a_db":
+            try:
+                # Recuperar CSV de sesión
+                df_temp = pd.read_json(session.get("df_temp_csv"), orient="split")
+
+                # Construir mapeo
+                columnas_db = session.get("columnas_db", [])
+                columnas_csv = session.get("columnas_csv", [])
+
+                insert_data = []
+                for idx, row in df_temp.iterrows():
+                    record = {}
+                    for csv_col in columnas_csv:
+                        db_col = request.form.get(f"map_{csv_col}")
+                        if db_col:
+                            record[db_col] = row[csv_col]
+                    insert_data.append(record)
+
+                # Insertar en la base
+                with engine.connect() as conn:
+                    for record in insert_data:
+                        # Rellenar faltantes con NULL
+                        for col in columnas_db:
+                            if col not in record:
+                                record[col] = None
+                        conn.execute(text(f"""
+                            INSERT INTO contactos_expandi_historico ({", ".join(record.keys())})
+                            VALUES ({", ".join([":%s" % k for k in record.keys()])})
+                        """), record)
+
+                status_msg += f"✅ Se insertaron {len(insert_data)} registros en la base de datos.<br>"
+            except Exception as e:
+                status_msg += f"❌ Error al insertar en DB: {e}<br>"
+
+        if accion == "subir_csv_a_db":
+            try:
+                # Recuperar CSV de sesión
+                df_temp = pd.read_json(session.get("df_temp_csv"), orient="split")
+
+                # Construir mapeo
+                columnas_db = session.get("columnas_db", [])
+                columnas_csv = session.get("columnas_csv", [])
+
+                insert_data = []
+                for idx, row in df_temp.iterrows():
+                    record = {}
+                    for csv_col in columnas_csv:
+                        db_col = request.form.get(f"map_{csv_col}")
+                        if db_col:
+                            record[db_col] = row[csv_col]
+                    insert_data.append(record)
+
+                # Insertar en la base
+                with engine.connect() as conn:
+                    for record in insert_data:
+                        # Rellenar faltantes con NULL
+                        for col in columnas_db:
+                            if col not in record:
+                                record[col] = None
+                        conn.execute(text(f"""
+                            INSERT INTO contactos_expandi_historico ({", ".join(record.keys())})
+                            VALUES ({", ".join([":%s" % k for k in record.keys()])})
+                        """), record)
+
+                status_msg += f"✅ Se insertaron {len(insert_data)} registros en la base de datos.<br>"
+            except Exception as e:
+                status_msg += f"❌ Error al insertar en DB: {e}<br>"
 
         if accion == "subir_pdf_plan":                                   
         # PDF para Plan Estratégico
@@ -2523,6 +2625,15 @@ def index():
                 <p style="margin: 0; color: #fff;"><strong>{ session.get("user", "Usuario") }</strong></p>
                 <p style="margin: 0; font-size: 12px; color: #ccc;">{ session.get("correo", "") }</p>
                 <hr style="border-color: #555;">
+                <a href="/mapeo" class="custom-file-upload" style=style="
+                    color: #FF4C4C;
+                    text-decoration: none;
+                    display: block;
+                    margin-top: 5px;
+                    font-weight: bold;
+                ">
+                    📂 Importar CSV a DB
+                </a>
                 <a href="/logout" style="
                     color: #FF4C4C;
                     text-decoration: none;
@@ -2546,7 +2657,7 @@ def index():
     <form method="POST">
         <input type="hidden" name="accion" value="cargar_contactos_db" />
 
-        <label>🔍 Buscar texto (en Nombre, Empresa, Dominio...):</label>
+        <label>🔍 Busqueda Universal:</label>
         <input type="text" name="filtro_busqueda" placeholder="Ej. Acme, gmail, alto" style="margin-bottom:10px;" />
 
         <label>Lista:</label>
@@ -2741,9 +2852,13 @@ def index():
             <option value="2 - 10">2 - 10</option>
             <option value="1.0">1.0</option>
         </select>
-
+        
+        <label>Limite:</label>
+        <input type="text" name="max_rows" placeholder="Ej. 100" />        
+        
         <button type="submit">📥 Buscar y Cargar</button>
     </form>
+
     </details>
 
 
@@ -2758,10 +2873,7 @@ def index():
             📁 Seleccionar archivo
             <input type="file" name="leads_csv" />
         </label>
-        
     
-   
-
         <button type="submit">
             <img src="/static/icons/diskette.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">
             Subir Archivo
@@ -3205,6 +3317,26 @@ def map_columns():
         return redirect("/")
 
     return render_template("map_columns.html", columnas=columnas)
+
+@app.route("/mapeo")
+def mapeo():
+    return render_template("mapeo.html")
+
+@app.route("/subir_mapeado", methods=["POST"])
+def subir_mapeado():
+    file = request.files.get("csvFile")
+    mappings = {k[8:]: v for k, v in request.form.items() if k.startswith("mapping_") and v}
+
+    if file and mappings:
+        df = pd.read_csv(file)
+        # Renombrar columnas según mappings
+        df = df.rename(columns=mappings)
+        # Insertar en la DB (asegúrate de que df.columns coincidan con la tabla)
+        basename = os.path.splitext(file.filename)[0]
+        df["search"] = basename
+        df.to_sql("contactos_expandi_historico", engine, if_exists="append", index=False)
+        return render_template("successupload.html")
+    return "⚠️ No se pudo subir."
 
 
 if __name__ == "__main__":

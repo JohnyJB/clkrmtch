@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Mapeo de columnas CSV a Base de Datos</title>
+    <style>
+            body {
+                background: url('/static/background.png') no-repeat center center fixed;
+                background-size: cover;
+                color: #FFFFFF;
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                margin: 0; padding: 0;
+                text-align: center;
+            }
+            h1, h2, h3 {
+                font-family: 'Orbitron', sans-serif;
+            }  
+            .container {
+                background: rgba(0, 45, 99, 0.6); /* ahora más cercano a #002d63 */
+                backdrop-filter: blur(8px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                width: 5%;
+                max-width: 300px;
+                min-width: 300px;
+                flex-shrink: 0; 
+                margin: 40px auto;
+                padding: 20px 30px;
+                border-radius: 20px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            }
+            .container-wide {
+                max-width: 100%;
+                flex-grow: 1;
+                overflow-x: auto;
+                margin: 20px auto;
+                background: rgba(0, 45, 99, 0.6); /* ahora más cercano a #002d63 */
+                backdrop-filter: blur(8px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                padding: 20px;
+                border-radius: 20px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+                overflow-x: auto;
+            }
+            .container-wide {
+                max-height: 600px;
+                overflow-y: auto;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+                background: #fff;
+                color: #000;
+            }
+            table th {
+                background-color: #1E90FF;
+                color: #fff;
+            }
+            table td {
+                padding: 8px;
+                border: 1px solid #444;
+            }
+            input[type="file"],
+            input[type="text"],
+            textarea,
+            select {
+                width: 100%;
+                padding: 10px;
+                border-radius: 8px;
+                border: 1px solid #ccc;
+                background-color: #fff;
+                color: #333;
+                margin-bottom: 12px;
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                font-size: 14px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            }
+            textarea {
+                background-color: #fff;
+                color: #333;
+            }
+            button {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px; /* espacio entre ícono y texto */
+                font-weight: bold;
+                padding: 10px 16px;
+                border-radius: 5px; /* <- sin bordes redondeados */
+                background: linear-gradient(45deg, #003366, #005599);
+                color: #fff;
+                cursor: pointer;
+                font-size: 14px;
+                width: 100%; /* <- que ocupen todo el ancho */
+                box-sizing: border-box; /* para que el padding no los saque del contenedor */
+            }
+            button:hover {
+                background: linear-gradient(45deg, #005599, #003366);
+            }
+            details summary {
+                background: linear-gradient(45deg, #00BFFF, #1E90FF);
+                color: #ffffff !important;
+                font-weight: bold;
+                padding: 12px 20px;
+                cursor: pointer;
+                border: none;
+                outline: none;
+                width: 100%;
+                box-sizing: border-box;
+                margin: 8px 0;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                position: relative;
+                overflow: hidden;
+            }
+            details summary::before {
+                content: "";
+                position: absolute;
+                left: 50px;
+                top: 0;
+                height: 100%;
+                width: 2px;
+                background: rgba(255,255,255,0.4);
+                transform: skewX(-40deg);
+            }
+            details summary img.icon {
+                height: 20px;
+                filter: brightness(0) invert(1);
+                margin-left: 10px;
+            }
+            details summary::marker {
+                color: #aaa;
+            }
+            .status {
+                background-color: #333;
+                margin: 10px auto;
+                padding: 10px;
+                width: 90%;
+                border-radius: 6px;
+                text-align: left;
+                font-size: 13px;
+            }
+            .scrap-container {
+                background: rgba(10, 20, 40, 0.6);
+                backdrop-filter: blur(8px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                margin: 10px auto;
+                padding: 10px;
+                border-radius: 8px;
+                text-align: left;
+            }
+            .content-block {
+                max-width: 1000px;
+                margin: 20px auto;
+                background-color: #2A2A2A;
+                color: #fff;
+                padding: 20px;
+                border-radius: 10px;
+                text-align: left;
+            }
+             .spinner {
+                margin: 20px auto;
+                width: 50px;
+                height: 50px;
+                border: 6px solid #ccc;
+                border-top: 6px solid #1E90FF;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            }
+
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+
+            .cell-collapsible {
+                max-height: 60px;
+                overflow: hidden;
+                position: relative;
+                cursor: pointer;
+                transition: max-height 0.3s ease;
+                white-space: pre-wrap;
+            }
+            .cell-collapsible.expanded {
+                max-height: 1000px;
+            }
+            .cell-collapsible::after {
+                content: '▼';
+                position: absolute;
+                bottom: 5px;
+                right: 10px;
+                font-size: 12px;
+                color: gray;
+            }
+            .cell-collapsible.expanded::after {
+                content: '▲';
+            }
+
+            table th {
+                background-color: #1E90FF;
+                color: #fff;
+                position: sticky;
+                top: 0;
+                z-index: 1;
+            }
+
+            .container-wide {
+                max-height: 600px;
+                overflow-y: auto;
+            }
+
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+                }
+            th.col-ancha, td.col-ancha {
+                min-width: 250px;
+                max-width: 500px;
+                word-wrap: break-word;
+                white-space: pre-wrap;
+            }
+            @media (max-width: 900px) {
+                div[style*="display: flex"] {
+                    flex-direction: column;
+                }
+            }
+            .editor {
+                background-color: #222;
+                color: white;
+                border: 1px solid #333;
+                border-radius: 10px;
+                padding: 10px;
+                min-height: 200px;
+                white-space: pre-wrap;
+                font-family: monospace;
+            }
+            .editor .var {
+                color: #00aaff;
+                font-weight: bold;
+            }    
+            th.highlighted {
+                background-color: #a020f0; /* morado */
+                color: white;
+            } 
+            .container input,
+            .container select,
+            .container textarea,
+            .container details summary,
+            .container .status,
+            .container .scrap-container {
+                background-color: #fff;
+                color: #333;
+                border: 1px solid #ccc;
+            }
+
+            .container details summary {
+                background-color: #f0f0f0;
+                color: #333;
+                font-weight: bold;
+            } 
+            .custom-file-upload {
+                display: inline-block;
+                padding: 10px 16px;
+                width: 100%;
+                box-sizing: border-box;
+                border-radius: 5px;
+                background: linear-gradient(45deg, #003366, #005599);
+                color: #fff;
+                font-weight: bold;
+                cursor: pointer;
+                text-align: center;
+                font-size: 14px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                margin-bottom: 12px;
+            }
+
+            .custom-file-upload:hover {
+                background: linear-gradient(45deg, #005599, #003366);
+                opacity: 0.9;
+            }  
+            .select2-results__option {
+                color: #000 !important;
+                background-color: #fff !important;
+            }
+
+            .select2-results__option--highlighted {
+                background-color: #888 !important;
+                color: #fff !important;
+            }             
+
+    </style>
+</head>
+<body>
+
+<h2>🗂️ Mapeo de columnas CSV a columnas de la base de datos</h2>
+<div id="csvCount" style="margin-bottom: 15px; font-size: 18px; color: white;"></div>
+
+<form id="formulario-mapeo" method="POST" action="/subir_mapeado" enctype="multipart/form-data">
+    <input type="file" id="csvFile" name="csvFile" accept=".csv" required onchange="previewMapping()">
+    <table id="mappingTable" style="display: none;">
+        <thead>
+            <tr>
+                <th>Columna del CSV</th>
+                <th>Mapear a columna DB</th>
+            </tr>
+        </thead>
+        <tbody id="mappingBody">
+            <!-- dinámico -->
+        </tbody>
+    </table>
+    <label for="searchValue">Valor para columna search (por defecto nombre del archivo):</label>
+    <input type="text" id="searchValue" name="searchValue" placeholder="Ej: Clicker México" value="">
+    <button type="submit" class="btn">📥 Subir a Base de Datos</button>
+</form>
+
+<script>
+const dbColumns = [
+    "id", "first_name", "last_name", "profile_link", "job_title",
+    "company_name", "email", "phone", "address", "image_link", 
+    "follower_count", "tags", "contact_status", "conversation_status",
+    "object_urn", "public_identifier", "profile_link_public_identifier",
+    "thread", "invited_at", "connected_at", "company_universal_name",
+    "company_website", "employee_count_start", "employee_count_end",
+    "industries", "location", "name", "imported_profile_link", "search"
+];
+
+function previewMapping() {
+    const fileInput = document.getElementById('csvFile');
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    // auto-llenar el campo searchValue con el nombre del archivo sin extensión
+    const fileName = file.name.split('.').slice(0, -1).join('.');
+    document.getElementById('searchValue').value = fileName;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/);
+        const csvColumns = lines[0].split(",");
+
+        // contar cuántas filas tiene el archivo sin el header y sin líneas vacías
+        const totalFilas = lines.slice(1).filter(line => line.trim() !== "").length;
+        document.getElementById("csvCount").innerHTML = `📊 Este archivo tiene <strong>${totalFilas}</strong> contactos`;
+
+        const table = document.getElementById("mappingTable");
+        const body = document.getElementById("mappingBody");
+        body.innerHTML = "";
+
+        csvColumns.forEach(col => {
+            const tr = document.createElement("tr");
+
+            const tdCsv = document.createElement("td");
+            tdCsv.textContent = col;
+            tr.appendChild(tdCsv);
+
+            const tdSelect = document.createElement("td");
+            const select = document.createElement("select");
+            select.name = "mapping_" + col;
+
+            const optEmpty = document.createElement("option");
+            optEmpty.value = "";
+            optEmpty.textContent = "(No importar)";
+            select.appendChild(optEmpty);
+
+            dbColumns.forEach(dbCol => {
+                const opt = document.createElement("option");
+                opt.value = dbCol;
+                opt.textContent = dbCol;
+                if (col.trim().toLowerCase() === dbCol.toLowerCase()) {
+                    opt.selected = true;
+                }
+                select.appendChild(opt);
+            });
+
+            tdSelect.appendChild(select);
+            tr.appendChild(tdSelect);
+
+            body.appendChild(tr);
+        });
+
+        table.style.display = "table";
+    };
+    reader.readAsText(file);
+}
+
+
+
+
+</script>
+
+</body>
+</html>

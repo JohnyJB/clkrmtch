@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Importación Exitosa</title>
+    <style>
+        /* aquí pega tu style tal cual */
+        body {
+            background: url('/static/background.png') no-repeat center center fixed;
+            background-size: cover;
+            color: #FFFFFF;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            margin: 0; padding: 0;
+            text-align: center;
+        }
+        h1, h2, h3 {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .container {
+            background: rgba(0, 45, 99, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 90%;
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+        button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-weight: bold;
+            padding: 10px 16px;
+            border-radius: 5px;
+            background: linear-gradient(45deg, #003366, #005599);
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 20px;
+        }
+        button:hover {
+            background: linear-gradient(45deg, #005599, #003366);
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>✅ Archivo subido e importado con éxito</h2>
+    <form action="/">
+        <button type="submit">🏠 Volver a la pantalla principal</button>
+    </form>
+</div>
+
+</body>
+</html>
