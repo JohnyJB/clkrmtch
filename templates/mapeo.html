@@ -316,7 +316,7 @@
 
 <script>
 const dbColumns = [
-    "id", "first_name", "last_name", "profile_link", "job_title",
+    "ide", "first_name", "last_name", "profile_link", "job_title",
     "company_name", "email", "phone", "address", "image_link", 
     "follower_count", "tags", "contact_status", "conversation_status",
     "object_urn", "public_identifier", "profile_link_public_identifier",
@@ -368,7 +368,9 @@ function previewMapping() {
                 const opt = document.createElement("option");
                 opt.value = dbCol;
                 opt.textContent = dbCol;
-                if (col.trim().toLowerCase() === dbCol.toLowerCase()) {
+                if (col.trim().toLowerCase() === "id" && dbCol === "ide") {
+                    opt.selected = true;
+                } else if (col.trim().toLowerCase() === dbCol.toLowerCase()) {
                     opt.selected = true;
                 }
                 select.appendChild(opt);
