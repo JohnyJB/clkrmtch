@@ -1748,7 +1748,7 @@ def index():
                         c.mercado AS "Objetivo",
                         c.mail_strategy AS "Strategy - Reply Rate Email",
                         c.search AS "Lista Search",
-                        c.id AS "ID"
+                        c.ide AS "ID"
                     FROM contactos_expandi_historico c
                     {where_clause}
                     ORDER BY c.id ASC
@@ -1835,7 +1835,7 @@ def index():
                     df_temp = pd.read_csv(csv_file)
                     columnas_csv = list(df_temp.columns)
                     columnas_db = [
-                        "id", "first_name", "last_name", "profile_link", "job_title",
+                        "ide", "first_name", "last_name", "profile_link", "job_title",
                         "company_name", "email", "phone", "address", "image_link",
                         "follower_count", "tags", "contact_status", "conversation_status",
                         "object_urn", "public_identifier", "profile_link_public_identifier",
@@ -2264,7 +2264,6 @@ def index():
     page_html = f"""
     <html>
     <head>
-        <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
         <title>ClickerMatch Beta</title>
         <style>
             body {{
