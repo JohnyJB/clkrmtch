@@ -1748,7 +1748,7 @@ def index():
                         c.mercado AS "Objetivo",
                         c.mail_strategy AS "Strategy - Reply Rate Email",
                         c.search AS "Lista Search",
-                        c.ide AS "ID"
+                        c.ide AS "IDE"
                     FROM contactos_expandi_historico c
                     {where_clause}
                     ORDER BY c.id ASC
@@ -1796,7 +1796,7 @@ def index():
                         "Objetivo",
                         "Strategy - Reply Rate Email",
                         "Lista Search",
-                        "ID"
+                        "IDE"
                 ]
 
                 # Solo las que existan en el dataframe
