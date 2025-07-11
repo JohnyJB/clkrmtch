@@ -103,6 +103,7 @@ template_base = '''
 <html>
 <head>
     <title>ClickerMatch - {{ titulo }}</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
     <style>
         body {
@@ -2263,6 +2264,7 @@ def index():
     page_html = f"""
     <html>
     <head>
+        <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
         <title>ClickerMatch Beta</title>
         <style>
             body {{
