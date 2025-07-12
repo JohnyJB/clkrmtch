@@ -348,7 +348,8 @@ function previewMapping() {
         const body = document.getElementById("mappingBody");
         body.innerHTML = "";
 
-        csvColumns.forEach(col => {
+        csvColumns.forEach(rawCol => {
+            const col = rawCol.replace(/^"(.*)"$/, '$1').trim(); // quita comillas dobles alrededor
             const tr = document.createElement("tr");
 
             const tdCsv = document.createElement("td");
