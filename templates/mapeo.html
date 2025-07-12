@@ -295,9 +295,11 @@
 
 <h2>🗂️ Mapeo de columnas CSV a columnas de la base de datos</h2>
 <div id="csvCount" style="margin-bottom: 15px; font-size: 18px; color: white;"></div>
-
-<form id="formulario-mapeo" method="POST" action="/subir_mapeado" enctype="multipart/form-data">
+<form id="formulario-mapeo" method="POST" action="/subir_mapeado" enctype="multipart/form-data" onsubmit="return validateAndFixSearch()">
     <input type="file" id="csvFile" name="csvFile" accept=".csv" required onchange="previewMapping()">
+    <label for="searchValue">Valor para columna search (por defecto nombre del archivo):</label>
+    <input type="text" id="searchValue" name="searchValue" placeholder="Ej: Clicker México" value="">
+    <button type="submit" class="btn">📥 Subir a Base de Datos</button>
     <table id="mappingTable" style="display: none;">
         <thead>
             <tr>
@@ -309,9 +311,7 @@
             <!-- dinámico -->
         </tbody>
     </table>
-    <label for="searchValue">Valor para columna search (por defecto nombre del archivo):</label>
-    <input type="text" id="searchValue" name="searchValue" placeholder="Ej: Clicker México" value="">
-    <button type="submit" class="btn">📥 Subir a Base de Datos</button>
+
 </form>
 
 <script>
@@ -330,9 +330,14 @@ function previewMapping() {
     const file = fileInput.files[0];
     if (!file) return;
 
-    // auto-llenar el campo searchValue con el nombre del archivo sin extensión
-    const fileName = file.name.split('.').slice(0, -1).join('.');
-    document.getElementById('searchValue').value = fileName;
+    let fileName = file.name.split('.').slice(0, -1).join('.');
+
+    // Si tiene ~ lo dejamos vacío
+    if (fileName.includes('~')) {
+        document.getElementById('searchValue').value = "";
+    } else {
+        document.getElementById('searchValue').value = fileName;
+    }
 
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -340,7 +345,6 @@ function previewMapping() {
         const lines = text.split(/\r?\n/);
         const csvColumns = lines[0].split(",");
 
-        // contar cuántas filas tiene el archivo sin el header y sin líneas vacías
         const totalFilas = lines.slice(1).filter(line => line.trim() !== "").length;
         document.getElementById("csvCount").innerHTML = `📊 Este archivo tiene <strong>${totalFilas}</strong> contactos`;
 
@@ -348,8 +352,8 @@ function previewMapping() {
         const body = document.getElementById("mappingBody");
         body.innerHTML = "";
 
-        csvColumns.forEach(rawCol => {
-            const col = rawCol.replace(/^"(.*)"$/, '$1').trim(); // quita comillas dobles alrededor
+        csvColumns.forEach(col => {
+            col = col.replace(/^"|"$/g, '');
             const tr = document.createElement("tr");
 
             const tdCsv = document.createElement("td");
@@ -369,9 +373,8 @@ function previewMapping() {
                 const opt = document.createElement("option");
                 opt.value = dbCol;
                 opt.textContent = dbCol;
-                if (col.trim().toLowerCase() === "id" && dbCol === "ide") {
-                    opt.selected = true;
-                } else if (col.trim().toLowerCase() === dbCol.toLowerCase()) {
+                if (col.trim().toLowerCase() === dbCol.toLowerCase() ||
+                    (col.trim().toLowerCase() === 'id' && dbCol === 'ide')) {
                     opt.selected = true;
                 }
                 select.appendChild(opt);
@@ -387,6 +390,59 @@ function previewMapping() {
     };
     reader.readAsText(file);
 }
+
+
+
+function validateAndFixSearch() {
+    const searchInput = document.getElementById('searchValue');
+    const fileInput = document.getElementById('csvFile');
+    const file = fileInput.files[0];
+    if (!file) return false;
+
+    let fileName = file.name.split('.').slice(0, -1).join('.');
+    if (fileName.includes('~')) {
+        if (!searchInput.value.trim()) {
+            alert("⚠️ No puedes subir el archivo porque el nombre detectado tiene '~' y el campo search está vacío.");
+            return false;
+        }
+    } else {
+        if (!searchInput.value.trim()) {
+            searchInput.value = fileName;
+        }
+    }
+
+    // Validar al final que search no esté vacío
+    if (!searchInput.value.trim()) {
+        alert("⚠️ Debes tener un valor en el campo search para poder subir el archivo.");
+        return false;
+    }
+
+    return true;
+}
+
+
+function fixSearchName() {
+    const searchInput = document.getElementById('searchValue');
+    if (searchInput.value.trim()) {
+        return; // si ya tiene algo, no lo cambia
+    }
+
+    const fileInput = document.getElementById('csvFile');
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    let fileName = file.name.split('.').slice(0, -1).join('.');
+    fileName = fileName.replace(/~/g, '_').replace(/[\s]+/g, '_');
+
+    if (fileName.includes('~')) {
+        searchInput.value = "";
+    } else {
+        searchInput.value = fileName;
+    }
+}
+
+
+
 
 
 

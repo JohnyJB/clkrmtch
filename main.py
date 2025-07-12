@@ -162,13 +162,13 @@ template_base = '''
         {% endif %}
         <input type="email" name="correo" placeholder="Correo" required><br>
         <input type="password" name="pass" placeholder="Contraseña" required><br>
-        <button type="submit">{{ 'Registrar' if register else 'Entrar' }}</button>
+        <-- <button type="submit">{{ 'Registrar' if register else 'Entrar' }}</button> -->
     </form>
     <div class="msg">{{ msg }}</div>
     {% if register %}
         <a href="/">Volver al login</a>
     {% else %}
-        <!-- <a href="/register">Crear cuenta</a> -->
+        <a href="/register">Crear cuenta</a>
     {% endif %}
 </div>
 </body>
@@ -217,19 +217,27 @@ def register():
         correo = request.form["correo"]
         password = generate_password_hash(request.form["pass"])
         try:
-            with engine.connect() as conn:
-                exists = conn.execute(text("SELECT 1 FROM usuarios WHERE correo = :correo"), {"correo": correo}).scalar()
+            # 🔥 CAMBIO AQUÍ: usar begin() para que haga commit automáticamente
+            with engine.begin() as conn:
+                exists = conn.execute(
+                    text("SELECT 1 FROM usuarios WHERE correo = :correo"),
+                    {"correo": correo}
+                ).scalar()
                 if exists:
                     msg = "Este correo ya está registrado."
                 else:
                     conn.execute(text("""
                         INSERT INTO usuarios (nombre, correo, pass, es_admin, creado_en)
                         VALUES (:nombre, :correo, :pass, false, NOW())
-                    """), {"nombre": nombre, "correo": correo, "pass": password})
+                    """), {
+                        "nombre": nombre,
+                        "correo": correo,
+                        "pass": password
+                    })
                     msg = "Cuenta creada correctamente. Ahora puedes iniciar sesión."
         except Exception as e:
             print("[ERROR en registro]:", e)
-            msg = "Error interno al registrar usuario."
+            msg = f"Error interno al registrar usuario: {e}"
     return render_template_string(template_base, msg=msg, register=True, titulo="Crear Cuenta")
 
 # Si corres localmente
@@ -3317,7 +3325,7 @@ def map_columns():
 
         return redirect("/")
 
-    return render_template("map_columns.html", columnas=columnas)
+    return render_template("mapeo.html", columnas=columnas)
 
 @app.route("/mapeo")
 def mapeo():
@@ -3333,10 +3341,10 @@ def subir_mapeado():
         # Renombrar columnas según mappings
         df = df.rename(columns=mappings)
         # Insertar en la DB (asegúrate de que df.columns coincidan con la tabla)
-        basename = os.path.splitext(file.filename)[0]
-        df["search"] = basename
+        search_value = request.form.get("searchValue", "").strip()
+        df["search"] = search_value
         df.to_sql("contactos_expandi_historico", engine, if_exists="append", index=False)
-        return render_template("successupload.html")
+        return render_template("mapeo.html")
     return "⚠️ No se pudo subir."
 
 
