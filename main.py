@@ -1694,10 +1694,30 @@ def index():
             try:
                 filtro = request.form.get("filtro_busqueda", "").strip().lower()
                 source = request.form.get("source", "").strip().lower()
-                industria = request.form.get("industria", "").strip().lower()
-                area = request.form.get("area", "").strip().lower()
-                departamento = request.form.get("departamento", "").strip().lower()
-                tamano = request.form.get("company_employee_count_range", "").strip().lower()
+
+                # 🚀 ahora multiple
+                industria = request.form.getlist("industria_mayor")
+                area = request.form.getlist("area")
+                departamento = request.form.getlist("departamento")
+                tamano = request.form.getlist("company_employee_count_range")
+
+                # fallback para compatibilidad con selects sin multiple
+                if not industria:
+                    industria_str = request.form.get("industria_mayor", "").strip().lower()
+                    if industria_str:
+                        industria = [industria_str]
+                if not area:
+                    area_str = request.form.get("area", "").strip().lower()
+                    if area_str:
+                        area = [area_str]
+                if not departamento:
+                    depto_str = request.form.get("departamento", "").strip().lower()
+                    if depto_str:
+                        departamento = [depto_str]
+                if not tamano:
+                    tamano_str = request.form.get("company_employee_count_range", "").strip().lower()
+                    if tamano_str:
+                        tamano = [tamano_str]
 
                 condiciones = []
 
@@ -1711,13 +1731,17 @@ def index():
                 if source:
                     condiciones.append(f"LOWER(c.search) LIKE '%{source}%'")
                 if industria:
-                    condiciones.append(f"LOWER(e.industria_mayor) LIKE '%{industria}%'")
+                    conds = [f"LOWER(c.industria_mayor) LIKE '%{val}%'" for val in industria]
+                    condiciones.append("(" + " OR ".join(conds) + ")")
                 if area:
-                    condiciones.append(f"LOWER(c.area) LIKE '%{area}%'")
+                    conds = [f"LOWER(c.area) LIKE '%{val}%'" for val in area]
+                    condiciones.append("(" + " OR ".join(conds) + ")")
                 if departamento:
-                    condiciones.append(f"LOWER(c.departamento) LIKE '%{departamento}%'")
+                    conds = [f"LOWER(c.departamento) LIKE '%{val}%'" for val in departamento]
+                    condiciones.append("(" + " OR ".join(conds) + ")")
                 if tamano:
-                    condiciones.append(f"LOWER(c.company_employee_count_range) LIKE '%{tamano}%'")
+                    conds = [f"LOWER(c.company_employee_count_range) LIKE '%{val}%'" for val in tamano]
+                    condiciones.append("(" + " OR ".join(conds) + ")")
 
                 where_clause = "WHERE " + " AND ".join(condiciones) if condiciones else ""
 
@@ -1766,11 +1790,10 @@ def index():
                 print("\n[DEBUG QUERY PARA PGADMIN]")
                 print(query_str)
 
-                # Ejecutar realmente (usa bind seguro aquí si quieres)
+                # Ejecutar realmente
                 with engine.connect() as conn:
                     result = conn.execute(text(query_str)).mappings().all()
                     df_leads = pd.DataFrame(result)
-                    # Reemplazar None / NaN por vacío
                     df_leads = df_leads.fillna("")
                     df_leads = df_leads.applymap(lambda x: "" if x is None else x)
                     num_registros = len(df_leads)
@@ -1778,43 +1801,38 @@ def index():
 
                 for k in acciones_realizadas:
                     acciones_realizadas[k] = False
-                                   
-                orden_columnas = [
-                        "Logo",
-                        "Company Name",
-                        "First name",
-                        "Last name",
-                        "Title",
-                        "Area",
-                        "Departamento",
-                        "Nivel Jerarquico",
-                        "Email",
-                        "Linkedin",
-                        "Location",
-                        "Company Website",
-                        "Company Employee Start",
-                        "Company Employee End",
-                        "Company Industry",
-                        "Industria Mayor",
-                        "scrapping",
-                        "URLs on WEB",
-                        "Scrapping Adicional",
-                        "Descripcion",
-                        "PyS",
-                        "Objetivo",
-                        "Strategy - Reply Rate Email",
-                        "Lista Search",
-                        "IDE"
-                ]
 
-                # Solo las que existan en el dataframe
+                orden_columnas = [
+                    "Logo",
+                    "Company Name",
+                    "First name",
+                    "Last name",
+                    "Title",
+                    "Area",
+                    "Departamento",
+                    "Nivel Jerarquico",
+                    "Email",
+                    "Linkedin",
+                    "Location",
+                    "Company Website",
+                    "Company Employee Start",
+                    "Company Employee End",
+                    "Company Industry",
+                    "Industria Mayor",
+                    "scrapping",
+                    "URLs on WEB",
+                    "Scrapping Adicional",
+                    "Descripcion",
+                    "PyS",
+                    "Objetivo",
+                    "Strategy - Reply Rate Email",
+                    "Lista Search",
+                    "IDE"
+                ]
                 columnas_presentes = [col for col in orden_columnas if col in df_leads.columns]
                 otras_columnas = [col for col in df_leads.columns if col not in columnas_presentes]
-
-                # Reordenar el dataframe
                 df_leads = df_leads[columnas_presentes + otras_columnas]
 
-                # CHECAR MAPEOS
                 if 'First name' in df_leads.columns:
                     mapeo_nombre_contacto = 'First name'
                 if 'Title' in df_leads.columns:
@@ -1830,8 +1848,6 @@ def index():
 
                 for k in acciones_realizadas:
                     acciones_realizadas[k] = False
-                                                
-                
 
             except Exception as e:
                 status_msg += f"❌ Error al cargar desde la base de datos: {e}<br>"
@@ -1863,39 +1879,8 @@ def index():
             except Exception as e:
                 status_msg += f"❌ Error al cargar CSV: {e}<br>"
 
-        if accion == "subir_csv_a_db":
-            try:
-                # Recuperar CSV de sesión
-                df_temp = pd.read_json(session.get("df_temp_csv"), orient="split")
-
-                # Construir mapeo
-                columnas_db = session.get("columnas_db", [])
-                columnas_csv = session.get("columnas_csv", [])
-
-                insert_data = []
-                for idx, row in df_temp.iterrows():
-                    record = {}
-                    for csv_col in columnas_csv:
-                        db_col = request.form.get(f"map_{csv_col}")
-                        if db_col:
-                            record[db_col] = row[csv_col]
-                    insert_data.append(record)
-
-                # Insertar en la base
-                with engine.connect() as conn:
-                    for record in insert_data:
-                        # Rellenar faltantes con NULL
-                        for col in columnas_db:
-                            if col not in record:
-                                record[col] = None
-                        conn.execute(text(f"""
-                            INSERT INTO contactos_expandi_historico ({", ".join(record.keys())})
-                            VALUES ({", ".join([":%s" % k for k in record.keys()])})
-                        """), record)
-
-                status_msg += f"✅ Se insertaron {len(insert_data)} registros en la base de datos.<br>"
-            except Exception as e:
-                status_msg += f"❌ Error al insertar en DB: {e}<br>"
+ 
+        
 
         if accion == "subir_csv_a_db":
             try:
@@ -2269,6 +2254,27 @@ def index():
     departamento_options_html = "".join([f'<option value="{d.strip()}">{d.strip()}</option>' for d in departamentos])
     tamano_options_html = "".join([f'<option value="{d.strip()}">{d.strip()}</option>' for d in tamanos])
     
+    # obtener listas únicas de 'Lista Search'
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT DISTINCT search FROM contactos_expandi_historico WHERE search IS NOT NULL AND search != ''"))
+        listas_search = [row[0] for row in result]
+    # Primero obtén tus searches recientes
+    with engine.connect() as conn:
+        result = conn.execute(text("""
+            SELECT 
+            search,
+            COUNT(*) AS total,
+            MAX(id) AS ultimo_id
+            FROM contactos_expandi_historico
+            WHERE search IS NOT NULL AND search != ''
+            GROUP BY search
+            ORDER BY ultimo_id DESC
+        """)).fetchall()
+        listas_search = [row[0] for row in result]
+
+    # Ahora genera el HTML para tu <datalist>
+    search_options_html = "".join([f'<option value="{s}">' for s in listas_search])
+
     page_html = f"""
     <html>
     <head>
@@ -2557,7 +2563,75 @@ def index():
             .select2-results__option--highlighted {{
                 background-color: #888 !important;
                 color: #fff !important;
-            }}             
+            }} 
+            .select-enhanced {{
+                width: 100%;
+                padding: 8px;
+                border: 1px solid #1E90FF;
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.8);
+                color: #333;
+                font-size: 14px;
+                outline: none;
+                cursor: pointer;
+                margin-bottom: 8px;
+            }}
+            .chips-container span {{
+                background: #1E90FF;
+                color: #fff;
+                padding: 3px 10px;
+                margin: 3px;
+                border-radius: 14px;
+                display: inline-block;
+                font-size: 13px;
+            }}    
+            .dropdown {{
+                position: relative;
+                display: inline-block;
+                width: 300px;
+                background: #fff;
+                border: 1px solid #ccc;
+                border-radius: 8px;
+                cursor: pointer;
+            }}
+            .dropdown .dropdown-options {{
+                display: none;
+                position: absolute;
+                background: #fff;
+                border: 1px solid #ccc;
+                width: 100%;
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+            }}
+            .dropdown.open .dropdown-options {{
+                display: block;
+            }}
+            .dropdown .selected-values {{
+                padding: 8px;
+            }}
+            .dropdown label {{
+                display: block;
+                padding: 5px 10px;
+            }}
+            .chips-container {{
+                margin-top: 5px;
+                color: #fff;
+                background: rgba(0, 45, 99, 0.5);
+                padding: 8px 12px;
+                border-radius: 12px;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            }}
+            .chips-container span {{
+                background: #1E90FF;
+                color: #fff;
+                padding: 4px 10px;
+                border-radius: 14px;
+                font-size: 13px;
+            }}
 
         </style>
     </head>
@@ -2670,10 +2744,15 @@ def index():
         <input type="text" name="filtro_busqueda" placeholder="Ej. Acme, gmail, alto" style="margin-bottom:10px;" />
 
         <label>Lista:</label>
-        <input type="text" name="source" placeholder="" />
+        <input type="text" name="source" list="search_list" placeholder="" />
+        <datalist id="search_list">
+            {search_options_html}
+        </datalist>
+
 
         <label for="industria_mayor">Industria:</label>
-        <select name="industria_mayor" id="industria_mayor">
+        <div id="industria_mayor_selected" style="margin-top: 5px; color: #fff;" class="chips-container"></div>
+        <select name="industria_mayor" id="industria_mayor" multiple size="5" class="select-enhanced">
             <option value="">-- Todas --</option>
             <option value="Finance">Finance</option>
             <option value="Technology">Technology</option>
@@ -2703,10 +2782,11 @@ def index():
             <option value="Environmental">Environmental</option>
             <option value="Public Services">Public Services</option>
         </select>
-
+        
 
         <label for="area">Área:</label>
-        <select name="area" id="area">
+        <div id="area_selected" style="margin-top: 5px; color: #fff;" class="chips-container"></div>
+        <select name="area" id="area" multiple size="5">
             <option value="">-- Todas --</option>
             <option value="Comercial">Comercial</option>
             <option value="Dirección General">Dirección General</option>
@@ -2724,9 +2804,11 @@ def index():
             <option value="Producción Artistica">Producción Artistica</option>
             <option value="Municipio">Municipio</option>
         </select>
+        
 
         <label for="departamento">Departamento:</label>
-        <select name="departamento" id="departamento">
+        <div id="departamento_selected" style="margin-top: 5px; color: #fff;" class="chips-container"></div>
+        <select name="departamento" id="departamento" multiple size="5">
             <option value="">-- Todos --</option>
             <option value="Ventas">Ventas</option>
             <option value="Rectoria">Rectoria</option>
@@ -2841,8 +2923,10 @@ def index():
             <option value="Dirección General Adjunta">Dirección General Adjunta</option>
         </select>
         
+        
         <label for="company_employee_count_range">Tamaño de Empresa:</label>
-        <select name="company_employee_count_range" id="company_employee_count_range">
+        <div id="company_employee_count_range_selected" style="margin-top: 5px; color: #fff;" class="chips-container"></div>
+        <select name="company_employee_count_range" id="company_employee_count_range" multiple size="5">
             <option value="">-- Todos --</option>
             <option value="10001+">10001+</option>
             <option value="10000.0">10000.0</option>
@@ -2862,11 +2946,20 @@ def index():
             <option value="1.0">1.0</option>
         </select>
         
+        
         <label>Limite:</label>
         <input type="text" name="max_rows" placeholder="Ej. 100" />        
         
         <button type="submit">📥 Buscar y Cargar</button>
     </form>
+    
+    <form method="POST">
+    <input type="hidden" name="accion" value="actualizar_tabla_en_db"/>
+        <button type="submit" style="background-color: #1E90FF;">
+            💾 Actualizar columnas en la DB
+        </button>
+    </form>
+
 
     </details>
 
@@ -3225,8 +3318,32 @@ def index():
             dropdown.style.display = "none";
         }}
     }});
+    
+    function enableMultipleWithoutCtrl(selectId, labelId) {{
+        const select = document.getElementById(selectId);
+        const label = document.getElementById(labelId);
+
+        select.addEventListener('mousedown', function(e) {{
+            e.preventDefault();
+            const option = e.target;
+            option.selected = !option.selected;
+            updateLabel();
+        }});
+
+        function updateLabel() {{
+            const selectedOptions = Array.from(select.selectedOptions).map(opt => opt.value);
+            label.innerText = selectedOptions.join(', ');
+        }}
+    }}
+
+    // Llamadas para tus campos
+    enableMultipleWithoutCtrl("industria_mayor", "industria_mayor_selected");
+    enableMultipleWithoutCtrl("area", "area_selected");
+    enableMultipleWithoutCtrl("departamento", "departamento_selected");    
+    enableMultipleWithoutCtrl("company_employee_count_range", "company_employee_count_range_selected"); 
 
     </script>
+
 
 
     </body>
