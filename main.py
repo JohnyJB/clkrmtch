@@ -1456,7 +1456,98 @@ def index():
     mapeo_location = (request.form.get("col_location") or mapeo_location or "").strip() or mapeo_location
 
     if request.method == "POST":
-         
+
+       # Subir CSV de leads
+        leadf = request.files.get("leads_csv")
+        if leadf and leadf.filename:
+            # Leer todo el archivo primero en un DataFrame
+            df_full = pd.read_csv(leadf)
+            
+            # Obtener el rango
+            start_row_str = request.form.get("start_row", "").strip()
+            end_row_str = request.form.get("end_row", "").strip()
+            
+            try:
+                start_row = int(start_row_str) if start_row_str else 0
+            except:
+                start_row = 0
+            try:
+                end_row = int(end_row_str) if end_row_str else len(df_full) - 1
+            except:
+                end_row = len(df_full) - 1
+            
+            # Corregir rangos fuera de límites
+            if start_row < 0:
+                start_row = 0
+            if end_row >= len(df_full):
+                end_row = len(df_full) - 1
+            
+            if start_row > end_row:
+                # Si el rango es inválido, crea un DataFrame vacío con las mismas columnas
+                df_leads = pd.DataFrame(columns=df_full.columns)
+                status_msg += f"⚠️ Rango inválido: start_row={start_row}, end_row={end_row}. Se cargaron 0 filas.<br>"
+            else:
+                # Si el rango es válido, filtra solo esas filas
+                df_leads = df_full.iloc[start_row:end_row+1].copy()
+                status_msg += f"✅ Leads cargados del {start_row} al {end_row}: {len(df_leads)} filas.<br>"
+
+                                                                
+
+            # Si quieres dejarlo como antes:
+            # -> Nada de mapeo temporal, solo directo
+
+            # Asegurar banderas
+            for k in acciones_realizadas:
+                acciones_realizadas[k] = False
+
+            status_msg += (
+                f"Leads CSV cargado. Filas totales={len(df_full)}. "
+                f"Rango aplicado [{start_row}, {end_row}] => {len(df_leads)} filas cargadas.<br>"
+            )
+
+            # Si quieres el orden de columnas original
+            orden_columnas = [
+                "Logo",
+                "Company Name",
+                "Nombre",
+                "First name",
+                "Last name",
+                "Title",
+                "Nivel Jerarquico",
+                "Area",
+                "Departamento",
+                "Email",
+                "Linkedin",
+                "Location",
+                "Company Domain",
+                "Company Website",
+                "Company Employee Count Range",
+                "Company Founded",
+                "Company Industry",
+                "Industria Mayor",
+                "Company Type",
+                "Company Headquarters",
+                "Company Revenue Range",
+                "Company Linkedin Url"
+            ]
+            columnas_presentes = [col for col in orden_columnas if col in df_leads.columns]
+            otras_columnas = [col for col in df_leads.columns if col not in columnas_presentes]
+            df_leads = df_leads[columnas_presentes + otras_columnas].copy()
+
+            # Asignar mapeos automáticos
+            if 'First name' in df_leads.columns:
+                mapeo_nombre_contacto = 'First name'
+            if 'Title' in df_leads.columns:
+                mapeo_puesto = 'Title'
+            if 'Company Name' in df_leads.columns:
+                mapeo_empresa = 'Company Name'
+            if 'Company Industry' in df_leads.columns:
+                mapeo_industria = 'Company Industry'
+            if 'Company Website' in df_leads.columns:
+                mapeo_website = 'Company Website'
+            if 'Location' in df_leads.columns:
+                mapeo_location = 'Location'
+       
         if accion == "guardar_prompt_chatgpt":
             nuevo_prompt = request.form.get("prompt_chatgpt", "").strip()
             prompt_actual = nuevo_prompt
@@ -1879,7 +1970,94 @@ def index():
             except Exception as e:
                 status_msg += f"❌ Error al cargar CSV: {e}<br>"
 
- 
+        if accion == "actualizar_tabla_en_db":
+            try:
+                if df_leads is None or df_leads.empty:
+                    status_msg += "⚠️ No hay datos cargados para actualizar.<br>"
+                    return render_template("index.html", status_msg=status_msg)
+                
+                import os
+                from datetime import datetime
+                import re
+
+                def render_sql_query_safe(query_template, params):
+                    for key, value in params.items():
+                        if value is None:
+                            replacement = 'NULL'
+                        elif isinstance(value, (int, float)):
+                            replacement = str(value)
+                        else:
+                            escaped = str(value).replace("'", "''")
+                            replacement = f"'{escaped}'"
+                        query_template = re.sub(rf":{key}\b", replacement, query_template)
+                    return query_template
+
+                columnas_actualizar_db = {
+                    "scrapping": "scrapping",
+                    "URLs on WEB": "urlsonweb",
+                    "Scrapping Adicional": "scrappingadicional",
+                    "Descripcion": "descripcion",
+                    "PyS": "productos",
+                    "Objetivo": "mercado",
+                    "Strategy - Reply Rate Email": "mail_strategy"
+                }
+
+                os.makedirs("Querys", exist_ok=True)
+
+                # Normalizar columna IDE
+                if "IDE" in df_leads.columns:
+                    df_leads["ide"] = df_leads["IDE"]
+                elif "ide" not in df_leads.columns:
+                    raise Exception("No hay columna 'ide' o 'IDE' en el dataframe.")
+
+                total_actualizados = 0
+                with engine.connect() as conn:
+                    for idx, row in df_leads.iterrows():
+                        set_clauses = []
+                        params = {}
+
+                        for col_ui, col_db in columnas_actualizar_db.items():
+                            valor = row.get(col_ui, "")
+                            if isinstance(valor, list):
+                                valor = ", ".join(valor)
+                            params[col_db] = valor
+                            set_clauses.append(f"{col_db} = :{col_db}")
+
+                        ide_value = row.get("IDE") or row.get("ide")
+                        if pd.isna(ide_value):
+                            print(f"⚠️ Saltando fila sin IDE: {row}")
+                            continue
+                        try:
+                            ide_value = int(ide_value)
+                        except:
+                            print(f"⚠️ IDE inválido: {ide_value}, saltando fila.")
+                            continue
+
+                        params["ide"] = ide_value
+
+                        sql = f"""
+                            UPDATE contactos_expandi_historico
+                            SET {', '.join(set_clauses)}
+                            WHERE ide = :ide;
+                        """.strip()
+
+                        final_query_pgadmin = render_sql_query_safe(sql, params)
+                        filename = f"Querys/update_IDE_{ide_value}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                        with open(filename, "w", encoding="utf-8") as f:
+                            f.write(final_query_pgadmin)
+                        print(f"✅ Query guardado en: {filename}")
+
+                        result = conn.execute(text(sql), params)
+                        print(f"[UPDATE IDE {ide_value}] Filas afectadas: {result.rowcount}")
+                        total_actualizados += result.rowcount
+
+                status_msg += f"✅ Base de datos actualizada para {total_actualizados} registros.<br>"
+
+            except Exception as e:
+                status_msg += f"❌ Error al actualizar la base de datos: {e}<br>"
+
+            return ""
+
         
 
         if accion == "subir_csv_a_db":
@@ -1926,97 +2104,7 @@ def index():
                     plan_estrategico = texto_extraido
                     status_msg += "Texto extraído del PDF cargado en Plan Estratégico.<br>"
 
-        # Subir CSV de leads
-        leadf = request.files.get("leads_csv")
-        if leadf and leadf.filename:
-            # Leer todo el archivo primero en un DataFrame
-            df_full = pd.read_csv(leadf)
-            
-            # Obtener el rango
-            start_row_str = request.form.get("start_row", "").strip()
-            end_row_str = request.form.get("end_row", "").strip()
-            
-            try:
-                start_row = int(start_row_str) if start_row_str else 0
-            except:
-                start_row = 0
-            try:
-                end_row = int(end_row_str) if end_row_str else len(df_full) - 1
-            except:
-                end_row = len(df_full) - 1
-            
-            # Corregir rangos fuera de límites
-            if start_row < 0:
-                start_row = 0
-            if end_row >= len(df_full):
-                end_row = len(df_full) - 1
-            
-            if start_row > end_row:
-                # Si el rango es inválido, crea un DataFrame vacío con las mismas columnas
-                df_leads = pd.DataFrame(columns=df_full.columns)
-                status_msg += f"⚠️ Rango inválido: start_row={start_row}, end_row={end_row}. Se cargaron 0 filas.<br>"
-            else:
-                # Si el rango es válido, filtra solo esas filas
-                df_leads = df_full.iloc[start_row:end_row+1].copy()
-                status_msg += f"✅ Leads cargados del {start_row} al {end_row}: {len(df_leads)} filas.<br>"
-
-                                                                
-
-            # Si quieres dejarlo como antes:
-            # -> Nada de mapeo temporal, solo directo
-
-            # Asegurar banderas
-            for k in acciones_realizadas:
-                acciones_realizadas[k] = False
-
-            status_msg += (
-                f"Leads CSV cargado. Filas totales={len(df_full)}. "
-                f"Rango aplicado [{start_row}, {end_row}] => {len(df_leads)} filas cargadas.<br>"
-            )
-
-            # Si quieres el orden de columnas original
-            orden_columnas = [
-                "Logo",
-                "Company Name",
-                "Nombre",
-                "First name",
-                "Last name",
-                "Title",
-                "Nivel Jerarquico",
-                "Area",
-                "Departamento",
-                "Email",
-                "Linkedin",
-                "Location",
-                "Company Domain",
-                "Company Website",
-                "Company Employee Count Range",
-                "Company Founded",
-                "Company Industry",
-                "Industria Mayor",
-                "Company Type",
-                "Company Headquarters",
-                "Company Revenue Range",
-                "Company Linkedin Url"
-            ]
-            columnas_presentes = [col for col in orden_columnas if col in df_leads.columns]
-            otras_columnas = [col for col in df_leads.columns if col not in columnas_presentes]
-            df_leads = df_leads[columnas_presentes + otras_columnas].copy()
-
-            # Asignar mapeos automáticos
-            if 'First name' in df_leads.columns:
-                mapeo_nombre_contacto = 'First name'
-            if 'Title' in df_leads.columns:
-                mapeo_puesto = 'Title'
-            if 'Company Name' in df_leads.columns:
-                mapeo_empresa = 'Company Name'
-            if 'Company Industry' in df_leads.columns:
-                mapeo_industria = 'Company Industry'
-            if 'Company Website' in df_leads.columns:
-                mapeo_website = 'Company Website'
-            if 'Location' in df_leads.columns:
-                mapeo_location = 'Location'
-
+ 
         # URL del proveedor
         new_urlp = request.form.get("url_proveedor", "").strip()
         if new_urlp:
@@ -3442,7 +3530,7 @@ def map_columns():
 
         return redirect("/")
 
-    return render_template("mapeo.html", columnas=columnas)
+    return render_template("map_columns.html", columnas=columnas)
 
 @app.route("/mapeo")
 def mapeo():
