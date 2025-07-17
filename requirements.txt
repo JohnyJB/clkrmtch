@@ -15,3 +15,5 @@ sqlalchemy
 werkzeug
 psycopg2-binary
 uuid
+urllib3
+psutil

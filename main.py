@@ -23,8 +23,14 @@ from PIL import Image
 import pytesseract
 from pdf2image import convert_from_path
 import urllib3
+import sys
+import logging
+import gc
+import psutil
+from urllib.parse import urlparse
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+logging.basicConfig(level=logging.INFO)
 PROMPT_FILE = "prompt_chatgpt.txt"
 prompt_actual = ""  # se sobreescribe al inicio de la app
 # ───────── Prompt de Estrategia de Mails ─────────
@@ -705,23 +711,42 @@ def generar_info_empresa_chatgpt(row: pd.Series) -> dict:
             "PyS": "ND",
             "Objetivo": "ND"
         }
-    texto_scrap = (cortar_al_limite(str(row.get("scrapping", "")), 3000) + "\n" + cortar_al_limite(str(row.get("Scrapping Adicional", "")), 3000)).strip()
-    texto_scrap = texto_scrap[:8000] 
-    prompt = f"""
-Eres un analista experto en inteligencia de negocios. Tu tarea es analizar el siguiente texto extraído del sitio web de una empresa y devolver un resumen de alta calidad en formato JSON, sin explicaciones adicionales. Extrae únicamente lo que se pueda inferir del texto, evitando suposiciones.
 
-El formato de salida debe ser exactamente el siguiente:
+    # Preparar el texto del scrapping
+    scrap1 = cortar_al_limite(str(row.get("scrapping", "")).strip(), 3000)
+    scrap2 = cortar_al_limite(str(row.get("Scrapping Adicional", "")).strip(), 3000)
+    texto_scrap = (scrap1 + "\n" + scrap2).strip()
+    texto_scrap = texto_scrap[:8000]  # límite de seguridad
+
+    # 🔒 Verifica si está vacío después de limpiar
+    if len(texto_scrap) < 5:
+        return {
+            "Descripcion": "ND",
+            "PyS": "ND",
+            "Objetivo": "ND"
+        }
+
+    # 🧠 Generar el prompt
+    prompt = f"""
+Eres un analista experto en inteligencia comercial. A partir del siguiente texto obtenido del sitio web de una empresa (scrapeado sin formato), tu tarea es identificar y sintetizar información clave del negocio. Devuelve la respuesta exclusivamente en **formato JSON**, sin explicaciones adicionales ni texto extra.
+
+Instrucciones:
+- Si puedes inferir información relevante (como industrias o ICP), hazlo con base en los productos, servicios, lenguaje del texto o clientes mencionados.
+- En industrias si puedes inferir, traite industria a la que serían sus productoso servicios o ideal
+- Mantén los textos concisos y profesionales.
+
+Formato de salida esperado:
 
 {{
-  "Descripcion": "Resumen claro y conciso sobre a qué se dedica la empresa. Si no se puede determinar, responde con 'ND'",
-  "PyS": "Lista breve o resumen de los productos y/o servicios ofrecidos. Si no se puede determinar, responde con 'ND'",
-  "Objetivo": "Industrias o sectores a los que sirve o está orientada la empresa. Si no se puede determinar, responde con 'ND'"
+  "Descripcion": "Propósito, misión o enfoque principal de la empresa. Qué hace",
+  "PyS": "Resumen o listado de lo que ofrece la empresa.",
+  "Objetivo": "Industrias o sectores a los que sirve. a quienes, hazlo en base al escrapping, infiere"
 }}
 
 Texto a analizar (scrapping del sitio web de la empresa):
-{texto_scrap or "-"}
+{texto_scrap}
     """
-
+    print(f"🌐Prompt generado:\n{prompt}")
     try:
         respuesta = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -743,6 +768,8 @@ Texto a analizar (scrapping del sitio web de la empresa):
             "PyS": "-",
             "Objetivo": "-"
         }
+
+        
 def cortar_al_limite(texto, max_chars=3000):
     texto = texto.strip().replace("\n", " ")
     if len(texto) <= max_chars:
@@ -921,8 +948,13 @@ def realizar_scrapingProv(url: str) -> str:
 
 
 #Scrapping de urls
+from urllib.parse import urlparse
+import requests
+from bs4 import BeautifulSoup
+
+
 def extraer_urls_de_web(base_url: str) -> str:
-    """Extrae todos los enlaces href del sitio principal de la empresa y los devuelve separados por coma y espacio."""
+    """Extrae solo los enlaces exactos que coinciden con los paths informativos comunes."""
     base_url = _asegurar_https(base_url)
     try:
         resp = requests.get(base_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8, verify=False)
@@ -930,19 +962,24 @@ def extraer_urls_de_web(base_url: str) -> str:
             sopa = BeautifulSoup(resp.text, "html.parser")
             enlaces = [a.get("href") for a in sopa.find_all("a", href=True)]
 
-            # Filtrar duplicados y normalizar
-            enlaces_filtrados = list(set(filter(None, enlaces)))
-
-            # Convertir relativos a absolutos
-            enlaces_absolutos = [
+            enlaces_unicos = list(set(filter(None, enlaces)))
+            urls_absolutas = [
                 enlace if enlace.startswith("http") else base_url.rstrip("/") + "/" + enlace.lstrip("/")
-                for enlace in enlaces_filtrados
+                for enlace in enlaces_unicos
             ]
 
-            return ", ".join(enlaces_absolutos)
+            urls_filtradas = []
+            for enlace in urls_absolutas:
+                parsed = urlparse(enlace)
+                # Validar que el path completo coincida exactamente con alguno de los comunes
+                if parsed.path.rstrip("/") in COMMON_INFO_PATHS:
+                    urls_filtradas.append(enlace)
+
+            return ", ".join(urls_filtradas)
     except Exception as e:
         print(f"[ERROR] al extraer enlaces de {base_url}:", e)
     return "-"
+
 
 def realizar_scrap_adicional(urls_csv: str) -> str:
     """
@@ -1041,7 +1078,6 @@ def analizar_proveedor_scraping_con_chatgpt(texto_scrapeado: str) -> dict:
 Eres un analista experto en inteligencia comercial. A partir del siguiente texto obtenido del sitio web de una empresa (scrapeado sin formato), tu tarea es identificar y sintetizar información clave del negocio. Devuelve la respuesta exclusivamente en **formato JSON**, sin explicaciones adicionales ni texto extra.
 
 Instrucciones:
-- Si algún dato no puede determinarse con claridad, devuelve "ND" en ese campo, excepto en Industrias, eso piensa, se creativo.
 - Si puedes inferir información relevante (como industrias o ICP), hazlo con base en los productos, servicios, lenguaje del texto o clientes mencionados.
 - En industrias si puedes inferir, traite industria a la que serían sus productoso servicios o ideal
 - Mantén los textos concisos y profesionales.
@@ -1058,7 +1094,7 @@ Formato de salida esperado:
 }}
 
 Texto extraído del sitio web:
-{texto_scrapeado}
+"{texto_scrapeado}"
     """
 
     # Limpiamos caracteres raros del prompt:
@@ -3381,10 +3417,11 @@ def map_columns():
     columnas = list(df_temp_upload.columns)
 
     if request.method == "POST":
+        
         # Obtener rango
         start_row_str = request.form.get("start_row", "").strip()
         end_row_str = request.form.get("end_row", "").strip()
-        
+
         try:
             start_row = int(start_row_str) if start_row_str else 0
         except:
@@ -3394,15 +3431,31 @@ def map_columns():
         except:
             end_row = len(df_temp_upload) - 1
 
+        # Corregir límites inválidos
         if start_row < 0:
             start_row = 0
         if end_row >= len(df_temp_upload):
             end_row = len(df_temp_upload) - 1
 
-        if start_row > end_row:
-            df_leads = pd.DataFrame(columns=df_temp_upload.columns)
-        else:
-            df_leads = df_temp_upload.iloc[start_row:end_row+1].copy()
+        try:
+            if start_row > end_row:
+                df_leads = pd.DataFrame(columns=df_temp_upload.columns)
+            else:
+                # Copiar solo columnas necesarias para evitar explosiones
+                columnas_utiles = df_temp_upload.columns.tolist()  # puedes limitar esto si quieres
+                df_leads = df_temp_upload.loc[start_row:end_row, columnas_utiles].copy()
+
+            # Medir uso de memoria
+            memoria_mb = psutil.Process().memory_info().rss / 1024 ** 2
+            print(f"🧠 Memoria después de copiar df_leads: {memoria_mb:.2f} MB")
+
+        except Exception as e:
+            print(f"❌ Error al copiar DataFrame: {e}")
+            df_leads = pd.DataFrame()
+            return render_template("map_columns.html", columnas=columnas, error=f"Error al procesar archivo: {e}")
+
+        # Limpiar memoria inmediatamente
+        gc.collect()
 
         # Obtener selecciones
         mapeo_nombre_contacto = (request.form.get("col_nombre") or "").strip()
@@ -3424,7 +3477,7 @@ def map_columns():
         if renames:
             df_leads.rename(columns=renames, inplace=True)
 
-        # ACTUALIZAR mapeos a los nombres finales
+        # Actualizar los mapeos a los nombres ya renombrados
         if "First name" in df_leads.columns:
             mapeo_nombre_contacto = "First name"
         if "Title" in df_leads.columns:
@@ -3439,6 +3492,7 @@ def map_columns():
             mapeo_location = "Location"
 
         return redirect("/")
+
 
     return render_template("map_columns.html", columnas=columnas)
 
