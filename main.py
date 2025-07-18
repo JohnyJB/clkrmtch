@@ -717,7 +717,7 @@ def generar_info_empresa_chatgpt(row: pd.Series) -> dict:
     scrap2 = cortar_al_limite(str(row.get("Scrapping Adicional", "")).strip(), 3000)
     texto_scrap = (scrap1 + "\n" + scrap2).strip()
     texto_scrap = texto_scrap[:8000]  # límite de seguridad
-
+    
     # 🔒 Verifica si está vacío después de limpiar
     if len(texto_scrap) < 5:
         return {
@@ -746,7 +746,7 @@ Formato de salida esperado:
 Texto a analizar (scrapping del sitio web de la empresa):
 {texto_scrap}
     """
-    print(f"🌐Prompt generado:\n{prompt}")
+    print(f"🌐web:\n{str(row.get("Company Website", "")).strip(), 3000}")
     try:
         respuesta = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -2097,6 +2097,8 @@ def index():
         if accion == "scrapp_leads_on":
             print(f"[INFO] Scraping paralelo iniciado")
             df_leads.reset_index(drop=True, inplace=True)
+
+            # Asegurar columnas necesarias
             for col in ["scrapping", "URLs on WEB", "Scrapping Adicional", "Descripcion", "PyS", "Objetivo"]:
                 if col not in df_leads.columns:
                     df_leads[col] = "-"
@@ -2104,39 +2106,92 @@ def index():
             if df_leads.empty:
                 status_msg += "No hay leads para aplicar scraping tras scrap del proveedor.<br>"
             else:
+                # ✅ Cargar caché de tabla externa
+                cached_df = pd.read_sql("""
+                    SELECT DISTINCT ON ("Company Website") 
+                        "Company Website", scrapping, "URLs on WEB",
+                        "Scrapping Adicional", "Descripcion", "PyS", "Objetivo"
+                    FROM "250716_WebsiteScrap"
+                    WHERE "Company Website" IS NOT NULL AND "Company Website" != ''
+                """, engine)
+
+                cached_scrap_dict = cached_df.set_index("Company Website").to_dict(orient="index")
+
                 scraping_progress["total"] = len(df_leads)
                 scraping_progress["procesados"] = 0
-                scrap_cache = {}
-                urls_cache = {}
-                adicional_cache = {}
 
                 # Función principal
                 def scrapear_lead(idx_row_tuple):
                     idx, row_data = idx_row_tuple
                     row = dict(zip(df_leads.columns, row_data))
                     url = str(row.get(mapeo_website, "")).strip()
-                    resultado = {"scrapping": "-", "urls": "-"}
 
-                    if url:
-                        if url in scrap_cache:
-                            resultado["scrapping"] = scrap_cache[url]
-                        else:
-                            try:
-                                resultado["scrapping"] = realizar_scraping(url)
-                                scrap_cache[url] = resultado["scrapping"]
-                            except Exception as e:
-                                print(f"[ERROR] Scraping lead idx={idx}: {e}")
+                    resultado = {
+                        "scrapping": "-",
+                        "urls": "-",
+                        "Scrapping Adicional": "-",
+                        "Descripcion": "-",
+                        "PyS": "-",
+                        "Objetivo": "-"
+                    }
 
-                        if url in urls_cache:
-                            resultado["urls"] = urls_cache[url]
-                        else:
-                            try:
-                                resultado["urls"] = extraer_urls_de_web(url)
-                                urls_cache[url] = resultado["urls"]
-                            except Exception as e:
-                                print(f"[ERROR] Extrayendo URLs idx={idx}: {e}")
+                    if not url:
+                        return (idx, resultado)
+
+                    # ✅ Usar caché si ya existe en tabla externa
+                    if url in cached_scrap_dict:
+                        data = cached_scrap_dict[url]
+                        resultado.update({
+                            "scrapping": data.get("scrapping", "-"),
+                            "urls": data.get("URLs on WEB", "-"),
+                            "Scrapping Adicional": data.get("Scrapping Adicional", "-"),
+                            "Descripcion": data.get("Descripcion", "-"),
+                            "PyS": data.get("PyS", "-"),
+                            "Objetivo": data.get("Objetivo", "-")
+                        })
+                        return (idx, resultado)
+
+                    # 🕷 Si no está en cache, ejecutar scraping completo
+                    try:
+                        resultado["scrapping"] = realizar_scraping(url)
+                    except Exception as e:
+                        print(f"[ERROR] Scraping lead idx={idx}: {e}")
+
+                    try:
+                        resultado["urls"] = extraer_urls_de_web(url)
+                    except Exception as e:
+                        print(f"[ERROR] Extrayendo URLs idx={idx}: {e}")
+
+                    try:
+                        resultado["Scrapping Adicional"] = realizar_scrap_adicional(resultado["urls"])
+                    except Exception as e:
+                        print(f"[ERROR] Scraping adicional idx={idx}: {e}")
+
+                    try:
+                        info = generar_info_empresa_chatgpt(row)
+                        for k in ["Descripcion", "PyS", "Objetivo"]:
+                            resultado[k] = info.get(k, "-")
+                    except Exception as e:
+                        print(f"[ERROR GPT] idx={idx}: {e}")
 
                     return (idx, resultado)
+
+                # Ejecutar scraping en paralelo
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    resultados = list(executor.map(scrapear_lead, list(enumerate(df_leads.itertuples(index=False, name=None)))))
+
+                # Asignar resultados al dataframe
+                for idx, res in resultados:
+                    df_leads.at[idx, "scrapping"] = res["scrapping"]
+                    df_leads.at[idx, "URLs on WEB"] = res["urls"]
+                    df_leads.at[idx, "Scrapping Adicional"] = res["Scrapping Adicional"]
+                    df_leads.at[idx, "Descripcion"] = res["Descripcion"]
+                    df_leads.at[idx, "PyS"] = res["PyS"]
+                    df_leads.at[idx, "Objetivo"] = res["Objetivo"]
+                    scraping_progress["procesados"] += 1
+
+                status_msg += "✅ Scraping completado con caché y GPT.<br>"
+
 
                 # Función scraping adicional
                 def scrapear_adicional(idx_row_tuple):
@@ -2162,26 +2217,35 @@ def index():
                 for idx, res in resultados:
                     df_leads.at[idx, "scrapping"] = res["scrapping"]
                     df_leads.at[idx, "URLs on WEB"] = res["urls"]
+                    df_leads.at[idx, "Scrapping Adicional"] = res["Scrapping Adicional"]
+                    df_leads.at[idx, "Descripcion"] = res["Descripcion"]
+                    df_leads.at[idx, "PyS"] = res["PyS"]
+                    df_leads.at[idx, "Objetivo"] = res["Objetivo"]
                     scraping_progress["procesados"] += 1
 
                 status_msg += "✅ Scraping de leads y URLs ejecutado en paralelo.<br>"
 
                 # Ejecutar scraping adicional
-                with ThreadPoolExecutor(max_workers=10) as executor:
-                    adicionales = list(executor.map(scrapear_adicional, list(enumerate(df_leads.itertuples(index=False, name=None)))))
-                for idx, texto in adicionales:
-                    df_leads.at[idx, "Scrapping Adicional"] = texto
-
-                status_msg += "✅ Scraping adicional ejecutado en paralelo.<br>"
-
-                # Generar info con ChatGPT
-                for idx, row_data in enumerate(df_leads.itertuples(index=False, name=None)):
+                def procesar_info_chatgpt(idx_row_tuple):
+                    idx, row_data = idx_row_tuple
                     row = dict(zip(df_leads.columns, row_data))
-                    result = generar_info_empresa_chatgpt(row)
+                    try:
+                        result = generar_info_empresa_chatgpt(row)
+                        return idx, result
+                    except Exception as e:
+                        print(f"[ERROR GPT] idx={idx}: {e}")
+                        return idx, {}
+
+                with ThreadPoolExecutor(max_workers=5) as executor:
+                    resultados_chatgpt = list(executor.map(procesar_info_chatgpt, enumerate(df_leads.itertuples(index=False, name=None))))
+
+                for idx, result in resultados_chatgpt:
                     for key, val in result.items():
                         df_leads.at[idx, key] = val
 
-                status_msg += "✅ Información de empresa generada con éxito.<br>"
+                status_msg += "✅ Info generada en paralelo con ChatGPT.<br>"
+
+
 
         elif accion == "generar_tabla":
             procesar_leads()
