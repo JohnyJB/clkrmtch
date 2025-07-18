@@ -746,6 +746,7 @@ Formato de salida esperado:
 Texto a analizar (scrapping del sitio web de la empresa):
 {texto_scrap}
     """
+    print(f"🌐web:\n{str(row.get("Company Website", "")).strip(), 3000}")
     try:
         respuesta = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -2106,6 +2107,7 @@ def index():
                 status_msg += "No hay leads para aplicar scraping tras scrap del proveedor.<br>"
             else:
                 # ✅ Cargar caché de tabla externa
+                
                 cached_df = pd.read_sql("""
                     SELECT DISTINCT ON ("Company Website") 
                         "Company Website", scrapping, "URLs on WEB",
@@ -2113,7 +2115,8 @@ def index():
                     FROM "250716_WebsiteScrap"
                     WHERE "Company Website" IS NOT NULL AND "Company Website" != ''
                 """, engine)
-
+                cached_df["Company Website"] = cached_df["Company Website"].str.lower().str.replace("https://", "").str.replace("http://", "").str.replace("www.", "").str.strip()
+                cached_df = cached_df.drop_duplicates(subset=["Company Website"], keep="first")
                 cached_scrap_dict = cached_df.set_index("Company Website").to_dict(orient="index")
 
                 scraping_progress["total"] = len(df_leads)
@@ -2123,7 +2126,7 @@ def index():
                 def scrapear_lead(idx_row_tuple):
                     idx, row_data = idx_row_tuple
                     row = dict(zip(df_leads.columns, row_data))
-                    url = str(row.get(mapeo_website, "")).strip()
+                    url = str(row.get(mapeo_website, "")).strip().lower().replace("https://", "").replace("http://", "").replace("www.", "")
 
                     resultado = {
                         "scrapping": "-",
@@ -2139,6 +2142,7 @@ def index():
 
                     # ✅ Usar caché si ya existe en tabla externa
                     if url in cached_scrap_dict:
+                        print(f"🌐 Coincidencia: website {url}")
                         data = cached_scrap_dict[url]
                         resultado.update({
                             "scrapping": data.get("scrapping", "-"),
