@@ -746,7 +746,6 @@ Formato de salida esperado:
 Texto a analizar (scrapping del sitio web de la empresa):
 {texto_scrap}
     """
-    print(f"🌐web:\n{str(row.get("Company Website", "")).strip(), 3000}")
     try:
         respuesta = client.chat.completions.create(
             model=OPENAI_MODEL,
