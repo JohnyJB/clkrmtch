@@ -746,7 +746,6 @@ Formato de salida esperado:
 Texto a analizar (scrapping del sitio web de la empresa):
 {texto_scrap}
     """
-    print(f"🌐web:\n{str(row.get("Company Website", "")).strip(), 3000}")
     try:
         respuesta = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -2876,7 +2875,7 @@ def index():
   
     <div style="display: flex; gap: 20px; align-items: flex-start;">
     <div class="container">
-    <!-- Sección 0: Cargar Base de datos de servidor-->    
+    <!-- Sección 0: Cargar Base de datos de servidor -->    
     <details>
     <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/db.png" class="icon" alt="icono db"> Base de Datos Online</summary>
     <form method="POST">
