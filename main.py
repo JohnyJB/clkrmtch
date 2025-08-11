@@ -168,13 +168,13 @@ template_base = '''
         {% endif %}
         <input type="email" name="correo" placeholder="Correo" required><br>
         <input type="password" name="pass" placeholder="Contraseña" required><br>
-        <-- <button type="submit">{{ 'Registrar' if register else 'Entrar' }}</button> -->
+        <button type="submit">{{ 'Registrar' if register else 'Entrar' }}</button>
     </form>
     <div class="msg">{{ msg }}</div>
     {% if register %}
         <a href="/">Volver al login</a>
     {% else %}
-        <a href="/register">Crear cuenta</a>
+        <!-- <a href="/register">Crear cuenta</a> -->
     {% endif %}
 </div>
 </body>
@@ -3151,8 +3151,8 @@ def index():
         <p><strong>Mercado objetivo:</strong><br>
         <textarea name="mercado_proveedor" rows="3" style="width: 100%;">{mercado_proveedor or ''}</textarea></p>
         
-        <p><strong>ICP:</strong><br>
-        <textarea name="icp_proveedor" rows="3" style="width: 100%;">{icp_proveedor or ''}</textarea></p>
+        <!-- <p><strong>ICP:</strong><br> -->
+        <!-- <textarea name="icp_proveedor" rows="3" style="width: 100%;">{icp_proveedor or ''}</textarea></p> -->
 
         <p><strong>Propuesta de Valor:</strong>
         <input type="text" name="propuesta_valor" value="{propuesta_valor or ''}" placeholder="Ej: Automatización B2B, eficiencia, etc." style="width:100%;"/></p>
