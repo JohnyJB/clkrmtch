@@ -23,8 +23,14 @@ from PIL import Image
 import pytesseract
 from pdf2image import convert_from_path
 import urllib3
+import sys
+import logging
+import gc
+import psutil
+from urllib.parse import urlparse
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
+logging.basicConfig(level=logging.INFO)
 PROMPT_FILE = "prompt_chatgpt.txt"
 prompt_actual = ""  # se sobreescribe al inicio de la app
 # ───────── Prompt de Estrategia de Mails ─────────
@@ -705,23 +711,42 @@ def generar_info_empresa_chatgpt(row: pd.Series) -> dict:
             "PyS": "ND",
             "Objetivo": "ND"
         }
-    texto_scrap = (cortar_al_limite(str(row.get("scrapping", "")), 3000) + "\n" + cortar_al_limite(str(row.get("Scrapping Adicional", "")), 3000)).strip()
-    texto_scrap = texto_scrap[:8000] 
-    prompt = f"""
-Eres un analista experto en inteligencia de negocios. Tu tarea es analizar el siguiente texto extraído del sitio web de una empresa y devolver un resumen de alta calidad en formato JSON, sin explicaciones adicionales. Extrae únicamente lo que se pueda inferir del texto, evitando suposiciones.
 
-El formato de salida debe ser exactamente el siguiente:
+    # Preparar el texto del scrapping
+    scrap1 = cortar_al_limite(str(row.get("scrapping", "")).strip(), 3000)
+    scrap2 = cortar_al_limite(str(row.get("Scrapping Adicional", "")).strip(), 3000)
+    texto_scrap = (scrap1 + "\n" + scrap2).strip()
+    texto_scrap = texto_scrap[:8000]  # límite de seguridad
+    
+    # 🔒 Verifica si está vacío después de limpiar
+    if len(texto_scrap) < 5:
+        return {
+            "Descripcion": "ND",
+            "PyS": "ND",
+            "Objetivo": "ND"
+        }
+
+    # 🧠 Generar el prompt
+    prompt = f"""
+Eres un analista experto en inteligencia comercial. A partir del siguiente texto obtenido del sitio web de una empresa (scrapeado sin formato), tu tarea es identificar y sintetizar información clave del negocio. Devuelve la respuesta exclusivamente en **formato JSON**, sin explicaciones adicionales ni texto extra.
+
+Instrucciones:
+- Si puedes inferir información relevante (como industrias o ICP), hazlo con base en los productos, servicios, lenguaje del texto o clientes mencionados.
+- En industrias si puedes inferir, traite industria a la que serían sus productoso servicios o ideal
+- Mantén los textos concisos y profesionales.
+
+Formato de salida esperado:
 
 {{
-  "Descripcion": "Resumen claro y conciso sobre a qué se dedica la empresa. Si no se puede determinar, responde con 'ND'",
-  "PyS": "Lista breve o resumen de los productos y/o servicios ofrecidos. Si no se puede determinar, responde con 'ND'",
-  "Objetivo": "Industrias o sectores a los que sirve o está orientada la empresa. Si no se puede determinar, responde con 'ND'"
+  "Descripcion": "Propósito, misión o enfoque principal de la empresa. Qué hace",
+  "PyS": "Resumen o listado de lo que ofrece la empresa.",
+  "Objetivo": "Industrias o sectores a los que sirve. a quienes, hazlo en base al escrapping, infiere"
 }}
 
 Texto a analizar (scrapping del sitio web de la empresa):
-{texto_scrap or "-"}
+{texto_scrap}
     """
-
+    print(f"🌐web:\n{str(row.get("Company Website", "")).strip(), 3000}")
     try:
         respuesta = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -743,6 +768,8 @@ Texto a analizar (scrapping del sitio web de la empresa):
             "PyS": "-",
             "Objetivo": "-"
         }
+
+        
 def cortar_al_limite(texto, max_chars=3000):
     texto = texto.strip().replace("\n", " ")
     if len(texto) <= max_chars:
@@ -921,8 +948,13 @@ def realizar_scrapingProv(url: str) -> str:
 
 
 #Scrapping de urls
+from urllib.parse import urlparse
+import requests
+from bs4 import BeautifulSoup
+
+
 def extraer_urls_de_web(base_url: str) -> str:
-    """Extrae todos los enlaces href del sitio principal de la empresa y los devuelve separados por coma y espacio."""
+    """Extrae solo los enlaces exactos que coinciden con los paths informativos comunes."""
     base_url = _asegurar_https(base_url)
     try:
         resp = requests.get(base_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8, verify=False)
@@ -930,19 +962,24 @@ def extraer_urls_de_web(base_url: str) -> str:
             sopa = BeautifulSoup(resp.text, "html.parser")
             enlaces = [a.get("href") for a in sopa.find_all("a", href=True)]
 
-            # Filtrar duplicados y normalizar
-            enlaces_filtrados = list(set(filter(None, enlaces)))
-
-            # Convertir relativos a absolutos
-            enlaces_absolutos = [
+            enlaces_unicos = list(set(filter(None, enlaces)))
+            urls_absolutas = [
                 enlace if enlace.startswith("http") else base_url.rstrip("/") + "/" + enlace.lstrip("/")
-                for enlace in enlaces_filtrados
+                for enlace in enlaces_unicos
             ]
 
-            return ", ".join(enlaces_absolutos)
+            urls_filtradas = []
+            for enlace in urls_absolutas:
+                parsed = urlparse(enlace)
+                # Validar que el path completo coincida exactamente con alguno de los comunes
+                if parsed.path.rstrip("/") in COMMON_INFO_PATHS:
+                    urls_filtradas.append(enlace)
+
+            return ", ".join(urls_filtradas)
     except Exception as e:
         print(f"[ERROR] al extraer enlaces de {base_url}:", e)
     return "-"
+
 
 def realizar_scrap_adicional(urls_csv: str) -> str:
     """
@@ -1041,7 +1078,6 @@ def analizar_proveedor_scraping_con_chatgpt(texto_scrapeado: str) -> dict:
 Eres un analista experto en inteligencia comercial. A partir del siguiente texto obtenido del sitio web de una empresa (scrapeado sin formato), tu tarea es identificar y sintetizar información clave del negocio. Devuelve la respuesta exclusivamente en **formato JSON**, sin explicaciones adicionales ni texto extra.
 
 Instrucciones:
-- Si algún dato no puede determinarse con claridad, devuelve "ND" en ese campo, excepto en Industrias, eso piensa, se creativo.
 - Si puedes inferir información relevante (como industrias o ICP), hazlo con base en los productos, servicios, lenguaje del texto o clientes mencionados.
 - En industrias si puedes inferir, traite industria a la que serían sus productoso servicios o ideal
 - Mantén los textos concisos y profesionales.
@@ -1058,7 +1094,7 @@ Formato de salida esperado:
 }}
 
 Texto extraído del sitio web:
-{texto_scrapeado}
+"{texto_scrapeado}"
     """
 
     # Limpiamos caracteres raros del prompt:
@@ -1456,7 +1492,98 @@ def index():
     mapeo_location = (request.form.get("col_location") or mapeo_location or "").strip() or mapeo_location
 
     if request.method == "POST":
-         
+
+       # Subir CSV de leads
+        leadf = request.files.get("leads_csv")
+        if leadf and leadf.filename:
+            # Leer todo el archivo primero en un DataFrame
+            df_full = pd.read_csv(leadf)
+            
+            # Obtener el rango
+            start_row_str = request.form.get("start_row", "").strip()
+            end_row_str = request.form.get("end_row", "").strip()
+            
+            try:
+                start_row = int(start_row_str) if start_row_str else 0
+            except:
+                start_row = 0
+            try:
+                end_row = int(end_row_str) if end_row_str else len(df_full) - 1
+            except:
+                end_row = len(df_full) - 1
+            
+            # Corregir rangos fuera de límites
+            if start_row < 0:
+                start_row = 0
+            if end_row >= len(df_full):
+                end_row = len(df_full) - 1
+            
+            if start_row > end_row:
+                # Si el rango es inválido, crea un DataFrame vacío con las mismas columnas
+                df_leads = pd.DataFrame(columns=df_full.columns)
+                status_msg += f"⚠️ Rango inválido: start_row={start_row}, end_row={end_row}. Se cargaron 0 filas.<br>"
+            else:
+                # Si el rango es válido, filtra solo esas filas
+                df_leads = df_full.iloc[start_row:end_row+1].copy()
+                status_msg += f"✅ Leads cargados del {start_row} al {end_row}: {len(df_leads)} filas.<br>"
+
+                                                                
+
+            # Si quieres dejarlo como antes:
+            # -> Nada de mapeo temporal, solo directo
+
+            # Asegurar banderas
+            for k in acciones_realizadas:
+                acciones_realizadas[k] = False
+
+            status_msg += (
+                f"Leads CSV cargado. Filas totales={len(df_full)}. "
+                f"Rango aplicado [{start_row}, {end_row}] => {len(df_leads)} filas cargadas.<br>"
+            )
+
+            # Si quieres el orden de columnas original
+            orden_columnas = [
+                "Logo",
+                "Company Name",
+                "Nombre",
+                "First name",
+                "Last name",
+                "Title",
+                "Nivel Jerarquico",
+                "Area",
+                "Departamento",
+                "Email",
+                "Linkedin",
+                "Location",
+                "Company Domain",
+                "Company Website",
+                "Company Employee Count Range",
+                "Company Founded",
+                "Company Industry",
+                "Industria Mayor",
+                "Company Type",
+                "Company Headquarters",
+                "Company Revenue Range",
+                "Company Linkedin Url"
+            ]
+            columnas_presentes = [col for col in orden_columnas if col in df_leads.columns]
+            otras_columnas = [col for col in df_leads.columns if col not in columnas_presentes]
+            df_leads = df_leads[columnas_presentes + otras_columnas].copy()
+
+            # Asignar mapeos automáticos
+            if 'First name' in df_leads.columns:
+                mapeo_nombre_contacto = 'First name'
+            if 'Title' in df_leads.columns:
+                mapeo_puesto = 'Title'
+            if 'Company Name' in df_leads.columns:
+                mapeo_empresa = 'Company Name'
+            if 'Company Industry' in df_leads.columns:
+                mapeo_industria = 'Company Industry'
+            if 'Company Website' in df_leads.columns:
+                mapeo_website = 'Company Website'
+            if 'Location' in df_leads.columns:
+                mapeo_location = 'Location'
+       
         if accion == "guardar_prompt_chatgpt":
             nuevo_prompt = request.form.get("prompt_chatgpt", "").strip()
             prompt_actual = nuevo_prompt
@@ -1879,9 +2006,6 @@ def index():
             except Exception as e:
                 status_msg += f"❌ Error al cargar CSV: {e}<br>"
 
- 
-        
-
         if accion == "subir_csv_a_db":
             try:
                 # Recuperar CSV de sesión
@@ -1926,97 +2050,7 @@ def index():
                     plan_estrategico = texto_extraido
                     status_msg += "Texto extraído del PDF cargado en Plan Estratégico.<br>"
 
-        # Subir CSV de leads
-        leadf = request.files.get("leads_csv")
-        if leadf and leadf.filename:
-            # Leer todo el archivo primero en un DataFrame
-            df_full = pd.read_csv(leadf)
-            
-            # Obtener el rango
-            start_row_str = request.form.get("start_row", "").strip()
-            end_row_str = request.form.get("end_row", "").strip()
-            
-            try:
-                start_row = int(start_row_str) if start_row_str else 0
-            except:
-                start_row = 0
-            try:
-                end_row = int(end_row_str) if end_row_str else len(df_full) - 1
-            except:
-                end_row = len(df_full) - 1
-            
-            # Corregir rangos fuera de límites
-            if start_row < 0:
-                start_row = 0
-            if end_row >= len(df_full):
-                end_row = len(df_full) - 1
-            
-            if start_row > end_row:
-                # Si el rango es inválido, crea un DataFrame vacío con las mismas columnas
-                df_leads = pd.DataFrame(columns=df_full.columns)
-                status_msg += f"⚠️ Rango inválido: start_row={start_row}, end_row={end_row}. Se cargaron 0 filas.<br>"
-            else:
-                # Si el rango es válido, filtra solo esas filas
-                df_leads = df_full.iloc[start_row:end_row+1].copy()
-                status_msg += f"✅ Leads cargados del {start_row} al {end_row}: {len(df_leads)} filas.<br>"
-
-                                                                
-
-            # Si quieres dejarlo como antes:
-            # -> Nada de mapeo temporal, solo directo
-
-            # Asegurar banderas
-            for k in acciones_realizadas:
-                acciones_realizadas[k] = False
-
-            status_msg += (
-                f"Leads CSV cargado. Filas totales={len(df_full)}. "
-                f"Rango aplicado [{start_row}, {end_row}] => {len(df_leads)} filas cargadas.<br>"
-            )
-
-            # Si quieres el orden de columnas original
-            orden_columnas = [
-                "Logo",
-                "Company Name",
-                "Nombre",
-                "First name",
-                "Last name",
-                "Title",
-                "Nivel Jerarquico",
-                "Area",
-                "Departamento",
-                "Email",
-                "Linkedin",
-                "Location",
-                "Company Domain",
-                "Company Website",
-                "Company Employee Count Range",
-                "Company Founded",
-                "Company Industry",
-                "Industria Mayor",
-                "Company Type",
-                "Company Headquarters",
-                "Company Revenue Range",
-                "Company Linkedin Url"
-            ]
-            columnas_presentes = [col for col in orden_columnas if col in df_leads.columns]
-            otras_columnas = [col for col in df_leads.columns if col not in columnas_presentes]
-            df_leads = df_leads[columnas_presentes + otras_columnas].copy()
-
-            # Asignar mapeos automáticos
-            if 'First name' in df_leads.columns:
-                mapeo_nombre_contacto = 'First name'
-            if 'Title' in df_leads.columns:
-                mapeo_puesto = 'Title'
-            if 'Company Name' in df_leads.columns:
-                mapeo_empresa = 'Company Name'
-            if 'Company Industry' in df_leads.columns:
-                mapeo_industria = 'Company Industry'
-            if 'Company Website' in df_leads.columns:
-                mapeo_website = 'Company Website'
-            if 'Location' in df_leads.columns:
-                mapeo_location = 'Location'
-
+ 
         # URL del proveedor
         new_urlp = request.form.get("url_proveedor", "").strip()
         if new_urlp:
@@ -2063,6 +2097,8 @@ def index():
         if accion == "scrapp_leads_on":
             print(f"[INFO] Scraping paralelo iniciado")
             df_leads.reset_index(drop=True, inplace=True)
+
+            # Asegurar columnas necesarias
             for col in ["scrapping", "URLs on WEB", "Scrapping Adicional", "Descripcion", "PyS", "Objetivo"]:
                 if col not in df_leads.columns:
                     df_leads[col] = "-"
@@ -2070,39 +2106,98 @@ def index():
             if df_leads.empty:
                 status_msg += "No hay leads para aplicar scraping tras scrap del proveedor.<br>"
             else:
+                # ✅ Cargar caché de tabla externa
+                
+                cached_df = pd.read_sql("""
+                    SELECT DISTINCT ON ("Company Website") 
+                        "Company Website", scrapping, "URLs on WEB",
+                        "Scrapping Adicional", "Descripcion", "PyS", "Objetivo"
+                    FROM "250716_WebsiteScrap"
+                    WHERE "Company Website" IS NOT NULL AND "Company Website" != ''
+                """, engine)
+                cached_df["Company Website"] = cached_df["Company Website"].str.lower().str.replace("https://", "").str.replace("http://", "").str.replace("www.", "").str.strip()
+                cached_df = cached_df.drop_duplicates(subset=["Company Website"], keep="first")
+                cached_scrap_dict = cached_df.set_index("Company Website").to_dict(orient="index")
+
                 scraping_progress["total"] = len(df_leads)
                 scraping_progress["procesados"] = 0
-                scrap_cache = {}
-                urls_cache = {}
-                adicional_cache = {}
 
                 # Función principal
                 def scrapear_lead(idx_row_tuple):
                     idx, row_data = idx_row_tuple
                     row = dict(zip(df_leads.columns, row_data))
-                    url = str(row.get(mapeo_website, "")).strip()
-                    resultado = {"scrapping": "-", "urls": "-"}
+                    url = str(row.get(mapeo_website, "")).strip().lower().replace("https://", "").replace("http://", "").replace("www.", "")
 
-                    if url:
-                        if url in scrap_cache:
-                            resultado["scrapping"] = scrap_cache[url]
-                        else:
-                            try:
-                                resultado["scrapping"] = realizar_scraping(url)
-                                scrap_cache[url] = resultado["scrapping"]
-                            except Exception as e:
-                                print(f"[ERROR] Scraping lead idx={idx}: {e}")
+                    resultado = {
+                        "scrapping": "-",
+                        "urls": "-",
+                        "Scrapping Adicional": "-",
+                        "Descripcion": "-",
+                        "PyS": "-",
+                        "Objetivo": "-"
+                    }
 
-                        if url in urls_cache:
-                            resultado["urls"] = urls_cache[url]
-                        else:
-                            try:
-                                resultado["urls"] = extraer_urls_de_web(url)
-                                urls_cache[url] = resultado["urls"]
-                            except Exception as e:
-                                print(f"[ERROR] Extrayendo URLs idx={idx}: {e}")
+                    if not url:
+                        return (idx, resultado)
+
+                    # ✅ Usar caché si ya existe en tabla externa
+                    print(f"[DEBUG] Valor lead original: {row.get(mapeo_website, '')}")
+                    print(f"[DEBUG] Valor normalizado para buscar: {url}")
+                    print(f"[DEBUG] Claves disponibles en cache (primeros 5): {list(cached_scrap_dict.keys())[:5]}")
+                    if url in cached_scrap_dict:
+                        print(f"🌐 Coincidencia: website {url}")
+                        data = cached_scrap_dict[url]
+                        resultado.update({
+                            "scrapping": data.get("scrapping", "-"),
+                            "urls": data.get("URLs on WEB", "-"),
+                            "Scrapping Adicional": data.get("Scrapping Adicional", "-"),
+                            "Descripcion": data.get("Descripcion", "-"),
+                            "PyS": data.get("PyS", "-"),
+                            "Objetivo": data.get("Objetivo", "-")
+                        })
+                        return (idx, resultado)
+
+                    # 🕷 Si no está en cache, ejecutar scraping completo
+                    try:
+                        resultado["scrapping"] = realizar_scraping(url)
+                    except Exception as e:
+                        print(f"[ERROR] Scraping lead idx={idx}: {e}")
+
+                    try:
+                        resultado["urls"] = extraer_urls_de_web(url)
+                    except Exception as e:
+                        print(f"[ERROR] Extrayendo URLs idx={idx}: {e}")
+
+                    try:
+                        resultado["Scrapping Adicional"] = realizar_scrap_adicional(resultado["urls"])
+                    except Exception as e:
+                        print(f"[ERROR] Scraping adicional idx={idx}: {e}")
+
+                    try:
+                        info = generar_info_empresa_chatgpt(row)
+                        for k in ["Descripcion", "PyS", "Objetivo"]:
+                            resultado[k] = info.get(k, "-")
+                    except Exception as e:
+                        print(f"[ERROR GPT] idx={idx}: {e}")
 
                     return (idx, resultado)
+
+                # Ejecutar scraping en paralelo
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    resultados = list(executor.map(scrapear_lead, list(enumerate(df_leads.itertuples(index=False, name=None)))))
+
+                # Asignar resultados al dataframe
+                for idx, res in resultados:
+                    df_leads.at[idx, "scrapping"] = res["scrapping"]
+                    df_leads.at[idx, "URLs on WEB"] = res["urls"]
+                    df_leads.at[idx, "Scrapping Adicional"] = res["Scrapping Adicional"]
+                    df_leads.at[idx, "Descripcion"] = res["Descripcion"]
+                    df_leads.at[idx, "PyS"] = res["PyS"]
+                    df_leads.at[idx, "Objetivo"] = res["Objetivo"]
+                    scraping_progress["procesados"] += 1
+
+                status_msg += "✅ Scraping completado con caché y GPT.<br>"
+
 
                 # Función scraping adicional
                 def scrapear_adicional(idx_row_tuple):
@@ -2128,26 +2223,35 @@ def index():
                 for idx, res in resultados:
                     df_leads.at[idx, "scrapping"] = res["scrapping"]
                     df_leads.at[idx, "URLs on WEB"] = res["urls"]
+                    df_leads.at[idx, "Scrapping Adicional"] = res["Scrapping Adicional"]
+                    df_leads.at[idx, "Descripcion"] = res["Descripcion"]
+                    df_leads.at[idx, "PyS"] = res["PyS"]
+                    df_leads.at[idx, "Objetivo"] = res["Objetivo"]
                     scraping_progress["procesados"] += 1
 
                 status_msg += "✅ Scraping de leads y URLs ejecutado en paralelo.<br>"
 
                 # Ejecutar scraping adicional
-                with ThreadPoolExecutor(max_workers=10) as executor:
-                    adicionales = list(executor.map(scrapear_adicional, list(enumerate(df_leads.itertuples(index=False, name=None)))))
-                for idx, texto in adicionales:
-                    df_leads.at[idx, "Scrapping Adicional"] = texto
-
-                status_msg += "✅ Scraping adicional ejecutado en paralelo.<br>"
-
-                # Generar info con ChatGPT
-                for idx, row_data in enumerate(df_leads.itertuples(index=False, name=None)):
+                def procesar_info_chatgpt(idx_row_tuple):
+                    idx, row_data = idx_row_tuple
                     row = dict(zip(df_leads.columns, row_data))
-                    result = generar_info_empresa_chatgpt(row)
+                    try:
+                        result = generar_info_empresa_chatgpt(row)
+                        return idx, result
+                    except Exception as e:
+                        print(f"[ERROR GPT] idx={idx}: {e}")
+                        return idx, {}
+
+                with ThreadPoolExecutor(max_workers=5) as executor:
+                    resultados_chatgpt = list(executor.map(procesar_info_chatgpt, enumerate(df_leads.itertuples(index=False, name=None))))
+
+                for idx, result in resultados_chatgpt:
                     for key, val in result.items():
                         df_leads.at[idx, key] = val
 
-                status_msg += "✅ Información de empresa generada con éxito.<br>"
+                status_msg += "✅ Info generada en paralelo con ChatGPT.<br>"
+
+
 
         elif accion == "generar_tabla":
             procesar_leads()
@@ -3383,10 +3487,11 @@ def map_columns():
     columnas = list(df_temp_upload.columns)
 
     if request.method == "POST":
+        
         # Obtener rango
         start_row_str = request.form.get("start_row", "").strip()
         end_row_str = request.form.get("end_row", "").strip()
-        
+
         try:
             start_row = int(start_row_str) if start_row_str else 0
         except:
@@ -3396,15 +3501,31 @@ def map_columns():
         except:
             end_row = len(df_temp_upload) - 1
 
+        # Corregir límites inválidos
         if start_row < 0:
             start_row = 0
         if end_row >= len(df_temp_upload):
             end_row = len(df_temp_upload) - 1
 
-        if start_row > end_row:
-            df_leads = pd.DataFrame(columns=df_temp_upload.columns)
-        else:
-            df_leads = df_temp_upload.iloc[start_row:end_row+1].copy()
+        try:
+            if start_row > end_row:
+                df_leads = pd.DataFrame(columns=df_temp_upload.columns)
+            else:
+                # Copiar solo columnas necesarias para evitar explosiones
+                columnas_utiles = df_temp_upload.columns.tolist()  # puedes limitar esto si quieres
+                df_leads = df_temp_upload.loc[start_row:end_row, columnas_utiles].copy()
+
+            # Medir uso de memoria
+            memoria_mb = psutil.Process().memory_info().rss / 1024 ** 2
+            print(f"🧠 Memoria después de copiar df_leads: {memoria_mb:.2f} MB")
+
+        except Exception as e:
+            print(f"❌ Error al copiar DataFrame: {e}")
+            df_leads = pd.DataFrame()
+            return render_template("map_columns.html", columnas=columnas, error=f"Error al procesar archivo: {e}")
+
+        # Limpiar memoria inmediatamente
+        gc.collect()
 
         # Obtener selecciones
         mapeo_nombre_contacto = (request.form.get("col_nombre") or "").strip()
@@ -3426,7 +3547,7 @@ def map_columns():
         if renames:
             df_leads.rename(columns=renames, inplace=True)
 
-        # ACTUALIZAR mapeos a los nombres finales
+        # Actualizar los mapeos a los nombres ya renombrados
         if "First name" in df_leads.columns:
             mapeo_nombre_contacto = "First name"
         if "Title" in df_leads.columns:
@@ -3442,7 +3563,8 @@ def map_columns():
 
         return redirect("/")
 
-    return render_template("mapeo.html", columnas=columnas)
+
+    return render_template("map_columns.html", columnas=columnas)
 
 @app.route("/mapeo")
 def mapeo():
