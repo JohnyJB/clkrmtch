@@ -168,13 +168,13 @@ template_base = '''
         {% endif %}
         <input type="email" name="correo" placeholder="Correo" required><br>
         <input type="password" name="pass" placeholder="Contraseña" required><br>
-        <button type="submit">{{ 'Registrar' if register else 'Entrar' }}</button>
+        <-- <button type="submit">{{ 'Registrar' if register else 'Entrar' }}</button> -->
     </form>
     <div class="msg">{{ msg }}</div>
     {% if register %}
         <a href="/">Volver al login</a>
     {% else %}
-        <!-- <a href="/register">Crear cuenta</a> -->
+        <a href="/register">Crear cuenta</a>
     {% endif %}
 </div>
 </body>
@@ -746,6 +746,7 @@ Formato de salida esperado:
 Texto a analizar (scrapping del sitio web de la empresa):
 {texto_scrap}
     """
+    print(f"🌐web:\n{str(row.get("Company Website", "")).strip(), 3000}")
     try:
         respuesta = client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -1755,48 +1756,10 @@ def index():
                 
                 
         if accion == "guardar_custom_fields":
-            # Campos visibles en el formulario
-            propuesta_valor = (request.form.get("propuesta_valor") or "").strip()
-            contexto_prov = (request.form.get("contexto_prov") or "").strip()
-            plan_estrategico_input = (request.form.get("plan_estrategico") or "").strip()
-
-            # Los 4 que quieres poder editar y guardar
-            descripcion_proveedor = (request.form.get("descripcion_proveedor") or "").strip()
-            productos_proveedor = (request.form.get("productos_proveedor") or "").strip()
-            mercado_proveedor = (request.form.get("mercado_proveedor") or "").strip()
-            icp_proveedor = (request.form.get("icp_proveedor") or "").strip()
-
-            # Si además proporcionan una URL para scrapear el plan estratégico, úsala
-            url_scrap_plan = (request.form.get("url_scrap_plan") or "").strip()
-
-            if url_scrap_plan:
-                try:
-                    plan_estrategico = realizar_scraping(url_scrap_plan)
-                    status_msg += f"✅ Scraping exitoso desde <code>{url_scrap_plan}</code><br>"
-                except Exception as e:
-                    plan_estrategico = plan_estrategico_input
-                    status_msg += f"❌ Error al hacer scraping: {e}<br>Usando el texto proporcionado manualmente.<br>"
-            else:
-                plan_estrategico = plan_estrategico_input
-
-            # (Opcional) Persistir a disco para mantenerlo tras reinicios
-            try:
-                data = {
-                    "propuesta_valor": propuesta_valor,
-                    "contexto_prov": contexto_prov,
-                    "plan_estrategico": plan_estrategico,
-                    "descripcion_proveedor": descripcion_proveedor,
-                    "productos_proveedor": productos_proveedor,
-                    "mercado_proveedor": mercado_proveedor,
-                    "icp_proveedor": icp_proveedor,
-                }
-                with open("provider_info.json", "w", encoding="utf-8") as f:
-                    import json
-                    json.dump(data, f, ensure_ascii=False, indent=2)
-                status_msg += "💾 Información guardada en provider_info.json<br>"
-            except Exception as e:
-                status_msg += f"⚠️ No se pudo guardar provider_info.json: {e}<br>"
-
+            propuesta_valor = request.form.get("propuesta_valor", "").strip()
+            contexto_prov = request.form.get("contexto_prov", "").strip()
+            icp_prov = request.form.get("icp_prov", "").strip()
+            plan_estrategico_input = request.form.get("plan_estrategico", "").strip()
 
             url_scrap_plan = request.form.get("url_scrap_plan", "").strip()
 
@@ -2875,7 +2838,7 @@ def index():
   
     <div style="display: flex; gap: 20px; align-items: flex-start;">
     <div class="container">
-    <!-- Sección 0: Cargar Base de datos de servidor -->    
+    <!-- Sección 0: Cargar Base de datos de servidor-->    
     <details>
     <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/db.png" class="icon" alt="icono db"> Base de Datos Online</summary>
     <form method="POST">
@@ -3126,38 +3089,71 @@ def index():
         <hr>
         <!-- Sección: Clasificación de Puestos -->
     <details>
-    <summary style="cursor:pointer; font-weight: bold;">
-        <img src="/static/icons/apartment.png" class="icon" alt="icono db"> Nuestra Info
-    </summary>
+    <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/data-classification.png" class="icon" alt="icono db">Clasificadores</summary>
+        <!-- <button type="button" onclick="clasificarTodo()" style="background-color: {color_puestos};">
+            Clasificar (Puestos + Áreas + Industrias)
+        </button> -->
+        <!-- <details>
+        <summary>Clasificadores Individualmente</summary> -->
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="accion" value="clasificar_global"/>
+            <button type="submit" style="background-color: {color_puestos};">
+                <img src="/static/icons/diskette.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">Clasificar
+            </button>
+        </form>
+        <!-- </details> -->
+        <form method="POST">
+            <input type="hidden" name="accion" value="scrapp_leads_on"/>
+            <button type="submit" style="background-color: {color_scrap};">
+                <img src="/static/icons/hacker.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">Análisis de Empresas
+            </button>
+        </form>   
+        <form method="POST">
+            <input type="hidden" name="accion" value="extraer_redes_y_telefono"/>
+            <button type="submit"><img src="/static/icons/contact-information.png" alt="icon" style="height:18px; filter: brightness(0) invert(1);">Extraer Redes y Teléfono</button>
+        </form>
+        <form method="POST">
+            <input type="hidden" name="accion" value="scrapear_linkedin_empresas"/>
+            <!-- <button type="submit">Srapp Linkedin (Próximamente)</button> -->
+        </form>  
+        <form method="POST">
+            <input type="hidden" name="accion" value="generar_desafios"/>
+            <!-- <button type="submit" style="background-color: {color_desafios};">
+                Determinar Desafíos con IA
+            </button> -->
+        </form>
+
+                 
+    </details> 
+    
+    
+    <hr>
+    <details>
+
+    <summary style="cursor: pointer; font-weight: bold;"><img src="/static/icons/apartment.png" class="icon" alt="icono db"> Nuestra Info</summary>
 
     <form method="POST" enctype="multipart/form-data">
         <label>Plan Estratégico:</label>
         <textarea name="plan_estrategico" rows="3" style="width:100%;border-radius:10px;margin-top:8px;">{plan_estrategico or ''}</textarea>
 
         <details>
-        <summary style="cursor:pointer; font-weight: bold;">
-            <img src="/static/icons/db.png" class="icon" alt="icono db"> Plan Estrategico
-        </summary>
+            <summary style="cursor:pointer; font-weight: bold;"><img src="/static/icons/db.png" class="icon" alt="icono db"> Plan Estrategico</summary>
+            <h4>Información analizada desde el sitio del proveedor</h4>
 
-        <h4>Información de mi empresa (editable)</h4>
+            <p><strong>Descripción:</strong><br>
+            <textarea rows="3" style="width: 100%;" readonly>{descripcion_proveedor or '-'}</textarea></p>
 
-        <p><strong>Descripción:</strong><br>
-        <textarea name="descripcion_proveedor" rows="3" style="width: 100%;">{descripcion_proveedor or ''}</textarea></p>
+            <p><strong>Productos:</strong><br>
+            <textarea rows="3" style="width: 100%;" readonly>{productos_proveedor or '-'}</textarea></p>
 
-        <p><strong>Productos:</strong><br>
-        <textarea name="productos_proveedor" rows="3" style="width: 100%;">{productos_proveedor or ''}</textarea></p>
+            <p><strong>Mercado objetivo:</strong><br>
+            <textarea rows="3" style="width: 100%;" readonly>{mercado_proveedor or '-'}</textarea></p>
+            
+            <p><strong>ICP:</strong><br>
+            <textarea rows="3" style="width: 100%;" readonly>{icp_proveedor or '-'}</textarea></p>
 
-        <p><strong>Mercado objetivo:</strong><br>
-        <textarea name="mercado_proveedor" rows="3" style="width: 100%;">{mercado_proveedor or ''}</textarea></p>
-        
-        <!-- <p><strong>ICP:</strong><br> -->
-        <!-- <textarea name="icp_proveedor" rows="3" style="width: 100%;">{icp_proveedor or ''}</textarea></p> -->
-
-        <p><strong>Propuesta de Valor:</strong>
-        <input type="text" name="propuesta_valor" value="{propuesta_valor or ''}" placeholder="Ej: Automatización B2B, eficiencia, etc." style="width:100%;"/></p>
-
-        <p><strong>Contexto:</strong>
-        <input type="text" name="contexto_prov" value="{contexto_prov or ''}" placeholder="Ej: Lanzamiento, Expo, etc." style="width:100%;"/></p>
+            <p><strong>Propuesta de Valor:</strong> {propuesta_valor or '-'}</p>
+            <p><strong>Contexto:</strong> {contexto_prov or '-'}</p>
         </details>
 
         <label>Sube PDF para Plan Estratégico:</label>
@@ -3166,13 +3162,19 @@ def index():
         <label>URL del proveedor para hacer scraping:</label>
         <input type="text" name="url_proveedor" placeholder="https://miempresa.com/about" />
 
+        <label>Propuesta de Valor:</label>
+        <input type="text" name="propuesta_valor" value="{propuesta_valor or ''}" placeholder="Ej: Automatización B2B, eficiencia, etc."/>
+
+        <label>Contexto:</label>
+        <input type="text" name="contexto_prov" value="{contexto_prov or ''}" placeholder="Ej: Lanzamiento, Expo, etc."/>
+
         <div style="display:flex; flex-direction: column; gap: 10px; margin-top: 10px;">
-        <button type="submit" name="accion" value="guardar_custom_fields">💾 Guardar Campos</button>
-        <button type="submit" name="accion" value="scrap_proveedor">🔍 Scrapping de mi sitio</button>
+            <button type="submit" name="accion" value="guardar_custom_fields">💾 Guardar Campos</button>
+            <button type="submit" name="accion" value="scrap_proveedor">🔍 Scrapping de mi sitio</button>
         </div>
     </form>
-    </details>
 
+    </details>
 <details>
     <summary style="cursor:pointer; font-weight: bold;"><img src="/static/icons/artificial-intelligence_atomic.png" class="icon" alt="icono db"> Motor IA </summary> 
         <details>
